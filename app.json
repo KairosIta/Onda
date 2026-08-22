@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "Onda",
+    "slug": "onda",
+    "scheme": "onda",
+    "version": "0.1.0",
+    "icon": "./assets/brand/onda-icon.png",
+    "orientation": "default",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0E1116",
+    "android": {
+      "package": "com.onda.player",
+      "versionCode": 1,
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/brand/onda-adaptive-foreground.png",
+        "monochromeImage": "./assets/brand/onda-monochrome.png",
+        "backgroundColor": "#0E1116"
+      },
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.WAKE_LOCK"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "./plugins/with-release-signing.js",
+      "./plugins/with-android-quality.js",
+      "./plugins/with-android-privacy.js",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0E1116",
+          "image": "./assets/brand/onda-adaptive-foreground.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#0E1116"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

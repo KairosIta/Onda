@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Onda app icon</title>
+  <desc id="desc">Two amber waves orbit to form an abstract letter O.</desc>
+  <circle cx="512" cy="512" r="512" fill="#0E1116"/>
+  <g fill="#FFB03A">
+    <path d="M210 446C252 298 389 194 548 194C701 194 814 284 838 397C852 466 810 520 744 520C644 520 579 449 515 382C449 313 374 299 307 340C264 366 233 404 210 446Z"/>
+    <path d="M814 578C772 726 635 830 476 830C323 830 210 740 186 627C172 558 214 504 280 504C380 504 445 575 509 642C575 711 650 725 717 684C760 658 791 620 814 578Z"/>
+  </g>
+</svg>

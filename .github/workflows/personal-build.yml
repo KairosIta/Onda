@@ -1,0 +1,41 @@
+name: Verify personal build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    env:
+      EXPO_PUBLIC_JAMENDO_CLIENT_ID: ci-validation-only
+      EXPO_PUBLIC_AUDIUS_APP_NAME: Onda-CI
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.15.0
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+      - run: npm ci
+      - run: npm run build:personal
+      - name: Assert that no binary is staged for publication
+        shell: bash
+        run: test -f dist/personal/Onda-personal.apk

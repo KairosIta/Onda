@@ -1,0 +1,75 @@
+{
+  "name": "onda",
+  "version": "0.1.0",
+  "description": "Player Android con codice Onda sotto MIT per i cataloghi Audius e Jamendo.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KairosIta/Onda.git"
+  },
+  "engines": {
+    "node": ">=22.15.0"
+  },
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "android:release": "expo run:android --variant release",
+    "verify:signing": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/verify-signing.ts",
+    "release:android": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/release.ts",
+    "prebuild": "expo prebuild --platform android --clean",
+    "lint": "expo lint",
+    "lint:fix": "expo lint --fix",
+    "doctor": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/personal.ts doctor",
+    "setup:personal": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/personal.ts setup",
+    "build:personal": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/personal.ts build",
+    "install:personal": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/personal.ts install",
+    "android:lint": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/personal.ts android-lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --test-isolation=none --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/node-hook.mjs scripts/*.test.ts",
+    "smoke": "node --env-file=.env --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/node-hook.mjs scripts/smoke.ts"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.1.1",
+    "@react-native-community/slider": "5.2.0",
+    "@rntp/player": "5.8.0",
+    "@tanstack/react-query": "^5.59.0",
+    "expo": "~57.0.15",
+    "expo-constants": "~57.0.13",
+    "expo-font": "~57.0.1",
+    "expo-linking": "~57.0.7",
+    "expo-router": "~57.0.15",
+    "expo-splash-screen": "~57.0.7",
+    "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "~57.0.2",
+    "react": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-gesture-handler": "~2.32.0",
+    "react-native-mmkv": "^3.1.0",
+    "react-native-reanimated": "4.5.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.2",
+    "react-native-worklets": "0.10.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/react": "~19.2.18",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "~57.0.1",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.6",
+    "react-dom": "19.2.3",
+    "typescript": "~6.0.3"
+  },
+  "overrides": {
+    "metro": "0.84.5",
+    "metro-config": "0.84.5",
+    "metro-transform-worker": "0.84.5",
+    "xcode": {
+      "uuid": "^11.1.1"
+    }
+  },
+  "private": true
+}
