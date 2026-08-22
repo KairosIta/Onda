@@ -61,7 +61,7 @@
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.6",
     "react-dom": "19.2.3",
-    "typescript": "~6.0.3"
+    "typescript": "~7.0.2"
   },
   "overrides": {
     "metro": "0.84.5",
