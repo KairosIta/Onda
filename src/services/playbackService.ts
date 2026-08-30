@@ -1,13 +1,15 @@
 import TrackPlayer, {
   Event,
   type BackgroundEvent,
+  type IsPlayingChangedEvent,
   type MediaItem,
   type PlaybackErrorEvent,
 } from '@rntp/player';
 import { recordPlay, remember } from '@/store/library';
 import type { Track } from '@/types/track';
+import { budgetAfterPlayingChange, decideSkip } from './playbackPolicy';
 
-const MAX_SOURCE_SKIPS = 3;
+/** Salti consumati dall'ultima riproduzione riuscita. La regola sta in playbackPolicy. */
 let sourceSkips = 0;
 let foregroundListenersStarted = false;
 
@@ -21,17 +23,23 @@ function rememberAndRecord(item: MediaItem | null): void {
 function handlePlaybackError(error: PlaybackErrorEvent): void {
   console.warn(`[player] ${error.code}: ${error.message}`);
 
-  // Una caduta di rete e' recuperabile: non deve divorare la coda.
-  if (error.code === 'network' || error.code === 'play-not-permitted') return;
-  if (sourceSkips >= MAX_SOURCE_SKIPS) return;
-
-  const index = TrackPlayer.getActiveMediaItemIndex();
-  const queue = TrackPlayer.getQueue();
-  if (index === null || index >= queue.length - 1) return;
+  const decision = decideSkip({
+    code: error.code,
+    skipsUsed: sourceSkips,
+    queue: () => ({
+      index: TrackPlayer.getActiveMediaItemIndex(),
+      length: TrackPlayer.getQueue().length,
+    }),
+  });
+  if (decision !== 'salta') return;
 
   sourceSkips++;
   TrackPlayer.skipToNext();
   TrackPlayer.play();
+}
+
+function handleIsPlayingChanged({ playing }: IsPlayingChangedEvent): void {
+  sourceSkips = budgetAfterPlayingChange(playing, sourceSkips);
 }
 
 /** Listener del processo UI; gli eventi background arrivano al gestore sotto. */
@@ -43,6 +51,7 @@ export function startForegroundPlaybackListeners(): void {
     rememberAndRecord(item);
   });
   TrackPlayer.addEventListener(Event.PlaybackError, handlePlaybackError);
+  TrackPlayer.addEventListener(Event.IsPlayingChanged, handleIsPlayingChanged);
 }
 
 /** Gestore Headless JS Android, registrato in index.js. */
@@ -51,8 +60,12 @@ export async function playbackService(event: BackgroundEvent): Promise<void> {
     rememberAndRecord(event.item);
   } else if (event.type === Event.PlaybackError) {
     handlePlaybackError(event);
+  } else if (event.type === Event.IsPlayingChanged) {
+    handleIsPlayingChanged(event);
   }
 }
+
+/** Coda nuova, budget nuovo: chiamato da useQueue quando si riparte da zero. */
 export function resetPlaybackErrorBudget(): void {
   sourceSkips = 0;
 }
