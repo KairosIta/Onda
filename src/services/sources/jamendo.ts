@@ -59,6 +59,60 @@ function page({ limit = 20, offset = 0 }: ListParams = {}): Record<string, strin
   return offset > 0 ? { limit: String(limit), offset: String(offset) } : { limit: String(limit) };
 }
 
+/** Massimo che Jamendo accetta in una richiesta: chiedere di piu' e' un 400. */
+export const JAMENDO_MAX_LIMIT = 200;
+
+/**
+ * Tetto di sicurezza sulle pagine di un album. Duemila tracce sono ben
+ * oltre qualunque raccolta reale: serve solo a non trasformare una
+ * risposta anomala in un ciclo infinito di richieste.
+ */
+export const ALBUM_MAX_PAGES = 10;
+
+/** Il minimo che serve per ordinare un album; il resto del campo non conta. */
+export interface AlbumOrderable {
+  id?: string;
+  position?: number | string;
+  audio?: string;
+}
+
+/**
+ * Compone le pagine di un album in un elenco unico e ordinato.
+ *
+ * Ordinare pagina per pagina non basta: `position` e' la posizione nel
+ * disco, quindi la traccia 3 puo' arrivare nella seconda richiesta e
+ * dovrebbe comunque stare terza. Si ordina solo dopo aver raccolto tutto.
+ *
+ * Il deduplice non e' teorico: fra una richiesta e l'altra il catalogo
+ * puo' cambiare, e con `offset` fisso una traccia rimossa fa scalare
+ * tutte le altre di uno, ripresentandone una gia' vista.
+ *
+ * Una posizione mancante o non numerica manda la traccia in fondo invece
+ * che in testa: senza numero non sappiamo dove va, e mettercela davanti
+ * sposterebbe l'apertura del disco. In fondo, e fra loro nell'ordine
+ * dell'API, resta una coda leggibile — `sort` in JS e' stabile.
+ */
+export function orderAlbum<T extends AlbumOrderable>(pages: T[][]): T[] {
+  const seen = new Set<string>();
+  const flat: T[] = [];
+
+  for (const p of pages) {
+    for (const t of p) {
+      if (!t.audio) continue; // niente stream: non e' riproducibile
+      const key = String(t.id ?? '');
+      if (key && seen.has(key)) continue;
+      if (key) seen.add(key);
+      flat.push(t);
+    }
+  }
+
+  const at = (t: T): number => {
+    const n = Number(t.position);
+    return Number.isFinite(n) && n > 0 ? n : Infinity;
+  };
+  return flat.sort((a, b) => at(a) - at(b));
+}
+
 /**
  * Jamendo restituisce i campi testuali con le entita' HTML dentro: a
  * schermo si legge `Bessonn&amp;sa` invece di `Bessonn&sa`. Misurato sul
@@ -221,18 +275,37 @@ export const jamendoSource: MusicSource = {
     };
   },
 
+  /**
+   * Un album si mostra intero, non a pagine: e' un'opera con un ordine,
+   * e una raccolta troncata in silenzio a 100 tracce e' peggio di una
+   * lenta. Qui si chiede il massimo per richiesta e si continua finche'
+   * la pagina torna corta, poi si ordina il tutto insieme.
+   *
+   * `limit` e `offset` restano onorati se qualcuno li passa davvero, cosi'
+   * la firma comune a tutte le sorgenti non mente; senza, si prende tutto.
+   */
   async albumTracks(albumId: string, params: ListParams = {}): Promise<Track[]> {
-    // Niente `order`: /tracks/ rifiuta 'track_position' (lo accetta solo
-    // /albums/tracks/, che pero' risponde annidato e vorrebbe un secondo
-    // parser). La posizione arriva comunque nel campo `position`, quindi
-    // l'album lo ordiniamo qui.
-    const results = await fetchResults<JamendoTrack>(
-      url('/tracks/', { album_id: albumId, ...page(params) }),
-    );
-    return results
-      .filter((t) => Boolean(t.audio))
-      .sort((a, b) => Number(a.position ?? 0) - Number(b.position ?? 0))
-      .map(mapTrack);
+    const size = Math.min(params.limit ?? JAMENDO_MAX_LIMIT, JAMENDO_MAX_LIMIT);
+    let offset = params.offset ?? 0;
+    const pages: JamendoTrack[][] = [];
+
+    for (let i = 0; i < ALBUM_MAX_PAGES; i++) {
+      // Niente `order`: /tracks/ rifiuta 'track_position' (lo accetta solo
+      // /albums/tracks/, che pero' risponde annidato e vorrebbe un secondo
+      // parser). La posizione arriva comunque nel campo `position`.
+      const got = await fetchResults<JamendoTrack>(
+        url('/tracks/', { album_id: albumId, ...page({ limit: size, offset }) }),
+      );
+      pages.push(got);
+      // Pagina corta: e' la fine. Una pagina vuota per un guasto Jamendo
+      // l'ha gia' esclusa `fetchResults`, che ritenta prima di arrendersi.
+      if (got.length < size) break;
+      offset += size;
+      // Un limite esplicito e' una richiesta di una pagina sola.
+      if (params.limit !== undefined) break;
+    }
+
+    return orderAlbum(pages).map(mapTrack);
   },
 
   async albumInfo(albumId: string): Promise<AlbumInfo> {

@@ -31,7 +31,9 @@ export default function AlbumScreen() {
 
   const list = useQuery({
     queryKey: ['album-tracks', source, id],
-    queryFn: () => music!.albumTracks!(id, { limit: 100 }),
+    // Senza `limit` la sorgente pagina da sola fino in fondo: un album
+    // va mostrato intero, e il vecchio tetto di 100 troncava in silenzio.
+    queryFn: () => music!.albumTracks!(id),
     enabled: supported && Boolean(id),
   });
 
