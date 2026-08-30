@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { readJSON, writeJSON } from '@/services/storage';
-import { loadLibrary, type LibraryState } from './librarySchema';
+import { mergeLibrary, previewImport, type ImportPreview } from './libraryExport';
+import { HISTORY_MAX, loadLibrary, type LibraryState } from './librarySchema';
 import type { Track } from '@/types/track';
 
 /**
@@ -15,7 +16,6 @@ import type { Track } from '@/types/track';
  */
 
 const KEY = 'library.v1';
-const HISTORY_MAX = 100;
 
 let state: LibraryState = loadLibrary(readJSON(KEY));
 
@@ -23,8 +23,30 @@ let state: LibraryState = loadLibrary(readJSON(KEY));
  * Catalogo volatile: tutto quello che passa a schermo finisce qui, ma
  * non su disco. Serve a risolvere un uid in Track nel momento in cui
  * viene salvato davvero (preferito, playlist, cronologia).
+ *
+ * Con lo scroll infinito su due cataloghi federati questa mappa cresce
+ * per tutta la vita del processo, quindi ha un tetto. Sfrattare non
+ * perde niente di importante: qualunque traccia l'utente abbia davvero
+ * salvato sta anche in `state.tracks`, e `resolve` ci ricade sopra. Al
+ * massimo si perde la freschezza di un campo, non la traccia. La traccia
+ * in riproduzione e' sempre al sicuro: `recordPlay` la persiste appena
+ * parte.
  */
+const SESSION_MAX = 500;
 const session = new Map<string, Track>();
+
+/** Inserisce nel catalogo volatile rispettando il tetto. */
+function keep(track: Track): void {
+  // Reinserire sposta la traccia in fondo: Map itera in ordine di
+  // inserimento, quindi le riviste di recente sopravvivono a una
+  // sessione di scroll lunga e il primo elemento e' sempre il piu' vecchio.
+  session.delete(track.uid);
+  session.set(track.uid, track);
+  if (session.size > SESSION_MAX) {
+    const oldest = session.keys().next();
+    if (!oldest.done) session.delete(oldest.value);
+  }
+}
 
 const listeners = new Set<() => void>();
 
@@ -67,7 +89,7 @@ export const getLibrary = (): LibraryState => state;
 
 /** Registra tracce viste a schermo, senza persisterle. */
 export function remember(tracks: Track[]): void {
-  for (const t of tracks) session.set(t.uid, t);
+  for (const t of tracks) keep(t);
 }
 
 export function resolve(uid: string): Track | undefined {
@@ -86,7 +108,7 @@ export function tracksOf(uids: string[]): Track[] {
 export const isFavorite = (uid: string): boolean => state.favorites.includes(uid);
 
 export function toggleFavorite(track: Track): void {
-  session.set(track.uid, track);
+  keep(track);
   const on = state.favorites.includes(track.uid);
   commit({
     ...state,
@@ -103,7 +125,7 @@ const newId = (): string => `${Date.now().toString(36)}${Math.random().toString(
 
 export function createPlaylist(name: string, seed: Track[] = []): string {
   const id = newId();
-  seed.forEach((t) => session.set(t.uid, t));
+  seed.forEach(keep);
   commit({
     ...state,
     tracks: { ...state.tracks, ...Object.fromEntries(seed.map((t) => [t.uid, t])) },
@@ -138,7 +160,7 @@ export function addToPlaylist(playlistId: string, track: Track): boolean {
   const playlist = state.playlists.find((p) => p.id === playlistId);
   if (!playlist || playlist.trackUids.includes(track.uid)) return false;
 
-  session.set(track.uid, track);
+  keep(track);
   commit({
     ...state,
     tracks: { ...state.tracks, [track.uid]: track },
@@ -188,4 +210,23 @@ export function recordPlay(uid: string): void {
 
 export function clearHistory(): void {
   commit({ ...state, history: [] });
+}
+
+// --- import ---------------------------------------------------------
+
+/**
+ * Fonde un export nella libreria. Ritorna cosa e' entrato davvero.
+ *
+ * Le tracce importate non passano da `keep`: sono gia' in `next.tracks`,
+ * che e' cio' su cui ricadono sia `prune` sia `resolve`, quindi sono
+ * riproducibili subito. Passarcele avrebbe solo sfrattato dal catalogo di
+ * sessione quello che l'utente stava sfogliando, visto che il tetto e'
+ * molto piu' basso di una libreria importata.
+ */
+export function importLibrary(incoming: LibraryState): ImportPreview {
+  const applied = previewImport(state, incoming);
+  if (applied.empty) return applied;
+
+  commit(mergeLibrary(state, incoming));
+  return applied;
 }
