@@ -3,8 +3,23 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Empty } from '@/components/StateViews';
-import { createPlaylist, useLibrary } from '@/store/library';
+import { exportLibrary, pickBackup, saveLibrary } from '@/services/libraryBackup';
+import { createPlaylist, getLibrary, importLibrary, useLibrary } from '@/store/library';
+import { previewImport, type ImportPreview } from '@/store/libraryExport';
+import type { LibraryState } from '@/store/librarySchema';
 import { colors, radius, spacing, type } from '@/theme';
+
+/** Righe dell'anteprima: si mostra solo cio' che cambia davvero. */
+function previewLines(p: ImportPreview): string[] {
+  const righe: string[] = [];
+  const n = (v: number, uno: string, molti: string) => `${v} ${v === 1 ? uno : molti}`;
+  if (p.newFavorites) righe.push(n(p.newFavorites, 'nuovo preferito', 'nuovi preferiti'));
+  if (p.newPlaylists) righe.push(n(p.newPlaylists, 'nuova playlist', 'nuove playlist'));
+  if (p.grownPlaylists) righe.push(n(p.grownPlaylists, 'playlist ampliata', 'playlist ampliate'));
+  if (p.newTracks) righe.push(n(p.newTracks, 'nuovo brano', 'nuovi brani'));
+  if (p.newHistory) righe.push(n(p.newHistory, 'voce di cronologia', 'voci di cronologia'));
+  return righe;
+}
 
 /**
  * Tutto locale, nessun account. Le playlist vivono su MMKV e sono escluse
@@ -15,6 +30,47 @@ export default function LibraryScreen() {
   const { favorites, history, playlists } = useLibrary();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  // L'import non parte finche' non si e' visto cosa entra.
+  const [pending, setPending] = useState<{ library: LibraryState; preview: ImportPreview } | null>(
+    null,
+  );
+
+  const doExport = async () => {
+    setBusy(true);
+    const esito = await exportLibrary(getLibrary());
+    setBusy(false);
+    if (!esito.ok) setMessage(`Export non riuscito: ${esito.reason}`);
+    else if (!esito.shared) setMessage(`File scritto in ${esito.uri}`);
+  };
+
+  const doSave = async () => {
+    setBusy(true);
+    const esito = await saveLibrary(getLibrary());
+    setBusy(false);
+    if (esito.ok) setMessage(`Salvata come ${esito.name}.`);
+    // Un ripensamento non e' un errore: si tace.
+    else if (!('canceled' in esito)) setMessage(`Salvataggio non riuscito: ${esito.reason}`);
+  };
+
+  const doPick = async () => {
+    setBusy(true);
+    const esito = await pickBackup();
+    setBusy(false);
+    if (esito.ok) {
+      setPending({ library: esito.library, preview: previewImport(getLibrary(), esito.library) });
+    } else if (!('canceled' in esito)) {
+      setMessage(esito.reason);
+    }
+  };
+
+  const confirmImport = () => {
+    if (!pending) return;
+    const fatto = importLibrary(pending.library);
+    setPending(null);
+    setMessage(fatto.empty ? 'Niente da aggiungere.' : 'Libreria importata.');
+  };
 
   const create = () => {
     if (!name.trim()) return;
@@ -76,6 +132,29 @@ export default function LibraryScreen() {
         <View style={styles.sectionHead}>
           <Text style={styles.sectionTitle}>Onda</Text>
         </View>
+        {/* Due gesti diversi, due righe: «dove lo metto» non e' «a chi lo
+            mando», e la seconda strada fa uscire i dati dal telefono. */}
+        <Shelf
+          icon="save-outline"
+          label="Salva la libreria"
+          detail="Un file JSON in una cartella che scegli tu"
+          onPress={doSave}
+          disabled={busy}
+        />
+        <Shelf
+          icon="share-outline"
+          label="Condividi una copia"
+          detail="La manda a un'altra app: i dati escono dal telefono"
+          onPress={doExport}
+          disabled={busy}
+        />
+        <Shelf
+          icon="download-outline"
+          label="Importa una libreria"
+          detail="Aggiunge a quella attuale, senza togliere niente"
+          onPress={doPick}
+          disabled={busy}
+        />
         <Shelf
           icon="information-circle-outline"
           label="Informazioni e privacy"
@@ -112,9 +191,74 @@ export default function LibraryScreen() {
           </Pressable>
         </View>
       </Modal>
+
+      {/* Anteprima: chiedere "importo?" senza dire cosa entra non e' una
+          conferma, e questa e' l'unica azione che tocca dati non
+          recuperabili. */}
+      <Modal
+        visible={pending !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPending(null)}
+      >
+        <Pressable style={styles.backdrop} onPress={() => setPending(null)} />
+        <View style={styles.dialog}>
+          <Text style={styles.dialogTitle}>Importare questo file?</Text>
+          {pending?.preview.empty ? (
+            <Text style={styles.dialogBody}>
+              {'Il file non aggiunge niente: è già tutto in libreria.'}
+            </Text>
+          ) : (
+            <Text style={styles.dialogBody}>
+              {previewLines(pending?.preview ?? EMPTY_PREVIEW).join('\n')}
+            </Text>
+          )}
+          <Text style={styles.dialogNote}>
+            {"Niente viene tolto: l'import si aggiunge alla libreria attuale."}
+          </Text>
+          <View style={styles.dialogActions}>
+            <Pressable onPress={() => setPending(null)} hitSlop={12}>
+              <Text style={styles.dialogCancel}>Annulla</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.cta, pending?.preview.empty && styles.ctaOff]}
+              disabled={pending?.preview.empty}
+              onPress={confirmImport}
+            >
+              <Text style={styles.ctaText}>Importa</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={message !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMessage(null)}
+      >
+        <Pressable style={styles.backdrop} onPress={() => setMessage(null)} />
+        <View style={styles.dialog}>
+          <Text style={styles.dialogBody} selectable>
+            {message}
+          </Text>
+          <Pressable style={styles.cta} onPress={() => setMessage(null)}>
+            <Text style={styles.ctaText}>Ho capito</Text>
+          </Pressable>
+        </View>
+      </Modal>
     </View>
   );
 }
+
+const EMPTY_PREVIEW: ImportPreview = {
+  newFavorites: 0,
+  newPlaylists: 0,
+  grownPlaylists: 0,
+  newTracks: 0,
+  newHistory: 0,
+  empty: true,
+};
 
 function Shelf({
   icon,
@@ -122,18 +266,26 @@ function Shelf({
   detail,
   tint,
   onPress,
+  disabled,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   detail: string;
   tint?: string;
   onPress: () => void;
+  disabled?: boolean;
 }) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.shelf, pressed && styles.shelfPressed]}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.shelf,
+        pressed && styles.shelfPressed,
+        disabled && styles.shelfOff,
+      ]}
       accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled) }}
     >
       <View style={styles.shelfIcon}>
         <Ionicons name={icon} size={22} color={tint ?? colors.textMuted} />
@@ -171,6 +323,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   shelfPressed: { backgroundColor: colors.surface },
+  shelfOff: { opacity: 0.4 },
   shelfIcon: {
     width: 48,
     height: 48,
@@ -196,6 +349,15 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   dialogTitle: { ...type.title, color: colors.text },
+  dialogBody: { ...type.body, color: colors.text, lineHeight: 24 },
+  dialogNote: { ...type.caption, color: colors.textMuted },
+  dialogActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: spacing.lg,
+  },
+  dialogCancel: { ...type.body, color: colors.textMuted },
   input: {
     backgroundColor: colors.surfaceHigh,
     borderWidth: 1,

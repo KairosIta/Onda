@@ -14,7 +14,8 @@ export interface LibraryState {
   history: string[];
 }
 
-const HISTORY_MAX = 100;
+/** Tetto della cronologia, condiviso da store e import. */
+export const HISTORY_MAX = 100;
 
 const empty = (): LibraryState => ({ tracks: {}, favorites: [], playlists: [], history: [] });
 
