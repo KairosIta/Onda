@@ -1,6 +1,10 @@
 /**
- * Fisher-Yates. RNTP non ha uno shuffle nativo: si mescola la lista
- * prima di caricarla nella coda.
+ * Fisher-Yates, per il pulsante "Casuale" delle raccolte: mescola la
+ * lista *prima* di caricarla, cosi' la coda canonica e' gia' l'ordine di
+ * ascolto e la schermata Coda dice il vero senza avvertenze.
+ *
+ * E' un meccanismo diverso dall'interruttore shuffle del player, che e'
+ * nativo (`setShuffleEnabled`) e lascia la coda com'e'.
  */
 export function shuffled<T>(items: T[]): T[] {
   const out = [...items];

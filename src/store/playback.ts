@@ -7,9 +7,13 @@ import { loadPlaybackPrefs } from './playbackSchema';
  * Preferenze di riproduzione, separate dalla libreria perche' cambiano
  * spesso e non hanno niente a che vedere con quello che l'utente salva.
  *
- * Lo shuffle non e' uno stato di RNTP: lo applichiamo mescolando la coda
- * al momento del caricamento (vedi useQueue). Il repeat invece e' nativo
- * e va risincronizzato sul player a ogni cambio.
+ * Shuffle e repeat sono entrambi stati nativi di RNTP e vanno
+ * risincronizzati sul player a ogni cambio (vedi applyRepeat).
+ *
+ * Attenzione: lo shuffle nativo non riordina la coda, tiene a parte una
+ * permutazione privata. La coda e l'indice attivo restano quelli di
+ * partenza, quindi la schermata Coda deve dichiarare che l'elenco non e'
+ * l'ordine di ascolto — vedi `describeQueue`.
  */
 
 export interface PlaybackPrefs {
