@@ -26,9 +26,21 @@ export const type = {
   caption: { fontSize: 12, fontWeight: '500' as const, letterSpacing: 0.3 },
 } as const;
 
+/**
+ * Durata leggibile. Le ore compaiono solo quando ci sono: `3:07` resta
+ * `3:07` e non diventa `0:03:07`, che a colpo d'occhio si legge come tre
+ * secondi. Oltre l'ora minuti e secondi passano a due cifre, altrimenti
+ * `1:5:09` sarebbe ambiguo.
+ *
+ * Serve davvero: nel trending Audius ci sono set e puntate radio da piu'
+ * di un'ora, e senza il campo ore uscivano come `70:01`.
+ */
 export function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
+  const total = Math.floor(seconds);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const ss = s.toString().padStart(2, '0');
+  return h > 0 ? `${h}:${m.toString().padStart(2, '0')}:${ss}` : `${m}:${ss}`;
 }
