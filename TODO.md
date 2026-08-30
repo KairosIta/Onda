@@ -1,6 +1,6 @@
 # Roadmap di Onda
 
-Stato aggiornato il **22 agosto 2026** confrontando codice, configurazione e
+Stato aggiornato il **30 agosto 2026** confrontando codice, configurazione e
 documentazione con le prove già raccolte su device e con i controlli automatici,
 di release e da clone pulito.
 
@@ -53,10 +53,43 @@ Una voce si chiude soltanto quando è soddisfatto il relativo **Done**.
 - [x] Coda unica fra le sorgenti: riproduci elenco, riproduci dopo, accoda,
       passa a una traccia, rimuovi e svuota i successivi.
 - [x] Repeat off/traccia/coda persistito.
-- [ ] Shuffle nativo sulla coda corrente. **Implementato, da collaudare:**
-      `setShuffleEnabled` conserva la preferenza e viene riapplicato al setup.
-- [ ] Timer di spegnimento nativo da 15 a 90 minuti. **Implementato, da
-      collaudare:** verificare pausa reale sotto Doze e coerenza del countdown UI.
+- [x] Shuffle nativo sulla coda corrente. **Collaudato il 30 agosto 2026** su
+      Android 16: il toggle attiva davvero l'ordine casuale — dopo _Peak_ il
+      player è passato all'indice 8, non all'1 — la traccia corrente resta al suo
+      posto e la preferenza sopravvive a `force-stop`.
+      La schermata **In coda** mentiva: mostrava l'ordine della timeline
+      dichiarando «31 brani dopo questo» e attenuando 8 brani come già ascoltati
+      quando ne era stato riprodotto uno solo, cioè inventando una cronologia mai
+      avvenuta. Chiuso lo stesso giorno con la seconda alternativa del criterio:
+      mostrare l'ordine vero non è possibile, perché RNTP tiene la permutazione
+      in un `playOrder` privato e non espone alcun accessore su nessun backend —
+      `isShuffleEnabled` dice soltanto se è attivo. Quindi la schermata lo
+      dichiara: sottotitolo «N brani in coda · ordine casuale», riga in accento
+      «L'elenco è l'ordine originale: il prossimo brano non è quello sotto»,
+      nessuna attenuazione delle righe sopra quella attiva, e l'azione passa da
+      «Svuota i successivi» a «Svuota da qui in giù», che è quello che fa davvero
+      quando l'ordine di ascolto è ignoto. La decisione sta in `describeQueue`
+      (`src/utils/queueSummary.ts`), modulo puro con cinque test.
+      **Verificato a schermo** sullo stesso brano attivo (_БЛЮЗ_, indice 2 di
+      93): con lo shuffle le due righe sopra restano a piena luminosità e compare
+      l'avvertenza; senza, tornano attenuate e il sottotitolo dice «90 brani dopo
+      questo».
+      Nota: il pulsante **Casuale** delle raccolte è un meccanismo diverso —
+      mescola l'array prima di caricarlo, quindi la coda canonica è già l'ordine
+      di ascolto e lì non c'era niente da correggere. I commenti in
+      `src/store/playback.ts` e `src/utils/shuffle.ts` che dichiaravano «RNTP non
+      ha uno shuffle nativo» erano rimasti indietro e sono stati riscritti.
+- [x] Timer di spegnimento nativo da 15 a 90 minuti. **Collaudato il 30 agosto
+      2026** su Android 16 in Doze profondo (`deviceidle force-idle`, batteria
+      simulata scollegata, schermo spento): armato alle 11:36:19 su 15 minuti, un
+      campionamento ogni 30 secondi ha visto `PLAYING` con `doze=IDLE` per
+      ventinove volte di fila e `PAUSED` alle 11:51:19, cioè a 15:00 esatti. La
+      pausa è nativa e Doze non la sposta. Al risveglio il player era coerente:
+      luna tornata inattiva e nessuna etichetta «Pausa tra N min» residua.
+      L'unica cosa non osservabile è la coerenza della UI _durante_ Doze, perché
+      `endsAt` lo azzera un `setTimeout` JS che il sistema differisce: a schermo
+      spento però non c'è UI da leggere, e al risveglio i timer vengono smaltiti
+      prima che la schermata torni visibile.
 - [x] Apertura del player dal tap sulla notifica tramite normalizzazione dei
       deep link `trackplayer://` e `onda://`.
 
@@ -67,7 +100,11 @@ Una voce si chiude soltanto quando è soddisfatto il relativo **Done**.
 - [x] Aggiunta/rimozione brani e riordino accessibile tramite frecce.
 - [x] Riproduzione e shuffle di preferiti, cronologia, playlist, artisti e
       album.
-- [ ] Export/import e migrazioni versionate non sono ancora disponibili.
+- [x] Export/import della libreria in JSON versionato, con anteprima dei
+      delta e merge additivo. Il salvataggio usa il selettore di cartelle di
+      sistema e non fa uscire il file dal telefono; la condivisione resta
+      disponibile come seconda strada, dichiarata.
+- [ ] Le migrazioni versionate dello schema MMKV non sono ancora disponibili.
 
 ### Progetto e distribuzione
 
@@ -277,11 +314,13 @@ stati verificati successivamente.
       **Done:** azione Riprova, controlli disabilitati finché il player non è
       pronto e diagnostica tecnica copiabile.
 
-- [ ] **Classificare gli errori stream senza consumare la coda.** Il servizio
-      non salta gli errori classificati `network`, ma tutti gli altri possono
-      avanzare fino a tre volte e la classificazione dipende dal codice RNTP.
-      **Done:** retry/backoff per rete, skip solo per stream definitivamente morto,
-      budget per sessione robusto e test device togliendo la rete a metà brano.
+- [ ] **Classificare gli errori stream senza consumare la coda.** Il budget di
+      salti è ora per fallimenti _consecutivi_ e si ricarica su `IsPlayingChanged`
+      (`playbackPolicy.ts`, cinque test); prima era per processo, quindi dopo tre
+      salti sparsi la coda restava bloccata. Restano il retry/backoff per gli
+      errori di rete e il collaudo su device.
+      **Done:** retry/backoff per rete, skip solo per stream definitivamente morto
+      e test device togliendo la rete a metà brano.
 
 - [ ] **Completare il collaudo della paginazione dopo un guasto parziale.** Il
       worktree locale riprova lo stesso offset, deduplica le tracce e mostra
@@ -302,10 +341,27 @@ stati verificati successivamente.
       **Done:** schema, migrazioni idempotenti, quarantena del dato invalido,
       backup pre-migrazione e test con versioni vecchie/dati troncati.
 
-- [ ] **Aggiungere export/import della libreria.** Preferiti e playlist
-      dipendono oggi dall'installazione e dalla firma dell'app.
-      **Done:** JSON versionato, anteprima, merge sicuro e round-trip verificato in
-      release.
+- [x] **Aggiungere export/import della libreria.** Fatto il 30 agosto 2026.
+      `src/store/libraryExport.ts` costruisce e rilegge un JSON `onda.library`
+      versionato (`EXPORT_VERSION = 1`, rifiuta versioni future); il merge e'
+      additivo — unione di preferiti, playlist e cronologia, i metadati locali
+      vincono sui brani gia' noti — e `previewImport` conta i delta reali, non
+      il contenuto del file. Il trasporto sta in `src/services/libraryBackup.ts`
+      (expo-file-system per scrivere e scegliere, expo-sharing per consegnare).
+      Collaudato in release sul dispositivo: import di un file da
+      `/sdcard/Download` con anteprima corretta, condivisione dell'export senza
+      `FileUriExposedException` e reimport idempotente che dichiara «Il file non
+      aggiunge niente: e' gia' tutto in libreria» con il pulsante disattivato.
+      Le due permission di storage che `expo-file-system` dichiara nel proprio
+      manifest restano fuori dal merged manifest grazie a `blockedPermissions`.
+      Il round trip e' stato chiuso il 30 agosto 2026 su un export reale: il
+      file riletto da `parseExport` conserva conteggi e integrita' referenziale,
+      riesportarlo da' lo stesso stato e reimportarlo non aggiunge nulla.
+      Sempre il 30 agosto e' stato aggiunto `saveLibrary`, che scrive nella
+      cartella scelta con `Directory.pickDirectoryAsync` senza dipendenze nuove:
+      prima l'unica uscita era la share sheet, e su un telefono senza gestore
+      file ogni destinazione era un'app che portava la libreria fuori.
+      Resta da fare, ma e' la voce sopra: migrazioni versionate dello schema.
 
 - [ ] **Registrare una riproduzione reale, non una transizione.** La cronologia
       viene aggiornata appena cambia media item; il testo “Riprendi da dove eri”
@@ -315,16 +371,21 @@ stati verificati successivamente.
 
 - [ ] **Risoluzione fresca degli stream Jamendo salvati.** Preferiti e
       playlist persistono l'URL audio ricevuto dall'API, che può diventare obsoleto.
+      Priorità abbassata il 30 agosto 2026: il parametro `from` nell'URL Jamendo
+      non è una credenziale a scadenza. Provate quattro varianti sullo stesso
+      brano — token valido, token assente, token manomesso e token di un altro
+      brano — e tutte hanno risposto `206 audio/mpeg`. Il rischio residuo è che
+      cambi l'host o sparisca il brano, non che il link scada.
       **Done:** risoluzione al play da `source + id`, cache con scadenza e test su
       elementi salvati da tempo.
 
 ### Navigazione e correttezza UI
 
-- [ ] **Rispettare `enabled` e validare tutte le route.** `sourceById` accetta
-      una sorgente registrata anche se disabilitata; un `kind` sconosciuto apre i
-      Preferiti invece di mostrare Not Found.
-      **Done:** registro unico delle sorgenti attive e rifiuto esplicito di
-      source/kind/id non ammessi, con test deep link.
+- [ ] **Validare tutte le route.** `sourceById` rispetta `enabled` dal 30 agosto
+      2026 e rifiuta una sorgente disabilitata; resta aperto il `kind`
+      sconosciuto, che apre i Preferiti invece di mostrare Not Found.
+      **Done:** rifiuto esplicito di source/kind/id non ammessi, con test deep
+      link.
 
 - [ ] **Separare errori e contenuto vuoto per artista/album.** Alcuni errori
       vengono mostrati insieme a “Nessun brano” o “Album vuoto”; mancano retry
@@ -332,24 +393,47 @@ stati verificati successivamente.
       **Done:** stati loading/error/empty/data mutuamente esclusivi e Riprova per
       profilo e lista.
 
-- [ ] **Paginare gli album Jamendo.** Il limite fisso di 100 può troncare una
-      raccolta senza segnalarlo.
-      **Done:** paginazione o conteggio completo, ordine stabile e test oltre 100
-      elementi.
+- [x] **Paginare gli album Jamendo.** Risolto il 30 agosto 2026. `albumTracks`
+      chiede pagine da 200 — il massimo che l'API accetta — finché non ne torna
+      una corta, con un tetto di 10 pagine perché una risposta anomala non
+      diventi un ciclo di richieste. La schermata album non passa più
+      `limit: 100`: era quel parametro a troncare in silenzio. L'ordine si
+      calcola su tutte le pagine insieme (`orderAlbum`) e non pagina per pagina,
+      altrimenti la traccia 3 arrivata nella seconda richiesta finirebbe dopo la 200. Deduplica per id, perché con offset fisso una traccia rimossa fra due
+      richieste fa ripresentare la successiva. Quattro test coprono 250 tracce su
+      tre pagine, la sovrapposizione, le tracce senza stream e le posizioni
+      mancanti. **Verificato sull'API vera** lo stesso giorno con l'album
+      Jamendo 87675 («LISTEN UP ANTHOLOGY», 93 tracce): `dumpsys media_session`
+      riporta `size=93` e la schermata Coda dichiara «92 brani dopo questo»
+      nell'ordine del disco. Con il vecchio `limit: 100` un album da 93 passava
+      per caso; oltre le 100 tracce veniva troncato senza dirlo.
 
-- [ ] **Formattare correttamente durate oltre un'ora.** `formatTime(7525)`
-      restituisce `125:25` invece di `2:05:25`.
-      **Done:** formato ore/minuti/secondi e unit test dei valori limite.
+- [x] **Formattare correttamente durate oltre un'ora.** Risolto il 30 agosto 2026. Il campo ore compare solo quando serve: `3:07` resta `3:07`, mentre
+      `7525` diventa `2:05:25` e le due tracce del trending Audius passano da
+      `61:51` e `70:01` a `1:01:51` e `1:10:01`. Oltre l'ora i minuti passano a
+      due cifre, altrimenti `1:5:09` sarebbe ambiguo. Due test coprono il
+      confine dei 3600 secondi, il troncamento dei decimali e `NaN`/infiniti.
+      **Verificato a schermo** lo stesso giorno su Android 16: cercando «Enough
+      Records Radio Show» la lista mostra `2:00:00` e `1:59:59` accanto a `28:04`
+      e `6:19`, e il player del brano da due ore stampa `0:22` / `2:00:00` senza
+      che nessuna riga vada a capo.
 
 ### Accessibilità e layout
 
-- [ ] **Correggere la safe area della Coda.** Le ultime righe possono finire
-      sotto la navigation bar Android.
-      **Done:** ultimo elemento e azione di rimozione visibili con gesture e
-      navigazione a tre pulsanti.
+- [x] **Correggere la safe area della Coda.** Risolto il 30 agosto 2026. La
+      coda è una modale sopra lo Stack e il `SafeAreaView` radice copre solo il
+      bordo alto, quindi il fondo se lo paga da sé come già fa il player.
+      L'inset va nel `contentContainerStyle` della lista e non sullo schermo:
+      messo sullo schermo la lista smetterebbe di scorrere sotto la navigation
+      bar e l'ultima riga resterebbe comunque irraggiungibile con la X di
+      rimozione. **Verificato a schermo** lo stesso giorno su Android 16 con
+      navigazione a tre pulsanti: in fondo a una coda da 93 brani l'ultima riga
+      e la sua X restano interamente sopra la barra di sistema.
 
 - [ ] **Rendere il player responsivo.** Artwork quadrata e layout fisso non
-      scrollabile possono spingere controlli/licenza fuori schermo.
+      scrollabile possono spingere controlli/licenza fuori schermo. Confermato il
+      30 agosto 2026: il titolo su due righe «Cold Play - Yellow (Oliverio Luján
+      Edit)» sposta in basso di circa 105 px l'intera riga dei controlli.
       **Done:** max artwork, layout adattivo o scroll controllato, test 360×640 dp
       e font scale 1.0/1.3/1.5/2.0.
 
@@ -374,8 +458,10 @@ stati verificati successivamente.
 
 - [ ] Condividere un solo observer di progresso, non interrogare il bridge
       senza traccia e usare frequenze diverse per mini-player e player aperto.
-- [ ] Limitare con una LRU il catalogo volatile `session`, oggi crescente per
-      tutta la vita del processo.
+- [x] Tetto di 500 voci sul catalogo volatile `session`, con sfratto del più
+      vecchio e reinserimento in coda a ogni accesso in scrittura: prima cresceva
+      per tutta la vita del processo. Sfrattare è sicuro perché ciò che l'utente
+      salva sta anche in `state.tracks`, dove `resolve` ricade.
 - [ ] Usare thumbnail nei mini-player e nella Coda invece dell'artwork grande
       destinato a lock screen e player.
 - [ ] Aggiungere timeout e `AbortSignal` fino agli adapter; le ricerche
@@ -390,9 +476,13 @@ stati verificati successivamente.
 ### Test e toolchain
 
 - [ ] Estendere i test unitari a mutazioni degli store, `formatTime`, shuffle e
-      migrazioni complete; validazione, repeat e cursore federato sono coperti.
+      migrazioni complete. Coperti oggi (37 test): validazione, repeat, cursore
+      federato, composizione della federazione, entità HTML Jamendo e budget di
+      salti.
 - [ ] Portare nel repository test deterministici della federazione con fetch
-      mockato; mantenere lo smoke live separato perché dipende da servizi esterni.
+      mockato; la composizione e la propagazione degli errori sono già coperte da
+      `federation.ts`, manca il livello fetch. Lo smoke live resta separato perché
+      dipende da servizi esterni.
 - [x] CI Ubuntu/Windows con `npm ci`, test, typecheck, ESLint, Prettier, Expo
       Doctor e prebuild; workflow manuale separato per la build personale
       completa. Lo smoke live resta locale perché usa un Client ID personale.
