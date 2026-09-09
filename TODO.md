@@ -154,6 +154,14 @@ Una voce si chiude soltanto quando è soddisfatto il relativo **Done**.
       RNTP. Senza `extras` nelle voci, per tenere leggero il passaggio nativo:
       cronologia e cuoricino risolvono l'uid dalla libreria. Nessuna prova
       con un'unità o con il Desktop Head Unit.
+- [ ] Ricerca vocale: «metti jazz su Onda» dall'Assistant o dal display
+      dell'auto cerca nelle sorgenti e fa partire i risultati. Servono
+      l'intent filter `MEDIA_PLAY_FROM_SEARCH` sull'attività, un modulo Expo
+      locale che legga la query dall'intent di avvio e da `onNewIntent`, e un
+      gestore JS che federi la ricerca e riempia la coda; la via della
+      sessione media resta chiusa finché RNTP non inoltra a JS le richieste
+      di ricerca di Media3. Fino ad allora `with-android-auto.js` tace il
+      controllo Lint corrispondente, con il motivo scritto accanto.
 
 ### Libreria locale
 
@@ -554,7 +562,7 @@ stati verificati successivamente.
 ### Test e toolchain
 
 - [ ] Estendere i test unitari a mutazioni degli store, `formatTime`, shuffle e
-      migrazioni complete. Coperti oggi (87 test): validazione, repeat, cursore
+      migrazioni complete. Coperti oggi (88 test): validazione, repeat, cursore
       federato, composizione della federazione (anche di artisti e album),
       entità HTML Jamendo, budget di salti, export/import, riepilogo della
       coda, sessione di ascolto, stato del player, politica di lettura del
