@@ -1,16 +1,16 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { type ErrorBoundaryProps, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { createQueryClient } from '@/services/queryClient';
 import { setupPlayer } from '@/services/setupPlayer';
 import { colors, radius, spacing, type } from '@/theme';
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 5 * 60_000, retry: 1 } },
-});
+// Reidratato da MMKV prima del primo render: vedi services/queryClient.
+const queryClient = createQueryClient();
 
 /**
  * Senza, un errore di render e' una schermata bianca e basta: l'app smette

@@ -1,6 +1,6 @@
 # Informativa privacy di Onda
 
-**Versione:** 1.1 — **in vigore dal 22 agosto 2026**
+**Versione:** 1.2 — **in vigore dal 9 settembre 2026**
 
 Questa informativa descrive il funzionamento delle copie personali dell'app
 Android Onda compilate dal progetto
@@ -15,7 +15,11 @@ Onda salva nello spazio privato dell'app:
 
 - preferiti, cronologia degli ultimi brani e playlist;
 - metadati necessari a ritrovare i brani salvati;
-- preferenze di riproduzione, come shuffle e ripetizione.
+- preferenze di riproduzione, come shuffle e ripetizione;
+- l'ultima coda di riproduzione e la posizione raggiunta nel brano, per
+  riprendere l'ascolto all'apertura successiva;
+- una copia temporanea dei cataloghi consultati di recente (trending, pagine
+  artista e album), per aprire l'app senza attendere la rete.
 
 Questi dati servono unicamente a offrire le funzioni richieste nell'app. Onda
 non include SDK di analytics, pubblicità o crash reporting e il progetto non
@@ -69,8 +73,9 @@ multimediale condiviso.
 
 I dati locali restano finché l'utente non elimina i singoli elementi, cancella
 l'archiviazione di Onda dalle impostazioni Android o disinstalla l'app. La
-cronologia conserva al massimo 100 brani. Poiché Onda non gestisce un account o
-un backend, il progetto non conserva una copia remota da cancellare.
+cronologia conserva al massimo 100 brani; la coda salvata viene ignorata dopo
+trenta giorni e la copia dei cataloghi dopo tre. Poiché Onda non gestisce un
+account o un backend, il progetto non conserva una copia remota da cancellare.
 
 Le richieste conservate dai servizi musicali seguono invece i rispettivi tempi
 di conservazione e possono essere oggetto dei diritti e dei contatti indicati

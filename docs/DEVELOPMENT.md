@@ -106,10 +106,18 @@ src/
   services/storage.ts       istanza MMKV + lettura JSON sicura e scrittura
   services/setupPlayer.ts   configurazione RNTP (una volta per processo)
   services/playbackService.ts  comandi da notifica, lockscreen, Bluetooth
+  services/mediaItems.ts    andata e ritorno fra il nostro modello e gli elementi di coda RNTP
+  services/playbackStatus.ts  lo stato unico del tasto play, ricavato dai segnali RNTP
+  services/playerCommands.ts  play, pausa e skip con la semantica giusta per ogni stato
+  services/progressPolicy.ts  quando, e quanto spesso, leggere la posizione dal player
+  services/queryClient.ts   React Query reidratata da MMKV; potatura in queryPersistenceSchema.ts
   store/library.ts          preferiti, playlist, cronologia (persistiti)
   store/playback.ts         shuffle e repeat (persistiti)
+  store/session.ts          brano attivo + coda e posizione salvate, "in attesa" all'avvio; useNowPlaying (schema in sessionSchema.ts)
+  store/progress.ts         l'unico osservatore di progresso dell'app
   store/sleepTimer.ts       timer di spegnimento (volatile, di proposito)
   hooks/useQueue.ts         sostituzione coda, riproduci dopo, accoda
+  hooks/usePlaybackStatus.ts  lo stato del player come hook
   hooks/useInfiniteTracks.ts  scroll infinito su qualunque elenco, federato o no
   services/playbackService.ts registra i cambi di traccia, anche in background
   components/               TrackList, TrackRow, MiniPlayer, menu contestuale, ...
@@ -131,8 +139,8 @@ credentials/                chiave di firma — ignorata da git, non rigenerabil
 
 ### Come si tiene insieme
 
-Gli store sono tre file su `useSyncExternalStore`, senza librerie: uno stato
-per file, sincrono, riscritto su MMKV a ogni mutazione. La libreria tiene le
+Gli store sono pochi file su `useSyncExternalStore`, senza librerie: uno stato
+per file, sincrono, e quelli persistiti si riscrivono su MMKV a ogni mutazione. La libreria tiene le
 tracce **normalizzate** in un catalogo e maneggia solo uid — la stessa traccia
 in tre playlist e' un riferimento, non tre copie che divergono.
 
@@ -141,7 +149,22 @@ store. Un campo di una vecchia versione o malformato viene normalizzato o
 scartato senza buttare via le altre parti sane della libreria.
 
 La coda invece non e' in uno store nostro: vive dentro RNTP, che resta l'unica
-fonte di verita' anche quando i comandi arrivano dalla notifica.
+fonte di verita' anche quando i comandi arrivano dalla notifica. `store/session`
+la fotografa su MMKV quando cambia (anche dal gestore headless) e salva la
+posizione dai tick del timer nativo `progressSync`; all'avvio la rimette "in
+attesa" senza caricarla nel player, cosi' niente stream e niente notifica
+prima di un play. Le schermate leggono il brano da `useNowPlaying` (nello stesso store, cosi'
+brano del player e coda in attesa cambiano in un solo snapshot), e i comandi di trasporto
+passano da `services/playerCommands`, che consegna la coda al player al primo
+play o skip. Per questo nessuna schermata chiama `useActiveMediaItem` o
+`useProgress` di RNTP direttamente: il progresso lo legge un solo timer,
+`store/progress`, e lo stato del tasto play viene da `usePlaybackStatus`.
+
+React Query e' reidratata da MMKV prima del primo render
+(`services/queryClient`): trending, artisti e album tornano da disco e si
+rinfrescano in background, la ricerca no. La potatura — trenta query, due
+pagine per elenco, tre giorni — sta in `queryPersistenceSchema`, puro e
+testato, e vale anche come `gcTime`.
 
 `TrackList` e' l'unica lista dell'app. Si abbona lei alla libreria e al player,
 e passa `isFavorite` / `isActive` alle righe come prop: cosi' `TrackRow` resta
@@ -249,6 +272,14 @@ Nell'ordine. Se salti un passaggio, il bug lo trovi tre settimane dopo.
 10. Nel player trascina la copertina verso il basso: il foglio segue il dito,
     sotto si intravede la schermata precedente e, oltre un terzo dello schermo,
     si chiude con una vibrazione leggera. Sotto la soglia torna su.
+11. Metti in pausa a meta' brano, togli l'app dai recenti e riaprila: il
+    mini-player c'e' gia', in pausa, senza notifica. Premi play: riparte da
+    dove eri, con uno scarto di al massimo cinque secondi.
+12. Con la rete lenta il tasto play mostra uno spinner e la barra sotto il
+    mini-player ha tre toni: suonato, scaricato, da scaricare. In modalita'
+    aereo a meta' brano il player dice "Il brano non risponde" e offre Riprova.
+13. Chiudi l'app, togli la rete e riaprila: Scopri mostra l'ultimo trending
+    invece delle sagome.
 
 Il punto 3 e' quello che rompe piu' spesso, ed e' anche quello che fallisce
 in silenzio.

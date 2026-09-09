@@ -162,7 +162,7 @@ function RecentStrip({ tracks }: { tracks: Track[] }) {
   return (
     <View style={styles.strip}>
       <View style={styles.stripHead}>
-        <Text style={styles.sectionTitle}>Riprendi da dove eri</Text>
+        <Text style={styles.sectionTitle}>Ascoltati di recente</Text>
         <Pressable
           onPress={() => router.push('/collection/history')}
           hitSlop={10}

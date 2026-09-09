@@ -1,21 +1,10 @@
 import { useCallback } from 'react';
-import TrackPlayer, { type MediaItem } from '@rntp/player';
-import { remember } from '@/store/library';
+import TrackPlayer from '@rntp/player';
+import { toMediaItem } from '@/services/mediaItems';
 import { resetPlaybackErrorBudget } from '@/services/playbackService';
+import { remember } from '@/store/library';
+import { activateSession, clearPending } from '@/store/session';
 import type { Track } from '@/types/track';
-
-/** Converte il nostro modello in quello che si aspetta RNTP. */
-export const toMediaItem = (t: Track): MediaItem => ({
-  mediaId: t.uid,
-  url: t.streamUrl,
-  title: t.title,
-  artist: t.artist,
-  // La misura grande: questa immagine finisce sul lockscreen e nella
-  // notifica espansa, dove viene disegnata molto piu' grande di una riga.
-  artworkUrl: t.artworkLargeUrl ?? t.artworkUrl,
-  duration: t.durationSec,
-  extras: { track: t },
-});
 
 export function useQueue() {
   /** Sostituisce la coda con `tracks` e parte dall'indice scelto. */
@@ -25,6 +14,8 @@ export function useQueue() {
     // solo l'uid, e senza questo non saprebbe cosa salvare.
     remember(tracks);
     resetPlaybackErrorBudget();
+    // Una coda nuova manda in pensione quella ripristinata dal disco.
+    clearPending();
 
     // Shuffle e' gestito nativamente: preserva l'elemento scelto e permette
     // di attivarlo/disattivarlo anche dopo che la coda e' stata caricata.
@@ -35,6 +26,9 @@ export function useQueue() {
   /** Inserisce subito dopo la traccia corrente. */
   const playNext = useCallback(async (track: Track) => {
     remember([track]);
+    // La coda ripristinata va prima messa nel player, altrimenti "dopo il
+    // brano corrente" sarebbe dentro una coda vuota.
+    activateSession({ play: false });
     const current = TrackPlayer.getActiveMediaItemIndex();
     TrackPlayer.insertMediaItem((current ?? -1) + 1, toMediaItem(track));
   }, []);
@@ -42,6 +36,7 @@ export function useQueue() {
   /** Accoda in fondo. */
   const addLast = useCallback(async (track: Track) => {
     remember([track]);
+    activateSession({ play: false });
     TrackPlayer.addMediaItem(toMediaItem(track));
   }, []);
 

@@ -1,8 +1,8 @@
 import { type ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet } from 'react-native';
-import { useActiveMediaItem } from '@rntp/player';
 import { useQueue } from '@/hooks/useQueue';
 import { remember, useLibrary } from '@/store/library';
+import { useNowPlaying } from '@/store/session';
 import { spacing } from '@/theme';
 import type { Track } from '@/types/track';
 import { TrackActions } from './TrackActions';
@@ -35,7 +35,7 @@ export function TrackList({
   onEndReached,
 }: Props) {
   const { playList } = useQueue();
-  const active = useActiveMediaItem();
+  const { item: active } = useNowPlaying();
   const { favorites } = useLibrary();
   const [menuFor, setMenuFor] = useState<Track | null>(null);
 

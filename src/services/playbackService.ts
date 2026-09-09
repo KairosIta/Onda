@@ -4,8 +4,10 @@ import TrackPlayer, {
   type IsPlayingChangedEvent,
   type MediaItem,
   type PlaybackErrorEvent,
+  type PlaybackProgressUpdatedEvent,
 } from '@rntp/player';
 import { recordPlay, remember } from '@/store/library';
+import { savePosition, saveQueueSnapshot } from '@/store/session';
 import type { Track } from '@/types/track';
 import { budgetAfterPlayingChange, decideSkip } from './playbackPolicy';
 
@@ -18,6 +20,17 @@ function rememberAndRecord(item: MediaItem | null): void {
   const track = item.extras?.track as Track | undefined;
   if (track?.uid === item.mediaId) remember([track]);
   recordPlay(item.mediaId);
+}
+
+/** Cambio di brano: cronologia e fotografia della coda, da dove si riprende. */
+function handleTransition(item: MediaItem | null): void {
+  rememberAndRecord(item);
+  saveQueueSnapshot();
+}
+
+/** Tick del timer nativo di progresso (vedi setupPlayer): la posizione va su disco. */
+function handleProgress({ mediaId, position }: PlaybackProgressUpdatedEvent): void {
+  savePosition(mediaId, position);
 }
 
 function handlePlaybackError(error: PlaybackErrorEvent): void {
@@ -48,8 +61,10 @@ export function startForegroundPlaybackListeners(): void {
   foregroundListenersStarted = true;
 
   TrackPlayer.addEventListener(Event.MediaItemTransition, ({ item }) => {
-    rememberAndRecord(item);
+    handleTransition(item);
   });
+  TrackPlayer.addEventListener(Event.QueueChanged, saveQueueSnapshot);
+  TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, handleProgress);
   TrackPlayer.addEventListener(Event.PlaybackError, handlePlaybackError);
   TrackPlayer.addEventListener(Event.IsPlayingChanged, handleIsPlayingChanged);
 }
@@ -57,7 +72,11 @@ export function startForegroundPlaybackListeners(): void {
 /** Gestore Headless JS Android, registrato in index.js. */
 export async function playbackService(event: BackgroundEvent): Promise<void> {
   if (event.type === Event.MediaItemTransition) {
-    rememberAndRecord(event.item);
+    handleTransition(event.item);
+  } else if (event.type === Event.QueueChanged) {
+    saveQueueSnapshot();
+  } else if (event.type === Event.PlaybackProgressUpdated) {
+    handleProgress(event);
   } else if (event.type === Event.PlaybackError) {
     handlePlaybackError(event);
   } else if (event.type === Event.IsPlayingChanged) {

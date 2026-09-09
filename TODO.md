@@ -44,6 +44,13 @@ Una voce si chiude soltanto quando è soddisfatto il relativo **Done**.
       disponibili.
 - [x] Pagine album Jamendo con ordine delle tracce; Audius non espone album
       navigabili in modo abbastanza affidabile per mostrarli.
+- [ ] Apertura senza attese: trending, pagine artista e album consultate di
+      recente tornano da disco prima del primo render e si rinfrescano in
+      background. **Implementato il 9 settembre 2026, da collaudare**: la cache
+      di React Query si disidrata su MMKV (`src/services/queryClient.ts`),
+      potata alle trenta query più fresche, due pagine per elenco e tre giorni
+      (`queryPersistenceSchema.ts`, quattro test); la ricerca resta fuori. Al
+      ritorno in primo piano le query scadute si rinfrescano da sole.
 
 ### Riproduzione
 
@@ -92,6 +99,23 @@ Una voce si chiude soltanto quando è soddisfatto il relativo **Done**.
       prima che la schermata torni visibile.
 - [x] Apertura del player dal tap sulla notifica tramite normalizzazione dei
       deep link `trackplayer://` e `onda://`.
+- [ ] Ripresa dell'ascolto all'avvio: coda e posizione nel brano sopravvivono
+      alla chiusura dell'app e il mini-player riparte da dove era, in pausa,
+      senza aprire lo stream né mostrare la notifica finché non si preme play.
+      **Implementato il 9 settembre 2026, da collaudare**: la coda si fotografa
+      su MMKV a ogni transizione e cambio coda, anche dal gestore headless, in
+      una finestra di 200 brani intorno a quello attivo; la posizione arriva dal
+      timer nativo `progressSync` di RNTP ogni cinque secondi e alla pausa, più
+      un salvataggio all'uscita dall'app. All'avvio la coda resta «in attesa»
+      (`src/store/session.ts`) e il player nativo la riceve al primo play, skip,
+      accodamento o apertura della Coda. Nove test coprono finestra,
+      validazione, scadenza a trenta giorni e la regola dei titoli di coda.
+- [ ] Stato di riproduzione unico e visibile: spinner nel tasto play durante il
+      caricamento, porzione bufferizzata sulla barra del mini-player e dietro lo
+      slider del player, avviso con **Riprova** quando il brano non risponde.
+      **Implementato il 9 settembre 2026, da collaudare**: la tabella sta in
+      `src/services/playbackStatus.ts` (tre test) e i comandi di trasporto
+      passano da `playerCommands.ts`, che sa cosa vuol dire play in ogni stato.
 
 ### Libreria locale
 
@@ -308,12 +332,15 @@ stati verificati successivamente.
 
 ### Riproduzione e rete
 
-- [ ] **Unificare gli stati del player e gestire tutte le promise RNTP.** I
-      comandi da UI non sono sempre attesi/catturati e play/pausa non distingue
-      chiaramente caricamento, buffering, pausa ed errore.
-      **Done:** stato `idle/loading/buffering/playing/paused/error`, comandi
-      serializzati o disabilitati quando necessario, retry visibile e zero
-      rejection non gestite nei log.
+- [ ] **Unificare gli stati del player e gestire tutte le promise RNTP.** Dal
+      9 settembre 2026 lo stato è uno solo (idle, buffering, playing, paused,
+      ended, error), ricavato in `src/services/playbackStatus.ts` e usato da
+      entrambi i tasti play: il caricamento mostra uno spinner, l'errore un
+      avviso con Riprova (`retry()` seguito da play) e la coda finita riparte
+      dal brano corrente. Restano i comandi serializzati o disabilitati quando
+      serve e la verifica delle rejection nei log.
+      **Done:** comandi serializzati o disabilitati quando necessario e zero
+      rejection non gestite nei log, provati su device.
 
 - [ ] **Rendere recuperabile il setup del player.** Un errore iniziale mostra
       un banner ma non offre una nuova inizializzazione.
@@ -370,10 +397,11 @@ stati verificati successivamente.
       Resta da fare, ma e' la voce sopra: migrazioni versionate dello schema.
 
 - [ ] **Registrare una riproduzione reale, non una transizione.** La cronologia
-      viene aggiornata appena cambia media item; il testo “Riprendi da dove eri”
-      è inesatto perché la posizione non viene salvata.
-      **Done:** registrazione dopo una soglia di ascolto e copy “Ascoltati di
-      recente”, oppure persistenza e ripristino della posizione.
+      viene aggiornata appena cambia media item. Dal 9 settembre 2026 la
+      posizione viene salvata e ripristinata (vedi «Ripresa dell'ascolto») e la
+      striscia di Scopri si chiama «Ascoltati di recente», che è quello che
+      mostra davvero. Resta la soglia di ascolto prima di registrare.
+      **Done:** registrazione dopo una soglia di ascolto.
 
 - [ ] **Risoluzione fresca degli stream Jamendo salvati.** Preferiti e
       playlist persistono l'URL audio ricevuto dall'API, che può diventare obsoleto.
@@ -464,6 +492,10 @@ stati verificati successivamente.
 
 - [ ] Condividere un solo observer di progresso, non interrogare il bridge
       senza traccia e usare frequenze diverse per mini-player e player aperto.
+      **Implementato il 9 settembre 2026, da collaudare**: `src/store/progress.ts`
+      tiene un solo timer per tutta l'app, a 500 ms in riproduzione e 2 s in
+      pausa, fermo senza brano, senza lettori o con l'app in background
+      (`progressPolicy.ts`, un test); mini-player e player leggono da lì.
 - [x] Tetto di 500 voci sul catalogo volatile `session`, con sfratto del più
       vecchio e reinserimento in coda a ogni accesso in scrittura: prima cresceva
       per tutta la vita del processo. Sfrattare è sicuro perché ciò che l'utente
@@ -475,16 +507,19 @@ stati verificati successivamente.
 - [ ] Definire retry/backoff per 429 e 5xx. Jamendo ritenta tre volte ogni
       risposta vuota e React Query può moltiplicare ulteriormente le chiamate.
 - [ ] Collegare React Query ad AppState/stato rete e aggiungere
-      pull-to-refresh con una policy esplicita per trending e cache.
+      pull-to-refresh con una policy esplicita per trending e cache. AppState è
+      collegato dal 9 settembre 2026 (`focusManager` in `queryClient.ts`) e la
+      cache è persistita; restano lo stato rete e il pull-to-refresh.
 - [ ] Misurare in release cold/warm start, PSS/RSS, frame lenti, rete e
       batteria per 60 minuti.
 
 ### Test e toolchain
 
 - [ ] Estendere i test unitari a mutazioni degli store, `formatTime`, shuffle e
-      migrazioni complete. Coperti oggi (37 test): validazione, repeat, cursore
-      federato, composizione della federazione, entità HTML Jamendo e budget di
-      salti.
+      migrazioni complete. Coperti oggi (77 test): validazione, repeat, cursore
+      federato, composizione della federazione, entità HTML Jamendo, budget di
+      salti, export/import, riepilogo della coda, sessione di ascolto, stato
+      del player, politica di lettura del progresso e potatura della cache.
 - [ ] Portare nel repository test deterministici della federazione con fetch
       mockato; la composizione e la propagazione degli errori sono già coperte da
       `federation.ts`, manca il livello fetch. Lo smoke live resta separato perché
@@ -598,6 +633,26 @@ stati verificati successivamente.
       scurita; chevron e tasto back chiudono senza fasce scure; apertura
       dalla notifica ad app chiusa; copertina a 0,92 in pausa; attribuzione
       visibile su 360×640 dp.
+- [ ] Sprint «continuità» del 9 settembre 2026, mai provato su una build
+      reale. Ripresa: riprodurre, mettere in pausa a metà brano, chiudere con
+      `am force-stop`, riaprire: mini-player presente con lo stesso brano, nessuna
+      notifica e nessun traffico di rete finché non si preme play; al play
+      riparte dalla posizione salvata (tolleranza cinque secondi) e la Coda
+      mostra l'elenco intero. Stessa prova togliendo l'app dai recenti mentre
+      suona e dopo un riavvio del telefono.
+- [ ] Coda in attesa: trascinare lo slider e poi premere play; skip avanti dal
+      mini-player; «Riproduci dopo» e «Accoda» dal menu di un brano; apertura
+      della Coda dal player. In ogni caso il mini-player non deve sparire e il
+      player non deve chiudersi da solo.
+- [ ] Buffering ed errore: con rete lenta lo spinner compare nel tasto play e
+      la porzione bufferizzata si vede sulla barra del mini-player e dietro lo
+      slider, allineata alla traccia nativa (rientro 16 dp, altezza 4 dp); in
+      modalità aereo a metà brano compare l'avviso con Riprova e, tornata la
+      rete, Riprova riparte dallo stesso punto.
+- [ ] Cache: aprire Scopri, un artista e un album, chiudere, togliere la rete
+      e riaprire: gli elenchi compaiono senza sagome; con la rete tornano a
+      rinfrescarsi e nessun brano risulta duplicato o mancante nelle prime due
+      pagine.
 - [ ] Mini-player: entra ed esce in dissolvenza sopra la tab bar; la barra
       avanza in modo continuo e salta a zero su seek indietro o cambio brano;
       nessuna seconda dissolvenza aprendo playlist, artista o album con un
