@@ -223,6 +223,15 @@ Coprono la validazione della libreria e delle preferenze playback persistite,
 le migrazioni dei vecchi valori repeat e il cursore della paginazione
 federata, compreso il recupero dopo una risposta parziale.
 
+`npm run typecheck` rigenera prima `.expo/types/router.d.ts` con
+`expo customize tsconfig.json` e solo dopo lancia `tsc`. Con
+`experiments.typedRoutes` attivo, ogni `router.push` viene confrontato con
+le rotte presenti in `app/`, ma il file dei tipi e' generato, ignorato da Git
+e non si aggiorna da solo: una copia lasciata da un `expo start` precedente a
+una rotta nuova fa fallire il typecheck con un "not assignable" su una rotta
+che esiste. Rigenerarlo ad ogni controllo rende l'esito uguale su ogni
+computer, anche dove `.expo/` non e' mai stata creata.
+
 `npm test` disattiva l'isolamento per processo del test runner di Node: in
 questo modo il riepilogo mostra i singoli casi invece di contarli come un solo
 file, senza cambiare il loro ambiente o la loro semantica.
