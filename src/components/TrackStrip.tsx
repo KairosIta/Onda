@@ -57,6 +57,9 @@ export function TrackStrip({ title, tracks, loading = false, more, onPlay }: Pro
           horizontal
           data={tracks}
           keyExtractor={(t) => t.uid}
+          // Lista annidata: senza questa proprieta' il primo tocco con la
+          // tastiera aperta la chiude e basta, e l'artista non si apre.
+          keyboardShouldPersistTaps="handled"
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.list}
           renderItem={({ item, index }) => (

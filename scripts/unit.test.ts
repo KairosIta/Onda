@@ -808,7 +808,8 @@ test('lo stato del tasto play segue una tabella sola', () => {
     state: string,
     playing: boolean,
     over: Partial<Parameters<typeof derivePlaybackStatus>[0]> = {},
-  ) => derivePlaybackStatus({ state, playing, hasItem: true, pending: false, ...over });
+  ) =>
+    derivePlaybackStatus({ state, playing, hasItem: true, pending: false, fault: false, ...over });
 
   assert.equal(s('ready', true), 'playing');
   assert.equal(s('ready', false), 'paused');
@@ -816,6 +817,11 @@ test('lo stato del tasto play segue una tabella sola', () => {
   assert.equal(s('error', false), 'error');
   assert.equal(s('ended', false), 'ended');
   assert.equal(s('idle', false), 'paused', 'un brano caricato ma mai preparato e in pausa');
+  assert.equal(
+    s('idle', false, { fault: true }),
+    'error',
+    'su Android lo stato error non arriva mai: dopo un errore il player e idle',
+  );
   assert.equal(s('ready', true, { hasItem: false }), 'idle', 'senza brano non c e stato');
   assert.equal(
     s('idle', false, { hasItem: false, pending: true }),

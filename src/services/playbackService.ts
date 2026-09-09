@@ -5,8 +5,10 @@ import TrackPlayer, {
   type MediaItem,
   type PlaybackErrorEvent,
   type PlaybackProgressUpdatedEvent,
+  type PlaybackStateChangedEvent,
 } from '@rntp/player';
 import { recordPlay, remember } from '@/store/library';
+import { clearPlaybackFault, markPlaybackFault } from '@/store/playbackFault';
 import { savePosition, saveQueueSnapshot } from '@/store/session';
 import type { Track } from '@/types/track';
 import { budgetAfterPlayingChange, decideSkip } from './playbackPolicy';
@@ -24,8 +26,14 @@ function rememberAndRecord(item: MediaItem | null): void {
 
 /** Cambio di brano: cronologia e fotografia della coda, da dove si riprende. */
 function handleTransition(item: MediaItem | null): void {
+  clearPlaybackFault();
   rememberAndRecord(item);
   saveQueueSnapshot();
+}
+
+/** Il player si e' rimesso a caricare: l'errore precedente e' superato. */
+function handleStateChanged({ state }: PlaybackStateChangedEvent): void {
+  if (state !== 'idle') clearPlaybackFault();
 }
 
 /** Tick del timer nativo di progresso (vedi setupPlayer): la posizione va su disco. */
@@ -44,10 +52,16 @@ function handlePlaybackError(error: PlaybackErrorEvent): void {
       length: TrackPlayer.getQueue().length,
     }),
   });
-  if (decision !== 'salta') return;
+  if (decision !== 'salta') {
+    markPlaybackFault();
+    return;
+  }
 
   sourceSkips++;
+  // Dopo un errore ExoPlayer e' `idle`: spostare l'indice e chiamare play()
+  // non basta, la sorgente nuova va preparata, ed e' cio' che fa `retry`.
   TrackPlayer.skipToNext();
+  TrackPlayer.retry();
   TrackPlayer.play();
 }
 
@@ -67,6 +81,7 @@ export function startForegroundPlaybackListeners(): void {
   TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, handleProgress);
   TrackPlayer.addEventListener(Event.PlaybackError, handlePlaybackError);
   TrackPlayer.addEventListener(Event.IsPlayingChanged, handleIsPlayingChanged);
+  TrackPlayer.addEventListener(Event.PlaybackStateChanged, handleStateChanged);
 }
 
 /** Gestore Headless JS Android, registrato in index.js. */

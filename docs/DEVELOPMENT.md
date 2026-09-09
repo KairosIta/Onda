@@ -117,6 +117,7 @@ src/
   store/playback.ts         shuffle e repeat (persistiti)
   store/session.ts          brano attivo + coda e posizione salvate, "in attesa" all'avvio; useNowPlaying (schema in sessionSchema.ts)
   store/progress.ts         l'unico osservatore di progresso dell'app
+  store/playbackFault.ts    "il brano e' morto": su Android lo stato error non arriva mai
   store/sleepTimer.ts       timer di spegnimento (volatile, di proposito)
   store/searchHistory.ts    le ultime ricerche (persistite); la regola in utils/recentQueries.ts
   hooks/useQueue.ts         sostituzione coda, riproduci dopo, accoda
@@ -169,6 +170,14 @@ passano da `services/playerCommands`, che consegna la coda al player al primo
 play o skip. Per questo nessuna schermata chiama `useActiveMediaItem` o
 `useProgress` di RNTP direttamente: il progresso lo legge un solo timer,
 `store/progress`, e lo stato del tasto play viene da `usePlaybackStatus`.
+
+Su Android lo stato `error` di RNTP non arriva mai: dopo un errore ExoPlayer
+torna `idle`, che per la tabella e' una pausa. `store/playbackFault` tiene
+quindi un flag che `playbackService` alza quando un errore ferma il player e
+che il primo caricamento o cambio brano abbassa; e' quel flag che fa comparire
+l'avviso con Riprova. Per lo stesso motivo il salto automatico dopo un brano
+morto chiama `retry()` dopo `skipToNext()`: senza ripreparare la sorgente,
+`play()` su un player `idle` non fa niente.
 
 React Query e' reidratata da MMKV prima del primo render
 (`services/queryClient`): trending, vetrine, artisti e album tornano da disco

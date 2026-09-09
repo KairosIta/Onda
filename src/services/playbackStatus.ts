@@ -27,6 +27,11 @@ export interface PlaybackSignals {
   hasItem: boolean;
   /** Coda ripristinata dal disco ma non ancora caricata nel player. */
   pending: boolean;
+  /**
+   * L'ultimo errore ha fermato il player. Serve perche' su Android lo
+   * stato `error` non arriva mai: dopo un errore RNTP riporta `idle`.
+   */
+  fault: boolean;
 }
 
 export function derivePlaybackStatus({
@@ -34,6 +39,7 @@ export function derivePlaybackStatus({
   playing,
   hasItem,
   pending,
+  fault,
 }: PlaybackSignals): PlaybackStatus {
   // La coda in attesa e' un brano in pausa a tutti gli effetti: il player
   // nativo non lo sa ancora, ma per chi guarda lo schermo non cambia niente.
@@ -41,7 +47,7 @@ export function derivePlaybackStatus({
   if (!hasItem) return 'idle';
   // Gli stati eccezionali vincono su `playing`, che durante un buffering
   // e' comunque falso: ExoPlayer considera "playing" solo l'audio che esce.
-  if (state === 'error') return 'error';
+  if (state === 'error' || fault) return 'error';
   if (state === 'buffering') return 'buffering';
   if (state === 'ended') return 'ended';
   return playing ? 'playing' : 'paused';
