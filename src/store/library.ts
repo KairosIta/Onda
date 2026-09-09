@@ -85,6 +85,9 @@ export function useLibrary(): LibraryState {
 
 export const getLibrary = (): LibraryState => state;
 
+/** Per chi non e' un componente (l'albero di Android Auto): avvisato a ogni mutazione. */
+export const subscribeLibrary = subscribe;
+
 // --- catalogo -------------------------------------------------------
 
 /** Registra tracce viste a schermo, senza persisterle. */

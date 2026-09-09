@@ -109,6 +109,39 @@ for (const { source } of Object.values(SOURCES)) {
     bad('artistId sulle tracce', 'mancante: la voce "Vai a ..." non comparirebbe mai');
   }
 
+  // Le vetrine di Scopri e le ricerche per nome: opzionali per contratto,
+  // ma se una sorgente le dichiara devono rispondere.
+  if (source.spotlight) {
+    const rising = await step('spotlight rising', () => source.spotlight!('rising', { limit: 5 }));
+    if (rising) validate('spotlight rising', rising);
+    const fresh = await step('spotlight fresh', () => source.spotlight!('fresh', { limit: 5 }));
+    if (fresh) validate('spotlight fresh', fresh);
+  } else {
+    console.log('  ----  spotlight: non supportato da questa sorgente');
+  }
+  if (source.searchArtists) {
+    const artists = await step('searchArtists "love"', () =>
+      source.searchArtists!({ query: 'love', limit: 5 }),
+    );
+    if (artists) {
+      if (artists.length > 0 && artists.every((a) => a.id && a.name)) {
+        ok('searchArtists "love"', `${artists.length} artisti, primo "${artists[0].name}"`);
+      } else bad('searchArtists "love"', `${artists.length} risultati o campi mancanti`);
+    }
+  }
+  if (source.searchAlbums) {
+    const albums = await step('searchAlbums "love"', () =>
+      source.searchAlbums!({ query: 'love', limit: 5 }),
+    );
+    if (albums) {
+      if (albums.length > 0 && albums.every((a) => a.id && a.name)) {
+        ok('searchAlbums "love"', `${albums.length} album, primo "${albums[0].name}"`);
+      } else bad('searchAlbums "love"', `${albums.length} risultati o campi mancanti`);
+    }
+  } else {
+    console.log('  ----  searchAlbums: non supportato da questa sorgente (previsto)');
+  }
+
   const withAlbum = trending?.find((t) => t.albumId);
   if (source.albumTracks && source.albumInfo) {
     if (withAlbum) {

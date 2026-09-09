@@ -19,7 +19,8 @@ Onda salva nello spazio privato dell'app:
 - l'ultima coda di riproduzione e la posizione raggiunta nel brano, per
   riprendere l'ascolto all'apertura successiva;
 - una copia temporanea dei cataloghi consultati di recente (trending, pagine
-  artista e album), per aprire l'app senza attendere la rete.
+  artista e album), per aprire l'app senza attendere la rete;
+- le ultime ricerche digitate, per rifarle con un tocco.
 
 Questi dati servono unicamente a offrire le funzioni richieste nell'app. Onda
 non include SDK di analytics, pubblicità o crash reporting e il progetto non

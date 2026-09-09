@@ -185,3 +185,39 @@ const styles = StyleSheet.create({
   // Bottoni pieni: padding 10 + riga di `type.label` ~20 = 40, marginTop 12.
   buttons: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
 });
+
+/**
+ * Sagoma di una vetrina orizzontale di schede: `TrackStrip` a 128,
+ * `EntityStrip` a 96, tonda per gli artisti.
+ */
+export function StripSkeleton({
+  cards = 3,
+  size = 128,
+  round = false,
+}: {
+  cards?: number;
+  size?: number;
+  round?: boolean;
+}) {
+  const pulse = usePulse();
+  return (
+    <Animated.View style={[stripStyles.strip, pulse]} {...progress}>
+      <View style={stripStyles.cards} {...hidden}>
+        {Array.from({ length: cards }, (_, i) => (
+          <View key={i} style={[stripStyles.card, { width: size }, round && stripStyles.centered]}>
+            <Bone w={size} h={size} r={round ? radius.pill : radius.md} />
+            <Bone w={`${72 - (i % 2) * 18}%`} h={12} />
+            <Bone w="45%" h={10} />
+          </View>
+        ))}
+      </View>
+    </Animated.View>
+  );
+}
+
+const stripStyles = StyleSheet.create({
+  strip: { paddingBottom: spacing.sm },
+  cards: { flexDirection: 'row', paddingHorizontal: spacing.lg, gap: spacing.md },
+  card: { gap: 6 },
+  centered: { alignItems: 'center' },
+});
