@@ -209,6 +209,40 @@ Una voce si chiude soltanto quando è soddisfatto il relativo **Done**.
 
 ## Baseline verificata
 
+### Verificato il 9 settembre 2026 su Motorola Edge 50 Neo, Android 16
+
+Build personale dal branch degli sprint di settembre, comandata via ADB dal
+computer (tocchi, screenshot, `dumpsys media_session`, logcat).
+
+- [x] Manrope ovunque, tab bar compresa; cifre tabulari nelle durate.
+- [x] Scopri a sezioni: recenti, «In ascesa questa settimana» e «Voci nuove»
+      con brani di entrambe le sorgenti, griglia dei generi e pagina Jazz con
+      Riproduci/Casuale; un tocco su una vetrina fa partire il brano con la
+      vetrina come coda e i recenti si aggiornano subito.
+- [x] Ripresa: pausa a 36 s, `am force-stop`, riapertura: mini-player con lo
+      stesso brano, nessuna notifica, player nativo senza `prepare`; al play
+      riparte da 36,5 s e la Coda mostra tutti e 20 i brani.
+- [x] Coda in attesa: skip avanti dal mini-player carica la coda salvata e
+      passa al brano seguente senza far sparire il mini-player.
+- [x] Stream morto (Jamendo 404) a metà coda: il salto automatico arriva al
+      brano dopo e suona. Trovato e corretto stasera: prima l'indice si
+      spostava ma il player restava `idle` in silenzio.
+- [x] Modalità aereo a metà brano: avviso «Il brano non risponde» con Riprova,
+      tasto play rosso; tornata la rete, Riprova riparte dalla stessa
+      posizione. Trovato e corretto stasera: su Android lo stato `error` non
+      arriva mai e l'avviso non compariva.
+- [x] Coda: trascinare dalla maniglia sposta la riga di tre posti, le altre
+      fanno posto e il brano continua; «Svuota i successivi» e Annulla entro
+      quattro secondi rimettono i 19 brani nello stesso ordine.
+- [x] Cerca «love»: artisti tondi da entrambe le sorgenti, album Jamendo,
+      brani sotto; a casella vuota il chip della ricerca recente con Cancella;
+      il tocco su un artista apre la sua pagina anche con la tastiera aperta
+      (corretto stasera: le strisce annidate chiudevano solo la tastiera).
+- [x] Player: trascinamento sotto la soglia torna su, oltre chiude; la riga
+      «Prossimo» mostra il brano seguente e apre la Coda.
+- [x] L'APK contiene `xml/automotive_app_desc` e il meta-data per Android
+      Auto; nessuna prova con un'unità o con il Desktop Head Unit.
+
 ### Verificato il 22 agosto 2026
 
 - [x] 25 test, typecheck, ESLint, Prettier ed Expo Doctor 21/21 passano.
@@ -385,6 +419,12 @@ stati verificati successivamente.
       avviso con Riprova (`retry()` seguito da play) e la coda finita riparte
       dal brano corrente. Restano i comandi serializzati o disabilitati quando
       serve e la verifica delle rejection nei log.
+      Collaudo del 9 settembre 2026 su Motorola Edge 50 Neo: RNTP su Android
+      non emette mai lo stato `error` (dopo un errore ExoPlayer torna `idle`),
+      quindi l'avviso non compariva; ora lo alza `store/playbackFault` sull'evento
+      di errore. Il salto automatico dopo uno stream 404 spostava l'indice senza
+      ripreparare il player e la riproduzione moriva in silenzio: aggiunto
+      `retry()` fra skip e play.
       **Done:** comandi serializzati o disabilitati quando necessario e zero
       rejection non gestite nei log, provati su device.
 
