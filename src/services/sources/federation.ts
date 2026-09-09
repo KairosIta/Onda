@@ -7,24 +7,28 @@ import type { SourceId, Track } from '@/types/track';
  * parte che decide cosa vede l'utente e' verificabile da sola.
  */
 
-export interface FederatedResult {
-  tracks: Track[];
+/**
+ * Generico sul tipo di elemento: nasce per le tracce, ma artisti e album
+ * cercati per nome si compongono con la stessa regola.
+ */
+export interface FederatedResult<T = Track> {
+  tracks: T[];
   /** Sorgenti che hanno fallito: l'app resta usabile, ma lo diciamo. */
   failed: { source: SourceId; message: string }[];
 }
 
 /** Esito di una singola sorgente interrogata dalla federazione. */
-export interface SourceOutcome {
+export interface SourceOutcome<T = Track> {
   source: SourceId;
-  result: PromiseSettledResult<Track[]>;
+  result: PromiseSettledResult<T[]>;
 }
 
 /**
  * Alterna i risultati delle sorgenti invece di concatenarli: senza questo
  * la prima schermata sarebbe tutta Audius e Jamendo non si vedrebbe mai.
  */
-export function interleave(lists: Track[][]): Track[] {
-  const out: Track[] = [];
+export function interleave<T>(lists: T[][]): T[] {
+  const out: T[] = [];
   const max = Math.max(0, ...lists.map((l) => l.length));
   for (let i = 0; i < max; i++) {
     for (const list of lists) {
@@ -63,8 +67,8 @@ export function describeFailure(reason: unknown): string {
  * infinito si chiuderebbe per sempre su una caduta di rete di un secondo.
  * E' lo stesso equivoco delle liste vuote di Jamendo, un piano piu' in alto.
  */
-export function combine(outcomes: SourceOutcome[]): FederatedResult {
-  const lists: Track[][] = [];
+export function combine<T>(outcomes: SourceOutcome<T>[]): FederatedResult<T> {
+  const lists: T[][] = [];
   const failed: FederatedResult['failed'] = [];
 
   for (const { source, result } of outcomes) {

@@ -22,6 +22,10 @@ import {
 import { loadLibrary, parseTrack } from '@/store/librarySchema';
 import { loadPlaybackPrefs } from '@/store/playbackSchema';
 import { toMediaItem, trackFromMediaItem } from '@/services/mediaItems';
+import { BROWSE_MAX_ITEMS, buildBrowseTree } from '@/services/browseTree';
+import { RECENT_QUERIES_MAX, dropQuery, loadQueries, pushQuery } from '@/utils/recentQueries';
+import { dropIndex, rowShift } from '@/utils/reorder';
+import { describeUpNext, upNextLabel } from '@/utils/upNext';
 import { derivePlaybackStatus, describePlayButton } from '@/services/playbackStatus';
 import {
   PROGRESS_PAUSED_MS,
@@ -916,4 +920,142 @@ test('il file della cache si rilegge solo se ha la forma giusta e qualcosa dentr
   const letto = loadQueryCache({ queries: [query('trending', 10), { rotta: true }] }, NOW);
   assert.equal(letto?.queries.length, 1);
   assert.deepEqual(letto?.mutations, []);
+});
+
+// --- ricerche recenti ------------------------------------------------
+
+test('le ricerche recenti salgono in testa senza doppioni', () => {
+  let list: string[] = [];
+  list = pushQuery(list, 'lofi');
+  list = pushQuery(list, '  jazz  ');
+  list = pushQuery(list, 'LoFi');
+  assert.deepEqual(list, ['LoFi', 'jazz'], 'la stessa parola con altre maiuscole risale');
+  assert.equal(pushQuery(list, '   '), list, 'una ricerca vuota non tocca la lista');
+  assert.deepEqual(dropQuery(list, 'jazz'), ['LoFi']);
+});
+
+test('le ricerche recenti restano poche', () => {
+  let list: string[] = [];
+  for (let i = 0; i < RECENT_QUERIES_MAX + 3; i++) list = pushQuery(list, `q${i}`);
+  assert.equal(list.length, RECENT_QUERIES_MAX);
+  assert.equal(list[0], `q${RECENT_QUERIES_MAX + 2}`, 'la piu recente sta in testa');
+});
+
+test('le ricerche recenti si rileggono scartando il resto', () => {
+  assert.deepEqual(loadQueries(['a', 3, '', ' b ', 'A', null]), ['a', 'b']);
+  assert.deepEqual(loadQueries('no'), []);
+  assert.equal(
+    loadQueries(Array.from({ length: 20 }, (_, i) => `q${i}`)).length,
+    RECENT_QUERIES_MAX,
+  );
+});
+
+// --- riordino della coda -------------------------------------------------
+
+test('la riga trascinata arriva dove sta il dito, senza uscire dalla coda', () => {
+  assert.equal(dropIndex(3, 0, 60, 10), 3);
+  assert.equal(dropIndex(3, 29, 60, 10), 3, 'sotto mezza riga non si muove');
+  assert.equal(dropIndex(3, 31, 60, 10), 4);
+  assert.equal(dropIndex(3, -125, 60, 10), 1);
+  assert.equal(dropIndex(3, 1000, 60, 10), 9, 'oltre il fondo si ferma all ultima');
+  assert.equal(dropIndex(3, -1000, 60, 10), 0);
+});
+
+test('le righe fra partenza e arrivo scalano di un posto, le altre no', () => {
+  // Trascinando la 1 sulla 3: la 2 e la 3 salgono, 0 e 4 restano.
+  assert.equal(rowShift(0, 1, 3, 60), 0);
+  assert.equal(rowShift(2, 1, 3, 60), -60);
+  assert.equal(rowShift(3, 1, 3, 60), -60);
+  assert.equal(rowShift(4, 1, 3, 60), 0);
+  assert.equal(rowShift(1, 1, 3, 60), 0, 'la riga in mano segue il dito, non la regola');
+  // Trascinando la 3 sulla 1: la 1 e la 2 scendono.
+  assert.equal(rowShift(1, 3, 1, 60), 60);
+  assert.equal(rowShift(2, 3, 1, 60), 60);
+  assert.equal(rowShift(0, 3, 1, 60), 0);
+  assert.equal(rowShift(2, 2, 2, 60), 0, 'senza spostamento non si muove niente');
+});
+
+// --- prossimo brano ------------------------------------------------------
+
+test('il prossimo brano segue la coda, salvo shuffle e ripetizione', () => {
+  const items = [
+    { title: 'Uno', artist: 'A' },
+    { title: 'Due', artist: 'B' },
+    { title: 'Tre', artist: 'C' },
+  ];
+  const base = { items, activeIndex: 0, shuffle: false, repeat: 'off' as const };
+  assert.deepEqual(describeUpNext(base), { kind: 'track', index: 1, title: 'Due', artist: 'B' });
+  assert.deepEqual(describeUpNext({ ...base, activeIndex: 2 }), { kind: 'end' });
+  assert.deepEqual(describeUpNext({ ...base, activeIndex: 2, repeat: 'all' }), {
+    kind: 'track',
+    index: 0,
+    title: 'Uno',
+    artist: 'A',
+  });
+  assert.deepEqual(describeUpNext({ ...base, repeat: 'one' }), { kind: 'repeat-one' });
+  assert.deepEqual(describeUpNext({ ...base, shuffle: true }), { kind: 'shuffle' });
+  assert.deepEqual(describeUpNext({ ...base, activeIndex: null }), { kind: 'none' });
+  assert.deepEqual(describeUpNext({ ...base, items: [] }), { kind: 'none' });
+  assert.deepEqual(
+    describeUpNext({ items: [items[0]], activeIndex: 0, shuffle: false, repeat: 'all' }),
+    {
+      kind: 'repeat-one',
+    },
+  );
+});
+
+test('la riga Prossimo ha un testo per ogni caso e nessuno per niente', () => {
+  assert.equal(upNextLabel({ kind: 'track', index: 1, title: 'Due', artist: 'B' }), 'Due · B');
+  assert.match(upNextLabel({ kind: 'shuffle' }), /casuale/);
+  assert.match(upNextLabel({ kind: 'repeat-one' }), /di nuovo/);
+  assert.match(upNextLabel({ kind: 'end' }), /fine/);
+  assert.equal(upNextLabel({ kind: 'none' }), '');
+});
+
+// --- Android Auto ---------------------------------------------------------
+
+test('l albero per Android Auto mostra solo cio che c e davvero', () => {
+  const lib = conTracce(['a', 'b', 'c'], {
+    favorites: ['audius:a', 'audius:zz'],
+    playlists: [
+      { id: 'p1', name: 'Sera', createdAt: 1, trackUids: ['audius:b'] },
+      { id: 'p2', name: 'Vuota', createdAt: 2, trackUids: [] },
+    ],
+    history: ['audius:c', 'audius:a'],
+  });
+  const tree = buildBrowseTree(lib);
+  assert.deepEqual(
+    tree.map((c) => c.title),
+    ['Preferiti', 'Playlist', 'Ascoltati di recente'],
+  );
+  assert.deepEqual(
+    tree[0]?.items.map((i) => i.mediaId),
+    ['audius:a'],
+    'un uid non risolvibile sparisce invece di rompere la cartella',
+  );
+  assert.equal(tree[1]?.items.length, 1, 'la playlist vuota non compare');
+  assert.equal(tree[1]?.items[0]?.children?.[0]?.mediaId, 'audius:b');
+  assert.equal(tree[0]?.items[0]?.url, 'https://x/a', 'ogni voce porta il suo stream');
+  assert.equal(tree[0]?.items[0]?.extras, undefined, 'niente modello intero nel payload');
+});
+
+test('senza libreria l albero e vuoto e le cartelle hanno un tetto', () => {
+  assert.deepEqual(buildBrowseTree(libreria()), []);
+  const ids = Array.from({ length: BROWSE_MAX_ITEMS + 20 }, (_, i) => `t${i}`);
+  const lib = conTracce(ids, { favorites: ids.map((i) => `audius:${i}`) });
+  assert.equal(buildBrowseTree(lib)[0]?.items.length, BROWSE_MAX_ITEMS);
+});
+
+// --- federazione generica ------------------------------------------------
+
+test('la federazione alterna anche cio che non e una traccia', () => {
+  const out = combine<{ name: string }>([
+    { source: 'audius', result: { status: 'fulfilled', value: [{ name: 'a1' }, { name: 'a2' }] } },
+    { source: 'jamendo', result: { status: 'fulfilled', value: [{ name: 'j1' }] } },
+  ]);
+  assert.deepEqual(
+    out.tracks.map((x) => x.name),
+    ['a1', 'j1', 'a2'],
+  );
+  assert.deepEqual(out.failed, []);
 });

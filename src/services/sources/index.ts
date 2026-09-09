@@ -1,4 +1,11 @@
-import type { ListParams, MusicSource, SourceId, Track } from '@/types/track';
+import type {
+  AlbumInfo,
+  ArtistInfo,
+  ListParams,
+  MusicSource,
+  SourceId,
+  SpotlightKind,
+} from '@/types/track';
 import { genreFor } from '../genres';
 import { audiusSource } from './audius';
 import { combine, type FederatedResult } from './federation';
@@ -29,9 +36,16 @@ const active = (): MusicSource[] =>
     .filter((s) => s.enabled)
     .map((s) => s.source);
 
-async function federate(call: (s: MusicSource) => Promise<Track[]>): Promise<FederatedResult> {
-  const sources = active();
-  const settled = await Promise.allSettled(sources.map(call));
+/**
+ * `call` ritorna `null` per una sorgente che non offre quella funzione:
+ * viene saltata, non contata come caduta. Solo se nessuna la offre il
+ * risultato e' vuoto senza errore.
+ */
+async function federate<T>(
+  call: (s: MusicSource) => Promise<T[]> | null,
+): Promise<FederatedResult<T>> {
+  const sources = active().filter((s) => call(s) !== null);
+  const settled = await Promise.allSettled(sources.map((s) => call(s) as Promise<T[]>));
   return combine(sources.map((source, i) => ({ source: source.id, result: settled[i] })));
 }
 
@@ -48,3 +62,22 @@ export const trendingAll = (
   const { genreKey, ...list } = params;
   return federate((s) => s.trending({ limit: 20, ...list, genre: genreFor(genreKey, s.id) }));
 };
+
+/** Vetrine di Scopri: poche voci per sorgente, alternate come il resto. */
+export const spotlightAll = (
+  kind: SpotlightKind,
+  params: ListParams = {},
+): Promise<FederatedResult> =>
+  federate((s) => (s.spotlight ? s.spotlight(kind, { limit: 10, ...params }) : null));
+
+export const searchArtistsAll = (
+  query: string,
+  params: ListParams = {},
+): Promise<FederatedResult<ArtistInfo>> =>
+  federate((s) => (s.searchArtists ? s.searchArtists({ query, limit: 8, ...params }) : null));
+
+export const searchAlbumsAll = (
+  query: string,
+  params: ListParams = {},
+): Promise<FederatedResult<AlbumInfo>> =>
+  federate((s) => (s.searchAlbums ? s.searchAlbums({ query, limit: 8, ...params }) : null));

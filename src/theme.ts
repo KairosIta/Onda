@@ -65,6 +65,12 @@ export const motion = {
   press: { damping: 18, stiffness: 340, mass: 0.6 },
   pressScale: 0.96,
   iconPressScale: 0.88,
+  /**
+   * Attesa prima di ritrarsi per chip e schede dentro uno scroller: il dito
+   * che parte per scorrere e' un tocco finche' lo scroll non lo ruba, e
+   * senza attesa ogni avvio di scroll farebbe guizzare l'elemento sotto.
+   */
+  scrollerPressDelay: 70,
 } as const;
 
 /**

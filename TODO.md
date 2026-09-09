@@ -44,6 +44,21 @@ Una voce si chiude soltanto quando è soddisfatto il relativo **Done**.
       disponibili.
 - [x] Pagine album Jamendo con ordine delle tracce; Audius non espone album
       navigabili in modo abbastanza affidabile per mostrarli.
+- [ ] Home a sezioni: ascolti recenti, «In ascesa questa settimana» (trending
+      settimanale Audius più `popularity_week` Jamendo), «Voci nuove» (trending
+      underground Audius più ultime uscite Jamendo), griglia dei generi con
+      una pagina per genere e il trending federato sotto. **Implementato il 9
+      settembre 2026, da collaudare**: le vetrine sono `TrackStrip`, una sola
+      componente; le sorgenti dichiarano `spotlight` come funzione opzionale
+      e la federazione salta chi non ce l'ha. I chip dei generi sono stati
+      sostituiti dalla griglia: la pagina genere usa la stessa chiave di
+      cache dei vecchi chip.
+- [ ] Ricerca di artisti e album oltre ai brani, con le ultime otto ricerche
+      da rifare con un tocco. **Implementato il 9 settembre 2026, da
+      collaudare**: `/users/search` su Audius, `/artists` e `/albums` con
+      `namesearch` su Jamendo; Audius non cerca album e la vetrina resta
+      solo Jamendo senza avvisi. Le ricerche si ricordano solo quando hanno
+      trovato qualcosa (`utils/recentQueries`, tre test).
 - [ ] Apertura senza attese: trending, pagine artista e album consultate di
       recente tornano da disco prima del primo render e si rinfrescano in
       background. **Implementato il 9 settembre 2026, da collaudare**: la cache
@@ -116,6 +131,29 @@ Una voce si chiude soltanto quando è soddisfatto il relativo **Done**.
       **Implementato il 9 settembre 2026, da collaudare**: la tabella sta in
       `src/services/playbackStatus.ts` (tre test) e i comandi di trasporto
       passano da `playerCommands.ts`, che sa cosa vuol dire play in ogni stato.
+- [ ] Coda riordinabile trascinando la maniglia a destra di ogni riga, con le
+      stesse mosse come azioni TalkBack (Sposta su, Sposta giù, Togli), e
+      «Svuota da qui in giù» con **Annulla** per quattro secondi.
+      **Implementato il 9 settembre 2026, da collaudare**: righe ad altezza
+      fissa e geometria in `utils/reorder.ts` (due test, gira come worklet);
+      lo scroll della lista si spegne mentre una riga è in mano;
+      `moveMediaItem` di RNTP fa lo spostamento e l'annullamento rimette i
+      brani dopo quello che suona in quel momento. Manca lo scorrimento
+      automatico ai bordi: una coda più lunga dello schermo si riordina in
+      più passaggi.
+- [ ] Riga «Prossimo» nel player, sotto i controlli: il brano che viene dopo,
+      oppure «ordine casuale», «questo brano, di nuovo» o «fine della coda».
+      **Implementato il 9 settembre 2026, da collaudare**: la regola sta in
+      `utils/upNext.ts` (due test) e la riga apre la Coda.
+- [ ] Android Auto: preferiti, playlist e ascolti recenti come cartelle
+      sfogliabili dal display dell'auto. **Implementato il 9 settembre 2026, da
+      collaudare**: l'albero lo costruisce `services/browseTree.ts` dalla
+      libreria persistita (due test) e `browseTreeSync` lo rimanda a RNTP a
+      ogni mutazione; `plugins/with-android-auto.js` aggiunge al manifest il
+      descrittore `automotive_app_desc`, il servizio media lo dichiara già
+      RNTP. Senza `extras` nelle voci, per tenere leggero il passaggio nativo:
+      cronologia e cuoricino risolvono l'uid dalla libreria. Nessuna prova
+      con un'unità o con il Desktop Head Unit.
 
 ### Libreria locale
 
@@ -516,10 +554,12 @@ stati verificati successivamente.
 ### Test e toolchain
 
 - [ ] Estendere i test unitari a mutazioni degli store, `formatTime`, shuffle e
-      migrazioni complete. Coperti oggi (77 test): validazione, repeat, cursore
-      federato, composizione della federazione, entità HTML Jamendo, budget di
-      salti, export/import, riepilogo della coda, sessione di ascolto, stato
-      del player, politica di lettura del progresso e potatura della cache.
+      migrazioni complete. Coperti oggi (87 test): validazione, repeat, cursore
+      federato, composizione della federazione (anche di artisti e album),
+      entità HTML Jamendo, budget di salti, export/import, riepilogo della
+      coda, sessione di ascolto, stato del player, politica di lettura del
+      progresso, potatura della cache, ricerche recenti, geometria del
+      riordino, prossimo brano e albero per Android Auto.
 - [ ] Portare nel repository test deterministici della federazione con fetch
       mockato; la composizione e la propagazione degli errori sono già coperte da
       `federation.ts`, manca il livello fetch. Lo smoke live resta separato perché
@@ -581,7 +621,10 @@ stati verificati successivamente.
       riposiziona di colpo mentre il mini-player sfuma in uscita, e durante
       il trascinamento la fascia della status bar non è coperta dallo scrim.
 - [ ] Sostituire il toast da 550 ms con snackbar accessibile da 2–4 secondi.
-- [ ] Aggiungere undo o conferma per “Svuota i successivi”.
+- [ ] Aggiungere undo o conferma per “Svuota i successivi”. **Implementato il
+      9 settembre 2026, da collaudare**: snackbar da quattro secondi con
+      Annulla (`components/Snackbar.tsx`), annunciata a TalkBack. Il toast da
+      550 ms del menu contestuale resta da sostituire.
 - [ ] Migliorare placeholder, errori artwork, skeleton e messaggi distinti per
       offline, quota, vuoto e contenuto non riproducibile. **Implementato il 9
       settembre 2026, da collaudare** per placeholder, errori artwork e
@@ -653,6 +696,27 @@ stati verificati successivamente.
       e riaprire: gli elenchi compaiono senza sagome; con la rete tornano a
       rinfrescarsi e nessun brano risulta duplicato o mancante nelle prime due
       pagine.
+- [ ] Sprint «scoperta e coda» del 9 settembre 2026, mai provato su una build
+      reale. Scopri: le due vetrine mostrano brani di entrambe le sorgenti e
+      partono al tocco con la vetrina come coda; la griglia dei generi apre la
+      pagina giusta e «Riproduci»/«Casuale» funzionano; scorrendo la home non
+      scattano pressioni sulle schede.
+- [ ] Cerca: «love» mostra artisti tondi e album quadrati sopra i brani, il
+      tocco apre la pagina giusta; una ricerca senza risultati di brani ma con
+      artisti non mostra «Nessun risultato»; le ricerche recenti compaiono a
+      casella vuota, si rifanno con un tocco e si cancellano.
+- [ ] Coda: trascinare dalla maniglia sposta la riga e le altre fanno posto,
+      lo scroll non parte durante il trascinamento, un tocco sulla maniglia
+      senza movimento non cambia nulla, il brano in riproduzione continua
+      dopo uno spostamento, TalkBack espone Sposta su/giù/Togli; «Svuota da
+      qui in giù» mostra la snackbar e Annulla rimette i brani dopo quello
+      corrente.
+- [ ] Player: la riga «Prossimo» cambia con skip, shuffle e ripetizione e apre
+      la Coda; con la coda in attesa mostra il brano dopo quello salvato.
+- [ ] Android Auto: con il Desktop Head Unit o un'unità reale Onda compare fra
+      le app media, le cartelle Preferiti/Playlist/Ascoltati di recente si
+      aprono, un brano parte con i fratelli come coda e la cronologia del
+      telefono lo registra.
 - [ ] Mini-player: entra ed esce in dissolvenza sopra la tab bar; la barra
       avanza in modo continuo e salta a zero su seek indietro o cambio brano;
       nessuna seconda dissolvenza aprendo playlist, artista o album con un
@@ -688,8 +752,13 @@ stati verificati successivamente.
 - [ ] **Terza sorgente** dopo aver generalizzato `SourceId`, licenze, refresh
       stream, cursori e fallback.
 - [ ] **Ripresa della coda all'avvio** con posizione, repeat/shuffle e URL
-      scaduti.
+      scaduti. Coda, posizione e preferenze sono implementate dal 9 settembre
+      2026 (vedi «Ripresa dell'ascolto»); restano la risoluzione fresca degli
+      URL scaduti e il collaudo.
 - [ ] **Riordino della coda**, salvataggio come playlist e cronologia per data.
+      Il riordino a trascinamento è implementato dal 9 settembre 2026 (vedi
+      «Coda riordinabile»); restano salvataggio come playlist e cronologia per
+      data.
 - [ ] **ReplayGain, gapless e crossfade** soltanto dopo misure e verifica del
       supporto del motore audio.
 

@@ -6,6 +6,7 @@ import {
   makeUid,
   type MusicSource,
   type SearchParams,
+  type SpotlightKind,
   type Track,
   type TrendingParams,
 } from '@/types/track';
@@ -194,6 +195,30 @@ function mapTrack(t: JamendoTrack): Track {
   };
 }
 
+function mapArtist(a: JamendoArtist): ArtistInfo {
+  return {
+    id: a.id,
+    source: 'jamendo',
+    name: a.name ? decodeEntities(a.name) : 'Sconosciuto',
+    // L'avatar e' 132dp, cioe' ~400px su questo schermo: qui la misura
+    // grande serve sempre, non c'e' una lista che paghi il peso.
+    imageUrl: atLargeSize(a.image),
+    detail: a.joindate ? `Su Jamendo dal ${a.joindate.slice(0, 4)}` : undefined,
+  };
+}
+
+function mapAlbum(a: JamendoAlbum): AlbumInfo {
+  return {
+    id: a.id,
+    source: 'jamendo',
+    name: a.name ? decodeEntities(a.name) : 'Senza titolo',
+    artist: a.artist_name ? decodeEntities(a.artist_name) : 'Sconosciuto',
+    // Copertina a 180dp: stesso ragionamento dell'avatar.
+    imageUrl: atLargeSize(a.image),
+    detail: a.releasedate ? a.releasedate.slice(0, 4) : undefined,
+  };
+}
+
 /**
  * Jamendo risponde 200 anche sugli errori: lo stato vero sta in `headers`.
  * Controllarlo qui evita che un errore di quota arrivi alle schermate
@@ -264,15 +289,35 @@ export const jamendoSource: MusicSource = {
   async artistInfo(artistId: string): Promise<ArtistInfo> {
     const [a] = await fetchResults<JamendoArtist>(url('/artists/', { id: artistId }));
     if (!a) throw new Error('Artista non trovato su Jamendo');
-    return {
-      id: artistId,
-      source: 'jamendo',
-      name: a.name ? decodeEntities(a.name) : 'Sconosciuto',
-      // L'avatar e' 132dp, cioe' ~400px su questo schermo: qui la misura
-      // grande serve sempre, non c'e' una lista che paghi il peso.
-      imageUrl: atLargeSize(a.image),
-      detail: a.joindate ? `Su Jamendo dal ${a.joindate.slice(0, 4)}` : undefined,
-    };
+    return { ...mapArtist(a), id: artistId };
+  },
+
+  /**
+   * `rising`: popolarita' della settimana. `fresh`: le uscite piu' recenti
+   * del catalogo, in ordine di data — la "novita'" letterale, visto che
+   * Jamendo la espone davvero.
+   */
+  async spotlight(kind: SpotlightKind, params: ListParams = {}): Promise<Track[]> {
+    return fetchTracks(
+      url('/tracks/', {
+        order: kind === 'rising' ? 'popularity_week' : 'releasedate_desc',
+        ...page(params),
+      }),
+    );
+  },
+
+  async searchArtists({ query, ...rest }: SearchParams): Promise<ArtistInfo[]> {
+    const results = await fetchResults<JamendoArtist>(
+      url('/artists/', { namesearch: query, ...page(rest) }),
+    );
+    return results.filter((a) => Boolean(a.id)).map(mapArtist);
+  },
+
+  async searchAlbums({ query, ...rest }: SearchParams): Promise<AlbumInfo[]> {
+    const results = await fetchResults<JamendoAlbum>(
+      url('/albums/', { namesearch: query, ...page(rest) }),
+    );
+    return results.filter((a) => Boolean(a.id)).map(mapAlbum);
   },
 
   /**
@@ -311,14 +356,6 @@ export const jamendoSource: MusicSource = {
   async albumInfo(albumId: string): Promise<AlbumInfo> {
     const [a] = await fetchResults<JamendoAlbum>(url('/albums/', { id: albumId }));
     if (!a) throw new Error('Album non trovato su Jamendo');
-    return {
-      id: albumId,
-      source: 'jamendo',
-      name: a.name ? decodeEntities(a.name) : 'Senza titolo',
-      artist: a.artist_name ? decodeEntities(a.artist_name) : 'Sconosciuto',
-      // Copertina a 180dp: stesso ragionamento dell'avatar.
-      imageUrl: atLargeSize(a.image),
-      detail: a.releasedate ? a.releasedate.slice(0, 4) : undefined,
-    };
+    return { ...mapAlbum(a), id: albumId };
   },
 };

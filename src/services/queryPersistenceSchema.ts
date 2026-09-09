@@ -31,6 +31,7 @@ export const QUERY_CACHE_MAX_PAGES = 2;
  */
 export const PERSISTED_QUERY_ROOTS: readonly string[] = [
   'trending',
+  'spotlight',
   'artist',
   'artist-tracks',
   'album',

@@ -214,6 +214,11 @@ export function seekPending(position: number): void {
   setPending({ ...pending, position });
 }
 
+/** La coda in attesa per chi deve mostrarla senza caricarla (la riga "Prossimo"). */
+export function getPendingQueue(): { tracks: Track[]; index: number } | null {
+  return pending ? { tracks: pending.tracks, index: pending.index } : null;
+}
+
 /** Una coda nuova sostituisce quella in attesa. */
 export function clearPending(): void {
   if (pending) setPending(null);

@@ -90,18 +90,19 @@ index.js                    entry custom: expo-router + registrazione del playba
 app/
   _layout.tsx               provider, Stack, registrazione della cronologia
   (tabs)/_layout.tsx        tab bar custom: disegna il MiniPlayer sopra i tab
-  (tabs)/index.tsx          Scopri — trending federato, filtri per genere, scroll infinito
-  (tabs)/search.tsx         Cerca — ricerca federata con debounce e scroll infinito
+  (tabs)/index.tsx          Scopri — home a sezioni: recenti, in ascesa, voci nuove, generi, trending
+  (tabs)/search.tsx         Cerca — brani, artisti e album federati, ricerche recenti
   (tabs)/library.tsx        Libreria — preferiti, cronologia, playlist
   player.tsx                player a schermo intero (slider, shuffle, repeat, sleep timer)
-  queue.tsx                 coda di riproduzione: salta, rimuovi, svuota i successivi
+  queue.tsx                 coda: salta, rimuovi, riordina trascinando, svuota con Annulla
+  genre/[key].tsx           trending di un genere, federato, con scroll infinito
   collection/[kind].tsx     raccolte locali: favorites | history
   playlist/[id].tsx         playlist locale, con rinomina e riordino
   artist/[source]/[id].tsx  pagina artista (entrambe le sorgenti)
   album/[source]/[id].tsx   pagina album (solo Jamendo, vedi sotto)
 src/
   types/track.ts            modello unificato + interfaccia MusicSource
-  services/sources/         adapter Audius e Jamendo + registro federato
+  services/sources/         adapter Audius e Jamendo + registro federato (brani, vetrine, artisti, album)
   services/genres.ts        unica tabella di traduzione dei generi tra le due API
   services/storage.ts       istanza MMKV + lettura JSON sicura e scrittura
   services/setupPlayer.ts   configurazione RNTP (una volta per processo)
@@ -111,19 +112,27 @@ src/
   services/playerCommands.ts  play, pausa e skip con la semantica giusta per ogni stato
   services/progressPolicy.ts  quando, e quanto spesso, leggere la posizione dal player
   services/queryClient.ts   React Query reidratata da MMKV; potatura in queryPersistenceSchema.ts
+  services/browseTree.ts    l'albero per Android Auto dalla libreria (puro); l'invio sta in browseTreeSync.ts
   store/library.ts          preferiti, playlist, cronologia (persistiti)
   store/playback.ts         shuffle e repeat (persistiti)
   store/session.ts          brano attivo + coda e posizione salvate, "in attesa" all'avvio; useNowPlaying (schema in sessionSchema.ts)
   store/progress.ts         l'unico osservatore di progresso dell'app
   store/sleepTimer.ts       timer di spegnimento (volatile, di proposito)
+  store/searchHistory.ts    le ultime ricerche (persistite); la regola in utils/recentQueries.ts
   hooks/useQueue.ts         sostituzione coda, riproduci dopo, accoda
   hooks/usePlaybackStatus.ts  lo stato del player come hook
+  hooks/useUpNext.ts        cosa viene dopo il brano corrente; la regola in utils/upNext.ts
+  utils/reorder.ts          geometria del riordino a trascinamento della coda (worklet)
   hooks/useInfiniteTracks.ts  scroll infinito su qualunque elenco, federato o no
   services/playbackService.ts registra i cambi di traccia, anche in background
   components/               TrackList, TrackRow, MiniPlayer, menu contestuale, ...
   components/Artwork.tsx    ogni copertina passa da qui: expo-image, dissolvenza, cache, segnaposto
   components/PressableScale.tsx  bottone che si ritrae con la molla condivisa; aptica opzionale
-  components/Skeleton.tsx   sagome di caricamento per liste e raccolte, al posto delle rotelle
+  components/Skeleton.tsx   sagome di caricamento per liste, raccolte e vetrine, al posto delle rotelle
+  components/TrackStrip.tsx vetrina orizzontale di brani (recenti, in ascesa, voci nuove)
+  components/EntityStrip.tsx  vetrina di artisti o album nei risultati di ricerca
+  components/GenreGrid.tsx  la griglia dei generi, ognuno con la sua pagina
+  components/Snackbar.tsx   avviso in basso con un'azione (Annulla), al posto dei toast
   services/haptics.ts       feedback tattile di sistema: l'unico file che parla con expo-haptics
   theme.ts                  palette, spaziature, tipografia (Manrope), molla condivisa
 assets/fonts/               Manrope (SIL OFL 1.1), incorporata dal plugin expo-font come famiglia XML
@@ -134,6 +143,7 @@ scripts/
   node-hook.mjs             risolve l'alias '@/' quando gli adapter girano in Node
 plugins/
   with-release-signing.js   firma e proprieta' Gradle della release (android/ e' rigenerabile)
+  with-android-auto.js      descrittore automotive_app_desc e meta-data per Android Auto
 credentials/                chiave di firma — ignorata da git, non rigenerabile
 ```
 
@@ -161,10 +171,22 @@ play o skip. Per questo nessuna schermata chiama `useActiveMediaItem` o
 `store/progress`, e lo stato del tasto play viene da `usePlaybackStatus`.
 
 React Query e' reidratata da MMKV prima del primo render
-(`services/queryClient`): trending, artisti e album tornano da disco e si
-rinfrescano in background, la ricerca no. La potatura — trenta query, due
-pagine per elenco, tre giorni — sta in `queryPersistenceSchema`, puro e
+(`services/queryClient`): trending, vetrine, artisti e album tornano da disco
+e si rinfrescano in background, la ricerca no. La potatura — trenta query,
+due pagine per elenco, tre giorni — sta in `queryPersistenceSchema`, puro e
 testato, e vale anche come `gcTime`.
+
+Le sorgenti dichiarano le funzioni opzionali (`spotlight`, `searchArtists`,
+`searchAlbums`, gli album) e la federazione salta chi non le ha senza
+contarlo come caduta: Audius non cerca album, e la vetrina di Cerca resta
+solo Jamendo senza avvisi inutili. `combine` e `interleave` sono generici
+sul tipo di elemento, cosi' artisti e album si alternano come i brani.
+
+Android Auto legge l'albero costruito da `services/browseTree` dalla
+libreria persistita — preferiti, playlist, ascolti recenti — e
+`browseTreeSync` lo rimanda a RNTP a ogni mutazione, accorpando quelle
+ravvicinate. Il manifest lo dichiara tramite `plugins/with-android-auto.js`;
+il servizio media e il suo intent filter li porta gia' RNTP.
 
 `TrackList` e' l'unica lista dell'app. Si abbona lei alla libreria e al player,
 e passa `isFavorite` / `isActive` alle righe come prop: cosi' `TrackRow` resta
@@ -280,6 +302,17 @@ Nell'ordine. Se salti un passaggio, il bug lo trovi tre settimane dopo.
     aereo a meta' brano il player dice "Il brano non risponde" e offre Riprova.
 13. Chiudi l'app, togli la rete e riaprila: Scopri mostra l'ultimo trending
     invece delle sagome.
+14. Scopri ha le vetrine "In ascesa questa settimana" e "Voci nuove" con
+    brani di entrambe le sorgenti, e un genere dalla griglia apre la sua
+    pagina con Riproduci e Casuale.
+15. In Cerca, "love" mostra artisti (tondi, da entrambe le sorgenti) e album
+    (quadrati, solo Jamendo) sopra i brani; con la casella vuota compaiono
+    le ricerche recenti.
+16. Nella Coda trascina una riga dalla maniglia a destra: le altre si
+    spostano per farle posto e all'arrivo il brano suona nell'ordine nuovo.
+    "Svuota da qui in giu'" mostra un avviso con Annulla che rimette i brani.
+17. Nel player, sotto i controlli, la riga "Prossimo" dice il brano che
+    viene dopo e cambia con shuffle e ripetizione.
 
 Il punto 3 e' quello che rompe piu' spesso, ed e' anche quello che fallisce
 in silenzio.

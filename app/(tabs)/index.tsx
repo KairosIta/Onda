@@ -1,41 +1,51 @@
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { Artwork } from '@/components/Artwork';
-import { PressableScale } from '@/components/PressableScale';
+import { useMemo } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { GenreGrid } from '@/components/GenreGrid';
 import { TrackListSkeleton } from '@/components/Skeleton';
 import { Empty, ErrorNotice } from '@/components/StateViews';
 import { TrackList } from '@/components/TrackList';
+import { TrackStrip } from '@/components/TrackStrip';
 import { assertEnv } from '@/config/env';
 import { useInfiniteTracks } from '@/hooks/useInfiniteTracks';
-import { useQueue } from '@/hooks/useQueue';
-import { GENRES } from '@/services/genres';
-import { trendingAll } from '@/services/sources';
+import { spotlightAll, trendingAll } from '@/services/sources';
 import { tracksOf, useLibrary } from '@/store/library';
-import { colors, radius, spacing, type } from '@/theme';
-import type { Track } from '@/types/track';
+import { colors, spacing, type } from '@/theme';
+import type { SpotlightKind } from '@/types/track';
 
 const PAGE = 20;
 
+/**
+ * Una vetrina: dieci brani per sorgente, alternati. Scade dopo mezz'ora,
+ * piu' tardi del trending, perche' e' un assaggio e non un elenco da
+ * scorrere: rinfrescarla a ogni apertura sposterebbe le schede sotto il
+ * dito senza aggiungere niente.
+ */
+function useSpotlight(kind: SpotlightKind) {
+  return useQuery({
+    queryKey: ['spotlight', kind],
+    queryFn: () => spotlightAll(kind),
+    staleTime: 30 * 60_000,
+  });
+}
+
+/**
+ * La home a sezioni: ascolti recenti, cosa sale, voci nuove, i generi e
+ * poi il trending federato con lo scroll infinito. Le vetrine stanno
+ * nell'header della lista, cosi' tutta la schermata scorre insieme.
+ */
 export default function DiscoverScreen() {
   const envError = assertEnv();
+  const router = useRouter();
   const { history } = useLibrary();
-  const [genreKey, setGenreKey] = useState<string | undefined>();
+  const rising = useSpotlight('rising');
+  const fresh = useSpotlight('fresh');
 
   const { tracks, failed, loadMore, retry, isLoading, isFetching, isFetchingNextPage, error } =
-    useInfiniteTracks(
-      ['trending', genreKey ?? 'all'],
-      (offset) => trendingAll({ limit: PAGE, offset, genreKey }),
-      { pageSize: PAGE },
-    );
+    useInfiniteTracks(['trending', 'all'], (offset) => trendingAll({ limit: PAGE, offset }), {
+      pageSize: PAGE,
+    });
 
   const recent = useMemo(() => tracksOf(history.slice(0, 12)), [history]);
 
@@ -43,10 +53,9 @@ export default function DiscoverScreen() {
    * Caduta totale: nessuna sorgente ha risposto.
    *
    * Va dentro la lista e non al posto della schermata: sostituendo tutto
-   * sparirebbero anche i chip dei generi, e da un genere che fallisce non
-   * si potrebbe piu' tornare agli altri — l'unica uscita sarebbe cambiare
-   * tab. Serve comunque un bottone, perche' la query resta in cache e da
-   * sola non riprova piu'.
+   * sparirebbero anche vetrine e generi, che magari sono gia' a schermo
+   * dalla cache. Serve comunque un bottone, perche' la query resta in
+   * cache e da sola non riprova piu'.
    */
   const errorState =
     error && tracks.length === 0 ? (
@@ -82,13 +91,39 @@ export default function DiscoverScreen() {
               <ErrorNotice key={f.source} message={`${f.source} non risponde: ${f.message}`} />
             ))}
 
-            {recent.length > 0 ? <RecentStrip tracks={recent} /> : null}
+            {recent.length > 0 ? (
+              <TrackStrip
+                title="Ascoltati di recente"
+                tracks={recent}
+                more={{
+                  label: 'Tutti',
+                  onPress: () => router.push('/collection/history'),
+                  accessibilityLabel: 'Tutti gli ascolti recenti',
+                }}
+              />
+            ) : null}
 
-            <GenreChips selected={genreKey} onSelect={setGenreKey} />
+            {/* Una vetrina caduta sparisce e basta: l'avviso sulle sorgenti
+                sta gia' sopra, e una riga "non risponde" per ogni sezione
+                farebbe della home un bollettino di guasti. */}
+            <TrackStrip
+              title="In ascesa questa settimana"
+              tracks={rising.data?.tracks ?? []}
+              loading={rising.isLoading}
+            />
+            <TrackStrip
+              title="Voci nuove"
+              tracks={fresh.data?.tracks ?? []}
+              loading={fresh.isLoading}
+            />
 
-            {/* Sagoma nell'header, sotto i chip: cambiando genere titolo e
-                filtri restano al loro posto e si vede solo l'elenco che
-                si rifa'. */}
+            <GenreGrid />
+
+            <Text style={styles.sectionTitle} accessibilityRole="header">
+              Di tendenza
+            </Text>
+            {/* Sagoma nell'header, sotto il titolo di sezione: le vetrine
+                sopra restano al loro posto mentre l'elenco arriva. */}
             {isLoading ? <TrackListSkeleton rows={8} /> : null}
           </View>
         }
@@ -98,112 +133,6 @@ export default function DiscoverScreen() {
           ) : null
         }
         empty={errorState ?? (isLoading ? null : <Empty title="Nessuna traccia disponibile" />)}
-      />
-    </View>
-  );
-}
-
-/** Filtro per genere. Un tocco sul genere gia' attivo lo toglie. */
-function GenreChips({
-  selected,
-  onSelect,
-}: {
-  selected: string | undefined;
-  onSelect: (key: string | undefined) => void;
-}) {
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.chips}
-    >
-      <Chip label="Tutti" active={!selected} onPress={() => onSelect(undefined)} />
-      {GENRES.map((g) => (
-        <Chip
-          key={g.key}
-          label={g.label}
-          active={selected === g.key}
-          onPress={() => onSelect(selected === g.key ? undefined : g.key)}
-        />
-      ))}
-    </ScrollView>
-  );
-}
-
-/**
- * Attesa prima di ritrarsi per chip e card negli scroller orizzontali: il
- * dito che parte per scorrere e' un tocco finche' lo scroll non lo ruba, e
- * senza attesa ogni avvio di scroll farebbe guizzare l'elemento sotto.
- */
-const SCROLLER_PRESS_DELAY = 70;
-
-/** Chip piccolo, scala un po' di piu' del resto: a 0.96 su 30dp non si vedrebbe. */
-function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  return (
-    <PressableScale
-      onPress={onPress}
-      scaleTo={0.94}
-      pressDelay={SCROLLER_PRESS_DELAY}
-      haptic="tap"
-      style={[styles.chip, active && styles.chipActive]}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-    >
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
-    </PressableScale>
-  );
-}
-
-/** Riga orizzontale con gli ultimi ascolti: la scorciatoia piu' usata. */
-function RecentStrip({ tracks }: { tracks: Track[] }) {
-  const { playList } = useQueue();
-  const router = useRouter();
-
-  return (
-    <View style={styles.strip}>
-      <View style={styles.stripHead}>
-        <Text style={styles.sectionTitle}>Ascoltati di recente</Text>
-        <Pressable
-          onPress={() => router.push('/collection/history')}
-          hitSlop={10}
-          style={({ pressed }) => pressed && styles.stripMorePressed}
-          accessibilityRole="button"
-          accessibilityLabel="Tutti gli ascolti recenti"
-        >
-          <Text style={styles.stripMore}>Tutti</Text>
-        </Pressable>
-      </View>
-
-      <FlatList
-        horizontal
-        data={tracks}
-        keyExtractor={(t) => t.uid}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.stripList}
-        renderItem={({ item, index }) => (
-          <PressableScale
-            style={styles.card}
-            haptic="tap"
-            pressDelay={SCROLLER_PRESS_DELAY}
-            onPress={() => playList(tracks, index)}
-            accessibilityRole="button"
-            accessibilityLabel={`Riproduci ${item.title} di ${item.artist}`}
-          >
-            <Artwork
-              uri={item.artworkUrl}
-              size={128}
-              radius={radius.md}
-              recyclingKey={item.uid}
-              fade={false}
-            />
-            <Text numberOfLines={2} style={styles.cardTitle}>
-              {item.title}
-            </Text>
-            <Text numberOfLines={1} style={styles.cardArtist}>
-              {item.artist}
-            </Text>
-          </PressableScale>
-        )}
       />
     </View>
   );
@@ -226,30 +155,5 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingBottom: spacing.sm,
   },
-  chips: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.sm },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm - 1,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipText: { ...type.caption, color: colors.textMuted },
-  chipTextActive: { color: colors.bg },
-  strip: { paddingBottom: spacing.sm },
-  stripHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingRight: spacing.lg,
-  },
-  stripMore: { ...type.caption, color: colors.accent },
-  stripMorePressed: { opacity: 0.5 },
-  stripList: { paddingHorizontal: spacing.lg, gap: spacing.md },
-  card: { width: 128, gap: 4 },
-  cardTitle: { ...type.caption, color: colors.text, fontSize: 13 },
-  cardArtist: { ...type.caption, color: colors.textMuted },
   more: { paddingVertical: spacing.lg },
 });

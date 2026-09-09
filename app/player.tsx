@@ -21,6 +21,7 @@ import { HeartButton } from '@/components/HeartButton';
 import { PressableScale } from '@/components/PressableScale';
 import { AUDIUS_OPEN_MUSIC_LICENSE_URL } from '@/config/legal';
 import { usePlaybackStatus } from '@/hooks/usePlaybackStatus';
+import { useUpNext } from '@/hooks/useUpNext';
 import { haptics } from '@/services/haptics';
 import { trackFromMediaItem } from '@/services/mediaItems';
 import { describePlayButton } from '@/services/playbackStatus';
@@ -37,6 +38,7 @@ import { activateSession, seekPending, useNowPlaying } from '@/store/session';
 import { cancelSleepTimer, startSleepTimer, useSleepTimer } from '@/store/sleepTimer';
 import { colors, formatTime, motion, radius, spacing, type } from '@/theme';
 import type { Track } from '@/types/track';
+import { upNextLabel } from '@/utils/upNext';
 
 const SLEEP_OPTIONS = [15, 30, 45, 60, 90];
 
@@ -96,6 +98,7 @@ export default function PlayerScreen() {
   const { position, duration, buffered } = useProgress();
   const { shuffle, repeat } = usePlaybackPrefs();
   const sleepEndsAt = useSleepTimer();
+  const upNext = useUpNext();
 
   // Mentre si trascina, il pallino segue il dito e non il player:
   // altrimenti a ogni tick di useProgress tornerebbe indietro.
@@ -140,6 +143,13 @@ export default function PlayerScreen() {
   useEffect(() => {
     artScale.set(withSpring(engaged ? 1 : PAUSED_SCALE, SPRING));
   }, [artScale, engaged]);
+
+  // La Coda legge il player nativo: la coda ripristinata va caricata
+  // prima, senza far partire niente.
+  const openQueue = useCallback(() => {
+    activateSession({ play: false });
+    router.push('/queue');
+  }, [router]);
 
   const dismiss = useCallback(() => {
     // Aperto da un deep link senza niente sotto, `back()` non farebbe nulla
@@ -202,6 +212,7 @@ export default function PlayerScreen() {
   const shown = seekTo ?? position;
   const bufferedPct = duration > 0 ? Math.min(1, Math.max(0, buffered / duration)) : 0;
   const playButton = describePlayButton(status);
+  const nextLabel = upNextLabel(upNext);
 
   return (
     <View style={styles.root}>
@@ -238,12 +249,7 @@ export default function PlayerScreen() {
                   />
                 </PressableScale>
                 <PressableScale
-                  onPress={() => {
-                    // La Coda legge il player nativo: la coda ripristinata
-                    // va caricata prima, senza far partire niente.
-                    activateSession({ play: false });
-                    router.push('/queue');
-                  }}
+                  onPress={openQueue}
                   hitSlop={12}
                   scaleTo={motion.iconPressScale}
                   accessibilityRole="button"
@@ -400,6 +406,23 @@ export default function PlayerScreen() {
             </View>
           </PressableScale>
         </View>
+
+        {/* Cosa viene dopo, senza aprire la Coda: e' la domanda piu'
+            frequente davanti a un player, e la risposta sta in una riga. */}
+        {nextLabel ? (
+          <Pressable
+            onPress={openQueue}
+            style={({ pressed }) => [styles.upNext, pressed && styles.upNextPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={`Prossimo: ${nextLabel}. Apri la coda di riproduzione`}
+          >
+            <Ionicons name="list-outline" size={16} color={colors.textMuted} />
+            <Text numberOfLines={1} style={styles.upNextText}>
+              <Text style={styles.upNextKey}>Prossimo · </Text>
+              {nextLabel}
+            </Text>
+          </Pressable>
+        ) : null}
 
         {/* L'errore si dice e si risolve qui, non solo con un'icona: il
             budget di salti (playbackPolicy) copre i brani rotti, ma una
@@ -582,6 +605,16 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.accent,
   },
+  upNext: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    paddingVertical: spacing.xs,
+  },
+  upNextPressed: { opacity: 0.5 },
+  upNextText: { ...type.caption, color: colors.text, flex: 1 },
+  upNextKey: { color: colors.textMuted },
   problem: {
     flexDirection: 'row',
     alignItems: 'center',

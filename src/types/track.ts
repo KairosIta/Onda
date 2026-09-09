@@ -49,6 +49,14 @@ export interface TrendingParams extends ListParams {
   genre?: string;
 }
 
+/**
+ * Vetrine della schermata Scopri, oltre al trending: `rising` e' cio' che
+ * sta salendo questa settimana, `fresh` sono le voci nuove — su Audius il
+ * trending "underground", su Jamendo le ultime uscite. Ogni sorgente le
+ * traduce nel proprio endpoint.
+ */
+export type SpotlightKind = 'rising' | 'fresh';
+
 export interface ArtistInfo {
   id: string;
   source: SourceId;
@@ -84,6 +92,11 @@ export interface MusicSource {
   artistInfo(artistId: string): Promise<ArtistInfo>;
   albumTracks?(albumId: string, params?: ListParams): Promise<Track[]>;
   albumInfo?(albumId: string): Promise<AlbumInfo>;
+  /** Vetrine di Scopri; una sorgente senza vetrine viene semplicemente saltata. */
+  spotlight?(kind: SpotlightKind, params?: ListParams): Promise<Track[]>;
+  /** Ricerca per nome d'artista; opzionale come gli album. */
+  searchArtists?(params: SearchParams): Promise<ArtistInfo[]>;
+  searchAlbums?(params: SearchParams): Promise<AlbumInfo[]>;
 }
 
 export const makeUid = (source: SourceId, id: string): string => `${source}:${id}`;

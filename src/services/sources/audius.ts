@@ -5,6 +5,7 @@ import {
   makeUid,
   type MusicSource,
   type SearchParams,
+  type SpotlightKind,
   type Track,
   type TrendingParams,
 } from '@/types/track';
@@ -82,6 +83,22 @@ function mapTrack(t: AudiusTrack): Track {
   };
 }
 
+function mapUser(u: AudiusUser): ArtistInfo {
+  const bits = [
+    u.follower_count != null ? `${u.follower_count.toLocaleString('it-IT')} follower` : null,
+    u.track_count != null ? `${u.track_count} brani` : null,
+  ].filter(Boolean);
+
+  return {
+    id: u.id,
+    source: 'audius',
+    name: u.name || u.handle || 'Sconosciuto',
+    imageUrl: u.profile_picture?.['480x480'] ?? u.profile_picture?.['150x150'],
+    bio: u.bio ?? undefined,
+    detail: bits.join(' · ') || undefined,
+  };
+}
+
 /**
  * Le tracce "stream gated" richiedono un acquisto o un tip: se finiscono
  * in coda il player si blocca su un errore di rete. Le filtriamo qui,
@@ -122,19 +139,25 @@ export const audiusSource: MusicSource = {
     const json = await fetchJSON<{ data?: AudiusUser }>(withAppName(`/users/${artistId}`));
     const u = json.data;
     if (!u) throw new Error('Artista non trovato su Audius');
+    return { ...mapUser(u), id: artistId };
+  },
 
-    const bits = [
-      u.follower_count != null ? `${u.follower_count.toLocaleString('it-IT')} follower` : null,
-      u.track_count != null ? `${u.track_count} brani` : null,
-    ].filter(Boolean);
+  /**
+   * `rising`: il trending della settimana, che cambia piu' in fretta di
+   * quello mensile in prima pagina. `fresh`: il trending "underground",
+   * cioe' artisti con pochi follower che stanno emergendo — Audius non ha
+   * un elenco di uscite recenti, e questo e' il piu' vicino a "voci nuove".
+   */
+  async spotlight(kind: SpotlightKind, params: ListParams = {}): Promise<Track[]> {
+    return kind === 'rising'
+      ? fetchTracks(withAppName('/tracks/trending', { time: 'week', ...page(params) }))
+      : fetchTracks(withAppName('/tracks/trending/underground', page(params)));
+  },
 
-    return {
-      id: artistId,
-      source: 'audius',
-      name: u.name || u.handle || 'Sconosciuto',
-      imageUrl: u.profile_picture?.['480x480'] ?? u.profile_picture?.['150x150'],
-      bio: u.bio ?? undefined,
-      detail: bits.join(' · ') || undefined,
-    };
+  async searchArtists({ query, ...rest }: SearchParams): Promise<ArtistInfo[]> {
+    const json = await fetchJSON<{ data?: AudiusUser[] }>(
+      withAppName('/users/search', { query, ...page(rest) }),
+    );
+    return (json.data ?? []).filter((u) => Boolean(u.id)).map(mapUser);
   },
 };

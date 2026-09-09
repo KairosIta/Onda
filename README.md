@@ -25,9 +25,11 @@
 
 Onda riunisce [Audius](https://audius.co/) e
 [Jamendo](https://www.jamendo.com/) senza account Onda e senza un backend
-proprietario. Offre catalogo e ricerca federati, riproduzione in background,
-controlli dalla schermata di blocco, coda, preferiti, cronologia, playlist e
-timer di spegnimento. La libreria resta sul dispositivo.
+proprietario. Offre una home a sezioni e una ricerca federata di brani,
+artisti e album, riproduzione in background con ripresa dell'ascolto,
+controlli dalla schermata di blocco e da Android Auto, coda riordinabile,
+preferiti, cronologia, playlist e timer di spegnimento. La libreria resta sul
+dispositivo.
 
 ## Screenshot
 
@@ -104,6 +106,10 @@ PowerShell, debug USB ed errori comuni, è in
 - Jamendo richiede un Client ID personale, incorporato nella propria build.
 - Gli album sono disponibili solo per i brani Jamendo.
 - Nessun ascolto offline.
+- Le novità di settembre 2026 (home a sezioni, ricerca di artisti e album,
+  ripresa dell'ascolto, riordino della coda, Android Auto) sono implementate
+  ma non ancora collaudate su un dispositivo: lo stato è in
+  [TODO.md](TODO.md).
 - Il player nativo `@rntp/player` ha una licenza separata: è gratuito solo per
   uso personale privato o didattico/ricerca accademica qualificata. Ogni altro
   uso richiede una licenza commerciale del fornitore.

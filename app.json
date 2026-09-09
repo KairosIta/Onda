@@ -33,6 +33,7 @@
       "./plugins/with-release-signing.js",
       "./plugins/with-android-quality.js",
       "./plugins/with-android-privacy.js",
+      "./plugins/with-android-auto.js",
       [
         "expo-font",
         {
