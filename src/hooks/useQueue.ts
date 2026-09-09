@@ -3,6 +3,7 @@ import TrackPlayer from '@rntp/player';
 import { toMediaItem } from '@/services/mediaItems';
 import { resetPlaybackErrorBudget } from '@/services/playbackService';
 import { remember } from '@/store/library';
+import { requestNotificationPermission } from '@/store/notificationPermission';
 import { activateSession, clearPending } from '@/store/session';
 import type { Track } from '@/types/track';
 
@@ -13,6 +14,8 @@ export function useQueue() {
     // Serve alla cronologia: quando la traccia parte, il player conosce
     // solo l'uid, e senza questo non saprebbe cosa salvare.
     remember(tracks);
+    // Primo play: da qui in poi la notifica serve davvero.
+    requestNotificationPermission();
     resetPlaybackErrorBudget();
     // Una coda nuova manda in pensione quella ripristinata dal disco.
     clearPending();

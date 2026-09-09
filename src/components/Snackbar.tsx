@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeOutDown, ReduceMotion } from 'react-native-reanimated';
-import { colors, radius, spacing, type } from '@/theme';
+import { colors, radius, spacing, touch, type } from '@/theme';
 import { PressableScale } from './PressableScale';
 
 export interface Snack {
@@ -53,8 +53,7 @@ export function Snackbar({ snack, onDismiss, durationMs = 4000, bottom = 0 }: Pr
             onDismiss();
           }}
           haptic="tap"
-          hitSlop={8}
-          style={styles.action}
+          containerStyle={styles.action}
           accessibilityRole="button"
         >
           <Text style={styles.actionText}>{snack.action.label}</Text>
@@ -83,9 +82,11 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   message: { ...type.body, color: colors.text, flex: 1 },
+  // Alto quanto un bersaglio da 48 dp: la barra cresce di poco e l'azione
+  // si prende anche con TalkBack.
   action: {
+    ...touch.target,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
     borderRadius: radius.pill,
   },
   actionText: { ...type.label, color: colors.accent },

@@ -29,8 +29,9 @@ let state: LibraryState = loadLibrary(readJSON(KEY));
  * perde niente di importante: qualunque traccia l'utente abbia davvero
  * salvato sta anche in `state.tracks`, e `resolve` ci ricade sopra. Al
  * massimo si perde la freschezza di un campo, non la traccia. La traccia
- * in riproduzione e' sempre al sicuro: `recordPlay` la persiste appena
- * parte.
+ * in riproduzione e' al sicuro comunque: il media item la porta con se' e
+ * `playbackService` la rimette qui prima di `recordPlay`, alla soglia di
+ * ascolto.
  */
 const SESSION_MAX = 500;
 const session = new Map<string, Track>();

@@ -8,6 +8,8 @@ import {
   MAX_SOURCE_SKIPS,
   budgetAfterPlayingChange,
   decideSkip,
+  NETWORK_RETRY_DELAYS_MS,
+  networkRetryDelay,
   type SkipContext,
 } from '@/services/playbackPolicy';
 import { combine, describeFailure, interleave } from '@/services/sources/federation';
@@ -25,7 +27,27 @@ import { toMediaItem, trackFromMediaItem } from '@/services/mediaItems';
 import { BROWSE_MAX_ITEMS, buildBrowseTree } from '@/services/browseTree';
 import { RECENT_QUERIES_MAX, dropQuery, loadQueries, pushQuery } from '@/utils/recentQueries';
 import { dropIndex, rowShift } from '@/utils/reorder';
+import { parseCollectionKind, parseEntityId } from '@/utils/routes';
 import { describeUpNext, upNextLabel } from '@/utils/upNext';
+import { LISTEN_THRESHOLD_SEC, listenThreshold, reachedListen } from '@/services/historyPolicy';
+import { ARTWORK_MIN, artworkLayout } from '@/services/playerLayout';
+import {
+  BACKUP_PREFIX,
+  type KeyValue,
+  QUARANTINE_PREFIX,
+  STORAGE_VERSION,
+  VERSION_KEY,
+  migrateStorage,
+  quarantine,
+  readStorageVersion,
+} from '@/services/storageSchema';
+import {
+  notificationPermissionRequired,
+  notificationRemedy,
+  shouldRequest,
+  statusFromCheck,
+  statusFromRequest,
+} from '@/services/notificationPolicy';
 import { derivePlaybackStatus, describePlayButton } from '@/services/playbackStatus';
 import {
   PROGRESS_PAUSED_MS,
@@ -1064,4 +1086,163 @@ test('la federazione alterna anche cio che non e una traccia', () => {
     ['a1', 'j1', 'a2'],
   );
   assert.deepEqual(out.failed, []);
+});
+
+test('permesso notifiche: si chiede solo su Android 13+, al play e finché il sistema risponde', () => {
+  assert.equal(notificationPermissionRequired('android', 33), true);
+  assert.equal(notificationPermissionRequired('android', '36'), true);
+  assert.equal(notificationPermissionRequired('android', 32), false);
+  assert.equal(notificationPermissionRequired('ios', 40), false);
+
+  assert.equal(statusFromRequest('granted'), 'granted');
+  assert.equal(statusFromRequest('denied'), 'denied');
+  assert.equal(statusFromRequest('never_ask_again'), 'blocked');
+
+  // check() dice solo sì o no: un blocco già noto non torna «negato».
+  assert.equal(statusFromCheck(true, 'blocked'), 'granted');
+  assert.equal(statusFromCheck(false, 'blocked'), 'blocked');
+  assert.equal(statusFromCheck(false, 'unknown'), 'denied');
+  assert.equal(statusFromCheck(false, 'granted'), 'denied');
+
+  assert.equal(shouldRequest('unknown'), true);
+  assert.equal(shouldRequest('denied'), true);
+  assert.equal(shouldRequest('blocked'), false);
+  assert.equal(shouldRequest('granted'), false);
+  assert.equal(shouldRequest('unnecessary'), false);
+
+  assert.deepEqual(notificationRemedy('denied'), { kind: 'request', label: 'Consenti' });
+  assert.deepEqual(notificationRemedy('blocked'), { kind: 'settings', label: 'Impostazioni' });
+  assert.equal(notificationRemedy('granted'), null);
+  assert.equal(notificationRemedy('unknown'), null);
+  assert.equal(notificationRemedy('unnecessary'), null);
+});
+
+test('route: raccolte e id accettati solo se previsti, il resto si rifiuta', () => {
+  assert.equal(parseCollectionKind('favorites'), 'favorites');
+  assert.equal(parseCollectionKind('history'), 'history');
+  assert.equal(parseCollectionKind('bogus'), null);
+  assert.equal(parseCollectionKind(undefined), null);
+  assert.equal(parseCollectionKind(['favorites']), null);
+
+  assert.equal(parseEntityId('abc'), 'abc');
+  assert.equal(parseEntityId(''), null);
+  assert.equal(parseEntityId('   '), null);
+  assert.equal(parseEntityId(undefined), null);
+  assert.equal(parseEntityId(['a', 'b']), null);
+});
+
+test('cronologia: un brano conta dopo trenta secondi, o a metà se è più corto di un minuto', () => {
+  assert.equal(listenThreshold(240), LISTEN_THRESHOLD_SEC);
+  assert.equal(listenThreshold(60), 30);
+  assert.equal(listenThreshold(20), 10);
+  // Durata ignota (stream non ancora preparato): vale la soglia piena.
+  assert.equal(listenThreshold(0), LISTEN_THRESHOLD_SEC);
+  assert.equal(listenThreshold(Number.NaN), LISTEN_THRESHOLD_SEC);
+
+  assert.equal(reachedListen(29.9, 240), false);
+  assert.equal(reachedListen(30, 240), true);
+  assert.equal(reachedListen(10, 20), true);
+  assert.equal(reachedListen(9, 20), false);
+  assert.equal(reachedListen(Number.NaN, 240), false);
+});
+
+function memoryKV(
+  initial: Record<string, string> = {},
+): KeyValue & { dump(): Record<string, string> } {
+  const map = new Map(Object.entries(initial));
+  return {
+    get: (key) => map.get(key),
+    set: (key, value) => void map.set(key, value),
+    delete: (key) => void map.delete(key),
+    keys: () => [...map.keys()],
+    dump: () => Object.fromEntries(map),
+  };
+}
+
+test('storage: un telefono vuoto parte alla versione corrente, i dati senza versione valgono 1', () => {
+  const fresh = memoryKV();
+  assert.equal(readStorageVersion(fresh), STORAGE_VERSION);
+  assert.deepEqual(migrateStorage(fresh).outcome, 'current');
+  assert.equal(fresh.get(VERSION_KEY), String(STORAGE_VERSION));
+
+  const legacy = memoryKV({ 'library.v1': '{"favorites":[]}' });
+  assert.equal(readStorageVersion(legacy), 1);
+  assert.equal(readStorageVersion(memoryKV({ [VERSION_KEY]: '7' })), 7);
+  assert.equal(readStorageVersion(memoryKV({ [VERSION_KEY]: 'boh', 'playback.v1': '{}' })), 1);
+});
+
+test('storage: da 1 a 2 il repeat numerico diventa stringa, con backup e senza ripetersi', () => {
+  const kv = memoryKV({
+    'playback.v1': '{"shuffle":true,"repeat":2}',
+    'library.v1': '{"favorites":["audius:1"]}',
+  });
+  const first = migrateStorage(kv);
+  assert.equal(first.outcome, 'upgraded');
+  assert.equal(first.from, 1);
+  assert.equal(first.to, STORAGE_VERSION);
+  assert.equal(first.applied.length, 1);
+  assert.deepEqual(JSON.parse(kv.get('playback.v1')!), { shuffle: true, repeat: 'all' });
+  assert.equal(kv.get('library.v1'), '{"favorites":["audius:1"]}');
+  // Il backup e' la fotografia di prima, con la sua versione.
+  assert.equal(kv.get(BACKUP_PREFIX + 'playback.v1'), '{"shuffle":true,"repeat":2}');
+  assert.equal(kv.get(BACKUP_PREFIX + 'version'), '1');
+  assert.equal(kv.get(VERSION_KEY), String(STORAGE_VERSION));
+
+  const after = kv.dump();
+  assert.equal(migrateStorage(kv).outcome, 'current');
+  assert.deepEqual(kv.dump(), after);
+
+  // Repeat gia' stringa o assente: la migrazione non inventa niente.
+  const clean = memoryKV({ 'playback.v1': '{"repeat":"one"}' });
+  migrateStorage(clean);
+  assert.deepEqual(JSON.parse(clean.get('playback.v1')!), { repeat: 'one' });
+  const truncated = memoryKV({ 'playback.v1': '{"repeat":' });
+  assert.equal(migrateStorage(truncated).outcome, 'upgraded');
+  assert.equal(truncated.get('playback.v1'), '{"repeat":');
+});
+
+test('storage: una versione più nuova non si tocca e un dato illeggibile va in quarantena', () => {
+  const newer = memoryKV({ [VERSION_KEY]: String(STORAGE_VERSION + 1), 'playback.v1': '{"x":1}' });
+  const before = newer.dump();
+  assert.equal(migrateStorage(newer).outcome, 'newer');
+  assert.deepEqual(newer.dump(), before);
+
+  const kv = memoryKV({ 'library.v1': '{"favorites":[' });
+  quarantine(kv, 'library.v1', '{"favorites":[');
+  assert.equal(kv.get('library.v1'), undefined);
+  assert.equal(kv.get(QUARANTINE_PREFIX + 'library.v1'), '{"favorites":[');
+});
+
+test("player: la copertina si adatta all'altezza e sotto il minimo il pannello scorre", () => {
+  const base = { fontScale: 1, insetTop: 40, insetBottom: 24, horizontalPadding: 24 };
+  // Motorola Edge 50 Neo (427x949 dp): comanda l'altezza, di poco.
+  assert.deepEqual(artworkLayout({ ...base, width: 427, height: 949 }), {
+    size: 355,
+    cramped: false,
+  });
+  // Tablet: comanda la larghezza del pannello.
+  assert.equal(artworkLayout({ ...base, width: 427, height: 1400 }).size, 379);
+  // Schermo basso: comanda l'altezza, senza scorrere finche' resta il minimo.
+  const low = artworkLayout({ ...base, width: 360, height: 760 });
+  assert.equal(low.size, 166);
+  assert.equal(low.cramped, false);
+  // 360x640: non entra nemmeno la copertina minima, si scorre.
+  const tiny = artworkLayout({ ...base, width: 360, height: 640 });
+  assert.equal(tiny.size, ARTWORK_MIN);
+  assert.equal(tiny.cramped, true);
+  // Scala dei caratteri 1.3: la copertina cede spazio al testo, non ai controlli.
+  const big = artworkLayout({ ...base, width: 427, height: 949, fontScale: 1.3 });
+  assert.equal(big.size < 355 && big.size > ARTWORK_MIN, true);
+  assert.equal(big.cramped, false);
+  // A 2.0 anche questo telefono scorre.
+  assert.equal(artworkLayout({ ...base, width: 427, height: 949, fontScale: 2 }).cramped, true);
+});
+
+test('rete: tre tentativi automatici a distanze crescenti, poi resta il Riprova', () => {
+  assert.deepEqual([0, 1, 2].map(networkRetryDelay), [...NETWORK_RETRY_DELAYS_MS]);
+  assert.equal(networkRetryDelay(3), null);
+  assert.equal(
+    NETWORK_RETRY_DELAYS_MS.every((d, i) => i === 0 || d > NETWORK_RETRY_DELAYS_MS[i - 1]),
+    true,
+  );
 });

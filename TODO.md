@@ -1,6 +1,6 @@
 # Roadmap di Onda
 
-Stato aggiornato il **9 settembre 2026** confrontando codice, configurazione e
+Stato aggiornato il **10 settembre 2026** confrontando codice, configurazione e
 documentazione con le prove già raccolte su device e con i controlli automatici,
 di release e da clone pulito.
 
@@ -243,6 +243,17 @@ computer (tocchi, screenshot, `dumpsys media_session`, logcat).
 - [x] L'APK contiene `xml/automotive_app_desc` e il meta-data per Android
       Auto; nessuna prova con un'unità o con il Desktop Head Unit.
 
+### Verificato il 10 settembre 2026 su Motorola Edge 50 Neo, Android 16
+
+Cinque build personali in sequenza, comandate via ADB; le prove sono
+descritte nelle voci che chiudono (permesso notifiche, route e not-found,
+stati errore/vuoto, snackbar del menu, cronologia a soglia, migrazione MMKV,
+player adattivo, bersagli da 48 dp).
+
+- [x] Il dump di `uiautomator` fallisce con «could not get idle state» mentre
+      la barra del mini-player avanza: si mette in pausa dalla sessione media
+      (`cmd media_session dispatch pause`) e poi si misura.
+
 ### Verificato il 22 agosto 2026
 
 - [x] 25 test, typecheck, ESLint, Prettier ed Expo Doctor 21/21 passano.
@@ -428,16 +439,27 @@ stati verificati successivamente.
       **Done:** comandi serializzati o disabilitati quando necessario e zero
       rejection non gestite nei log, provati su device.
 
-- [ ] **Rendere recuperabile il setup del player.** Un errore iniziale mostra
-      un banner ma non offre una nuova inizializzazione.
+- [ ] **Rendere recuperabile il setup del player.** **Implementato il 10
+      settembre 2026, da collaudare**: al posto del banner una schermata
+      intera con Riprova (che richiama davvero `setupPlayer`, perché dopo un
+      errore si lascia richiamare) e il messaggio selezionabile; finché il
+      player non è pronto lo Stack non viene montato, quindi non c'è niente
+      da disabilitare. Manca solo la prova con un guasto vero all'avvio.
       **Done:** azione Riprova, controlli disabilitati finché il player non è
       pronto e diagnostica tecnica copiabile.
 
-- [ ] **Classificare gli errori stream senza consumare la coda.** Il budget di
+- [x] **Classificare gli errori stream senza consumare la coda.** Il budget di
       salti è ora per fallimenti _consecutivi_ e si ricarica su `IsPlayingChanged`
       (`playbackPolicy.ts`, cinque test); prima era per processo, quindi dopo tre
-      salti sparsi la coda restava bloccata. Restano il retry/backoff per gli
-      errori di rete e il collaudo su device.
+      salti sparsi la coda restava bloccata. Dal 10 settembre 2026 un errore
+      di rete riprova da solo tre volte (2, 5 e 10 secondi,
+      `NETWORK_RETRY_DELAYS_MS`) prima di lasciare l'avviso con Riprova; i
+      tentativi si azzerano quando il player torna a suonare. **Verificato su
+      device**: in modalità aereo tre skip di fila arrivano a un brano non
+      precaricato, il logcat riporta `[player] network: Source error` e il
+      player resta in buffering; tornata la rete entro il secondo tentativo
+      il brano parte da solo, senza toccare Riprova. Nota per chi ripete la
+      prova: un solo skip non basta, ExoPlayer precarica il brano seguente.
       **Done:** retry/backoff per rete, skip solo per stream definitivamente morto
       e test device togliendo la rete a metà brano.
 
@@ -447,18 +469,36 @@ stati verificati successivamente.
       **Done:** cursore per sorgente o retry reale dello stesso offset, nessun buco
       o duplicato, stato corrente del banner e test deterministico caduta/rientro.
 
-- [ ] **Richiedere il permesso notifiche al momento giusto.** Android 13+ lo
-      chiede oggi all'avvio e l'esito viene ignorato.
-      **Done:** richiesta contestuale al primo play, spiegazione dello stato
-      negato, collegamento alle impostazioni e test concedi/nega/nega per sempre.
+- [x] **Richiedere il permesso notifiche al momento giusto.** Fatto il 10
+      settembre 2026. La richiesta parte al primo play (`useQueue.playList`,
+      `playerCommands.togglePlayback`), una volta per avvio; le regole stanno
+      in `services/notificationPolicy` (testate), lo stato in
+      `store/notificationPermission`, riletto a ogni ritorno in primo piano.
+      Il player mostra «Notifiche disattivate: niente controlli nella
+      schermata di blocco» con «Consenti» finché il sistema chiede ancora e
+      «Impostazioni» quando è bloccato. **Verificato su Motorola Edge 50 Neo,
+      Android 16**: permesso revocato via `pm revoke`, nessuna finestra
+      all'avvio, finestra al play con la musica già partita; negato → avviso
+      con Consenti; Consenti riapre la finestra; negato di nuovo → Android
+      blocca e il tasto diventa Impostazioni, che apre la pagina dell'app;
+      concesso da lì e tornati indietro l'avviso sparisce e la notifica media
+      compare.
 
 ### Dati locali
 
-- [ ] **Versionare, validare e migrare MMKV.** Il worktree locale valida tracce,
-      riferimenti, playlist e preferenze prima di popolare gli store e migra i
-      vecchi repeat numerici; mancano ancora versione esplicita e recupero sicuro.
-      **Done:** schema, migrazioni idempotenti, quarantena del dato invalido,
-      backup pre-migrazione e test con versioni vecchie/dati troncati.
+- [x] **Versionare, validare e migrare MMKV.** Fatto il 10 settembre 2026.
+      `services/storageSchema` (puro, quattro test) tiene la versione in
+      `schema.version`: dati senza versione valgono 1, telefono vuoto parte
+      alla corrente; prima di migrare ogni chiave nota va in `backup.*` e
+      una migrazione che lancia ripristina tutto senza avanzare; una
+      versione più nuova non si tocca; un valore illeggibile finisce in
+      `quarantine.*` invece di sparire. Prima migrazione reale (1 → 2): il
+      repeat numerico su disco diventa `off/one/all`. Test: da 1 a 2 con
+      backup, idempotenza, dato troncato, versione più nuova, quarantena.
+      **Verificato su device**: primo avvio della build con dati vecchi
+      scrive `[storage] schema 1 → 2` nel logcat e libreria e cronologia
+      restano intatte (2 preferiti, 86 recenti); al secondo avvio nessuna
+      migrazione.
 
 - [x] **Aggiungere export/import della libreria.** Fatto il 30 agosto 2026.
       `src/store/libraryExport.ts` costruisce e rilegge un JSON `onda.library`
@@ -482,11 +522,17 @@ stati verificati successivamente.
       file ogni destinazione era un'app che portava la libreria fuori.
       Resta da fare, ma e' la voce sopra: migrazioni versionate dello schema.
 
-- [ ] **Registrare una riproduzione reale, non una transizione.** La cronologia
+- [x] **Registrare una riproduzione reale, non una transizione.** La cronologia
       viene aggiornata appena cambia media item. Dal 9 settembre 2026 la
       posizione viene salvata e ripristinata (vedi «Ripresa dell'ascolto») e la
       striscia di Scopri si chiama «Ascoltati di recente», che è quello che
-      mostra davvero. Resta la soglia di ascolto prima di registrare.
+      mostra davvero. Dal 10 settembre 2026 la cronologia si aggiorna al
+      tick di progresso quando si supera la soglia di `services/historyPolicy`
+      (trenta secondi, o metà se il brano dura meno di un minuto), una volta
+      per brano; il catalogo volatile viene avvisato subito al cambio di
+      brano e di nuovo alla soglia, dal media item. **Verificato su device**:
+      brano saltato dopo 8 s assente dai recenti, il seguente ascoltato 48 s
+      in testa.
       **Done:** registrazione dopo una soglia di ascolto.
 
 - [ ] **Risoluzione fresca degli stream Jamendo salvati.** Preferiti e
@@ -501,17 +547,23 @@ stati verificati successivamente.
 
 ### Navigazione e correttezza UI
 
-- [ ] **Validare tutte le route.** `sourceById` rispetta `enabled` dal 30 agosto
-      2026 e rifiuta una sorgente disabilitata; resta aperto il `kind`
-      sconosciuto, che apre i Preferiti invece di mostrare Not Found.
-      **Done:** rifiuto esplicito di source/kind/id non ammessi, con test deep
-      link.
+- [x] **Validare tutte le route.** Fatto il 10 settembre 2026. `utils/routes`
+      (testato) accetta solo `favorites`/`history` come raccolta e un id
+      singolo non vuoto per artista e album; il resto mostra «Raccolta
+      sconosciuta», «Artista/Album non indicato». Un URL che non corrisponde
+      a nessuna route apre `app/+not-found.tsx` («Pagina non trovata», con
+      «Torna a Scopri» via `router.navigate`, che non azzera lo stato dei
+      tab) al posto della «Unmatched Route» di Expo. **Verificato su device**
+      con `am start -d onda://collection/bogus`, `onda://artist/audius/%20`,
+      `onda://album/jamendo/` e `onda://nothing/here`.
 
-- [ ] **Separare errori e contenuto vuoto per artista/album.** Alcuni errori
-      vengono mostrati insieme a “Nessun brano” o “Album vuoto”; mancano retry
-      mirati e l'errore di `albumInfo` non è presentato.
-      **Done:** stati loading/error/empty/data mutuamente esclusivi e Riprova per
-      profilo e lista.
+- [x] **Separare errori e contenuto vuoto per artista/album.** Fatto il 10
+      settembre 2026. A lista vuota parla solo lo stato vuoto: con un errore
+      di profilo o di lista mostra «Non sono riuscito a caricare
+      l'artista/l'album» e un solo Riprova che rilancia ciò che è caduto;
+      con dei brani a schermo gli errori si dicono in testa con `ErrorNotice`,
+      ciascuno con il suo Riprova (anche `albumInfo`, prima muto).
+      **Verificato su device** con id inesistenti su Audius e Jamendo.
 
 - [x] **Paginare gli album Jamendo.** Risolto il 30 agosto 2026. `albumTracks`
       chiede pagine da 200 — il massimo che l'API accetta — finché non ne torna
@@ -550,15 +602,24 @@ stati verificati successivamente.
       navigazione a tre pulsanti: in fondo a una coda da 93 brani l'ultima riga
       e la sua X restano interamente sopra la barra di sistema.
 
-- [ ] **Rendere il player responsivo.** Artwork quadrata e layout fisso non
-      scrollabile possono spingere controlli/licenza fuori schermo. Confermato il
-      30 agosto 2026: il titolo su due righe «Cold Play - Yellow (Oliverio Luján
-      Edit)» sposta in basso di circa 105 px l'intera riga dei controlli.
-      **Done:** max artwork, layout adattivo o scroll controllato, test 360×640 dp
-      e font scale 1.0/1.3/1.5/2.0.
+- [x] **Rendere il player responsivo.** Fatto il 10 settembre 2026.
+      `services/playerLayout` (testato) ricava la misura della copertina da
+      quel che resta dello schermo tolti insets, parte fissa e parte di
+      testo scalata con `fontScale`; sotto i 160 dp la copertina resta al
+      minimo e il pannello diventa scorrevole. Sul Motorola (427×949 dp)
+      la copertina passa da 379 a 355 dp. **Verificato su device**: a
+      360×640 dp (`wm size` + `wm density 160`) copertina da 160 dp e
+      controlli e licenza raggiungibili scorrendo; a font scale 2.0 tutto
+      entra senza scorrere. Restano 1.3 e 1.5, che stanno in mezzo.
 
-- [ ] **Portare target tattili e focus ad almeno 48×48 dp.** Molti controlli
-      usano solo `hitSlop`, che non garantisce un focus TalkBack adeguato.
+- [ ] **Portare target tattili e focus ad almeno 48×48 dp.** Dal 10 settembre
+      2026 ogni controllo a icona ha `touch.target` (48×48 dp) sul contenitore
+      che riceve il tocco, al posto di `hitSlop`: player, mini-player, righe,
+      coda, playlist, intestazioni, snackbar, stati vuoti. **Misurato su
+      device** con `uiautomator dump`: tutti i controlli del player, la riga
+      «Prossimo» e i bottoni «Opzioni» delle righe riportano 48 dp di altezza. Restano i link di
+      testo dell'attribuzione (inline, con `hitSlop`) e la prova con
+      Accessibility Scanner e Switch Access.
       **Done:** wrapper non sovrapposti, Accessibility Scanner e Switch Access.
 
 - [ ] **Completare la semantica TalkBack.** Icone decorative, repeat,
@@ -566,9 +627,11 @@ stati verificati successivamente.
       semantica completa.
       **Done:** label/state/hint/live region e percorso manuale a occhi chiusi.
 
-- [ ] **Alzare il contrasto dei metadati piccoli.** Le sigle AUD/JAM a 60% di
-      `textMuted` misurano circa 2.99:1.
-      **Done:** almeno 4.5:1 per testo piccolo e 3:1 per componenti/focus.
+- [x] **Alzare il contrasto dei metadati piccoli.** Fatto il 10 settembre
+      2026: le sigle AUD/JAM usano `textMuted` pieno a 11 dp invece del 60% a
+      10 dp. `#8B94A7` su `#0E1116` misura circa 6.2:1 (prima 3.0:1) e resta
+      sopra 4.5:1 anche su `surface`. Verificato a schermo che le sigle si
+      leggono nelle righe di Cerca.
 
 ---
 
@@ -602,7 +665,7 @@ stati verificati successivamente.
 ### Test e toolchain
 
 - [ ] Estendere i test unitari a mutazioni degli store, `formatTime`, shuffle e
-      migrazioni complete. Coperti oggi (88 test): validazione, repeat, cursore
+      migrazioni complete. Coperti oggi (96 test): validazione, repeat, cursore
       federato, composizione della federazione (anche di artisti e album),
       entità HTML Jamendo, budget di salti, export/import, riepilogo della
       coda, sessione di ascolto, stato del player, politica di lettura del
@@ -646,8 +709,11 @@ stati verificati successivamente.
       genera `res/font/xml_manrope.xml` con i quattro pesi e la registrazione
       in `MainApplication.kt`. Resta la prova su dispositivo a font scale
       1.0/1.3/1.5/2.0.
-- [ ] Correggere apostrofi ASCII e copy italiano (`e'`, `piu'`, `Modalita'`),
-      uniformando tono e plurali.
+- [x] Correggere apostrofi ASCII e copy italiano (`e'`, `piu'`, `Modalita'`),
+      uniformando tono e plurali. Fatto il 10 settembre 2026 per tutto il
+      testo visibile ed etichette di accessibilità (uno scanner delle
+      stringhe non trova più accenti ASCII); i commenti nel codice restano
+      ASCII di proposito.
 - [ ] Aggiungere pressed/ripple, loading e feedback non solo cromatico a ogni
       azione. **Implementato il 9 settembre 2026, da collaudare**:
       `PressableScale` ritrae bottoni, chip, schede e icone con una molla
@@ -668,11 +734,17 @@ stati verificati successivamente.
       rimandati perché senza correzione sicura senza prova: la tab bar si
       riposiziona di colpo mentre il mini-player sfuma in uscita, e durante
       il trascinamento la fascia della status bar non è coperta dallo scrim.
-- [ ] Sostituire il toast da 550 ms con snackbar accessibile da 2–4 secondi.
-- [ ] Aggiungere undo o conferma per “Svuota i successivi”. **Implementato il
-      9 settembre 2026, da collaudare**: snackbar da quattro secondi con
-      Annulla (`components/Snackbar.tsx`), annunciata a TalkBack. Il toast da
-      550 ms del menu contestuale resta da sostituire.
+- [x] Sostituire il toast da 550 ms con snackbar accessibile da 2–4 secondi.
+      Fatto il 10 settembre 2026: il menu contestuale chiude subito e
+      riferisce l'esito a `TrackList`, che mostra la `Snackbar` da quattro
+      secondi sopra il mini-player con un'azione utile («Coda» per gli
+      accodamenti, «Annulla» per i preferiti, «Apri» per le playlist).
+      **Verificato su device**: «Accodata · Coda» apre la Coda con il brano
+      in fondo.
+- [x] Aggiungere undo o conferma per “Svuota i successivi”. Snackbar da
+      quattro secondi con Annulla (`components/Snackbar.tsx`), annunciata a
+      TalkBack; **verificata su device il 9 settembre 2026** (Annulla rimette
+      i 19 brani). Il toast del menu contestuale è sostituito, vedi sopra.
 - [ ] Migliorare placeholder, errori artwork, skeleton e messaggi distinti per
       offline, quota, vuoto e contenuto non riproducibile. **Implementato il 9
       settembre 2026, da collaudare** per placeholder, errori artwork e
@@ -699,10 +771,14 @@ stati verificati successivamente.
 - [ ] Timer da 90 minuti sotto Doze e timer mentre il player è in pausa.
 - [ ] Percorso completo con TalkBack: tab, righe, menu, slider, modali,
       playlist, toast ed errori.
-- [ ] Font scale 1.0/1.3/1.5/2.0 e display size piccolo/grande.
-- [ ] Schermo 360×640 dp, gesture navigation e three-button navigation.
-- [ ] Permesso notifiche: concedi, nega, nega definitivamente e riabilita da
-      Impostazioni.
+- [ ] Font scale 1.0/1.3/1.5/2.0 e display size piccolo/grande. Il player a
+      1.0 e 2.0 è verificato il 10 settembre 2026; restano 1.3, 1.5, le altre
+      schermate e il display size.
+- [ ] Schermo 360×640 dp, gesture navigation e three-button navigation. Il
+      player a 360×640 dp è verificato il 10 settembre 2026 (scorre); il
+      telefono usa la navigazione a tre pulsanti, resta quella a gesti.
+- [x] Permesso notifiche: concedi, nega, nega definitivamente e riabilita da
+      Impostazioni. Verificato il 10 settembre 2026, vedi P1.
 - [ ] Rete rimossa a metà brano, rete lenta, captive portal, cambio Wi-Fi/5G e
       singola sorgente che cade durante la terza pagina.
 - [ ] Chiamata in arrivo, audio focus di un'altra app, cuffie scollegate,

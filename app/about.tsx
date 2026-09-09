@@ -14,7 +14,7 @@ import {
   PROJECT_URL,
   THIRD_PARTY_CONTENT_URL,
 } from '@/config/legal';
-import { colors, radius, spacing, type } from '@/theme';
+import { colors, radius, spacing, touch, type } from '@/theme';
 
 const version = Constants.expoConfig?.version ?? '0.1.0';
 
@@ -46,7 +46,12 @@ export default function AboutScreen() {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={16} accessibilityLabel="Indietro">
+        <Pressable
+          onPress={() => router.back()}
+          style={touch.target}
+          accessibilityRole="button"
+          accessibilityLabel="Indietro"
+        >
           <Ionicons name="chevron-back" size={28} color={colors.textMuted} />
         </Pressable>
         <Text style={styles.headerTitle}>Informazioni e privacy</Text>

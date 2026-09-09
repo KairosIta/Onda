@@ -9,7 +9,7 @@ import Animated, {
 import { PressableScale } from '@/components/PressableScale';
 import { haptics } from '@/services/haptics';
 import { toggleFavorite, useLibrary } from '@/store/library';
-import { colors, motion } from '@/theme';
+import { colors, motion, touch } from '@/theme';
 import type { Track } from '@/types/track';
 
 interface Props {
@@ -36,7 +36,7 @@ export function HeartButton({ track, size = 22 }: Props) {
 
   return (
     <PressableScale
-      hitSlop={12}
+      containerStyle={touch.target}
       scaleTo={motion.iconPressScale}
       onPress={() => {
         haptics.toggle(!on);

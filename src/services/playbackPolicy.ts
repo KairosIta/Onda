@@ -60,3 +60,16 @@ export function decideSkip({ code, skipsUsed, queue }: SkipContext): SkipDecisio
 export function budgetAfterPlayingChange(playing: boolean, skipsUsed: number): number {
   return playing ? 0 : skipsUsed;
 }
+
+/**
+ * Un errore di rete non consuma la coda ma non lascia nemmeno il player
+ * fermo ad aspettare un dito: si riprova da soli, a distanze crescenti,
+ * per il tempo di un tunnel o di un cambio di cella. Esaurite le attese
+ * resta l'avviso con Riprova.
+ */
+export const NETWORK_RETRY_DELAYS_MS: readonly number[] = [2000, 5000, 10000];
+
+/** Attesa prima del tentativo numero `attempt` (da 0), o `null` se basta così. */
+export function networkRetryDelay(attempt: number): number | null {
+  return NETWORK_RETRY_DELAYS_MS[attempt] ?? null;
+}

@@ -9,7 +9,7 @@ import { exportLibrary, pickBackup, saveLibrary } from '@/services/libraryBackup
 import { createPlaylist, getLibrary, importLibrary, useLibrary } from '@/store/library';
 import { previewImport, type ImportPreview } from '@/store/libraryExport';
 import type { LibraryState } from '@/store/librarySchema';
-import { colors, motion, radius, spacing, type } from '@/theme';
+import { colors, motion, radius, spacing, touch, type } from '@/theme';
 
 /** Righe dell'anteprima: si mostra solo cio' che cambia davvero. */
 function previewLines(p: ImportPreview): string[] {
@@ -131,7 +131,7 @@ export default function LibraryScreen() {
               finestra, e le aperture nell'app non vibrano. */}
           <PressableScale
             onPress={() => setCreating(true)}
-            hitSlop={12}
+            containerStyle={touch.target}
             scaleTo={motion.iconPressScale}
             accessibilityRole="button"
             accessibilityLabel="Nuova playlist"
@@ -248,7 +248,7 @@ export default function LibraryScreen() {
             {"Niente viene tolto: l'import si aggiunge alla libreria attuale."}
           </Text>
           <View style={styles.dialogActions}>
-            <Pressable onPress={() => setPending(null)} hitSlop={12}>
+            <Pressable onPress={() => setPending(null)} style={touch.target}>
               <Text style={styles.dialogCancel}>Annulla</Text>
             </Pressable>
             {/* Senza `haptic`: il feedback lo da' l'esito dell'import, non il tocco. */}

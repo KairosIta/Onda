@@ -17,7 +17,7 @@ import {
   tracksOf,
   useLibrary,
 } from '@/store/library';
-import { colors, motion, radius, spacing, type } from '@/theme';
+import { colors, motion, radius, spacing, touch, type } from '@/theme';
 import { shuffled } from '@/utils/shuffle';
 
 export default function PlaylistScreen() {
@@ -36,7 +36,7 @@ export default function PlaylistScreen() {
   if (!playlist) {
     return (
       <Screen>
-        <Empty title="Playlist non trovata" hint="Forse e' stata eliminata." />
+        <Empty title="Playlist non trovata" hint="Forse è stata eliminata." />
       </Screen>
     );
   }
@@ -89,7 +89,7 @@ export default function PlaylistScreen() {
               (preferito, shuffle), non come un bottone. */}
           {tracks.length > 1 ? (
             <PressableScale
-              hitSlop={12}
+              containerStyle={touch.target}
               scaleTo={motion.iconPressScale}
               onPress={() => {
                 haptics.toggle(!editing);
@@ -107,7 +107,7 @@ export default function PlaylistScreen() {
             </PressableScale>
           ) : null}
           <PressableScale
-            hitSlop={12}
+            containerStyle={touch.target}
             scaleTo={motion.iconPressScale}
             onPress={() => {
               setDraft(playlist.name);
@@ -119,7 +119,7 @@ export default function PlaylistScreen() {
             <Ionicons name="pencil-outline" size={20} color={colors.textMuted} />
           </PressableScale>
           <PressableScale
-            hitSlop={12}
+            containerStyle={touch.target}
             scaleTo={motion.iconPressScale}
             onPress={confirmDelete}
             accessibilityRole="button"
@@ -153,7 +153,7 @@ export default function PlaylistScreen() {
                 </Text>
               </View>
               <Pressable
-                hitSlop={8}
+                style={touch.target}
                 disabled={index === 0}
                 onPress={() => move(index, index - 1)}
                 accessibilityLabel="Sposta su"
@@ -165,10 +165,10 @@ export default function PlaylistScreen() {
                 />
               </Pressable>
               <Pressable
-                hitSlop={8}
+                style={touch.target}
                 disabled={index === tracks.length - 1}
                 onPress={() => move(index, index + 1)}
-                accessibilityLabel="Sposta giu'"
+                accessibilityLabel="Sposta giù"
               >
                 <Ionicons
                   name="chevron-down"
@@ -177,7 +177,7 @@ export default function PlaylistScreen() {
                 />
               </Pressable>
               <Pressable
-                hitSlop={8}
+                style={touch.target}
                 onPress={() => {
                   haptics.reject();
                   removeFromPlaylist(playlist.id, item.uid);

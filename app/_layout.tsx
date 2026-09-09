@@ -2,11 +2,12 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { type ErrorBoundaryProps, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { createQueryClient } from '@/services/queryClient';
 import { setupPlayer } from '@/services/setupPlayer';
+import { startNotificationPermissionWatch } from '@/store/notificationPermission';
 import { colors, radius, spacing, type } from '@/theme';
 
 // Reidratato da MMKV prima del primo render: vedi services/queryClient.
@@ -65,27 +66,81 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   );
 }
 
+/**
+ * Il player nativo non si e' avviato: senza, nessuna schermata ha senso.
+ * `setupPlayer` dopo un errore si lascia richiamare, quindi Riprova ritenta
+ * davvero; il messaggio si può selezionare e copiare per una segnalazione.
+ */
+function PlayerSetupFailed({
+  error,
+  retrying,
+  onRetry,
+}: {
+  error: string;
+  retrying: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <View style={styles.crash}>
+      <Text style={styles.crashTitle}>Il player non si è avviato</Text>
+      <Text style={styles.crashHint}>
+        Senza il player nativo Onda non può riprodurre niente. Riprova; se succede ancora, copia il
+        messaggio qui sotto e segnalalo.
+      </Text>
+
+      <Text style={styles.crashError} selectable accessibilityLabel={`Errore: ${error}`}>
+        {error}
+      </Text>
+
+      <Pressable
+        onPress={onRetry}
+        disabled={retrying}
+        style={({ pressed }) => [
+          styles.crashButton,
+          (pressed || retrying) && styles.crashButtonOff,
+        ]}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: retrying, busy: retrying }}
+      >
+        <Text style={styles.crashButtonText}>{retrying ? 'Riprovo…' : 'Riprova'}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function RootLayout() {
   const [error, setError] = useState<string | null>(null);
   const [playerReady, setPlayerReady] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  // Un contatore invece di una funzione nell'effetto: ogni Riprova lo
+  // incrementa e l'effetto riparte, senza setState sincroni al montaggio.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
+    let alive = true;
     setupPlayer()
-      .then(() => setPlayerReady(true))
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, []);
+      .then(() => {
+        if (!alive) return;
+        setError(null);
+        setPlayerReady(true);
+      })
+      .catch((e) => alive && setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => alive && setRetrying(false));
+    return () => {
+      alive = false;
+    };
+  }, [attempt]);
 
-  useEffect(() => {
-    // Da Android 13 la notifica del player non compare senza permesso,
-    // e non viene segnalato alcun errore: si vede solo che "non funziona".
-    if (Platform.OS === 'android') {
-      import('react-native').then(({ PermissionsAndroid }) => {
-        PermissionsAndroid.request('android.permission.POST_NOTIFICATIONS' as never).catch(
-          () => {},
-        );
-      });
-    }
-  }, []);
+  const retry = () => {
+    setRetrying(true);
+    setAttempt((n) => n + 1);
+  };
+
+  // Da Android 13 la notifica del player non compare senza permesso e
+  // nessuno lo segnala. Il permesso si chiede al primo play (playerCommands,
+  // useQueue): qui si controlla soltanto lo stato, anche tornando dalle
+  // impostazioni, per far sparire l'avviso nel player.
+  useEffect(() => startNotificationPermissionWatch(), []);
 
   return (
     <GestureHandlerRootView style={styles.root}>
@@ -93,10 +148,8 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <StatusBar style="light" />
           <SafeAreaView style={styles.root} edges={['top']}>
-            {error ? (
-              <View style={styles.fatal}>
-                <Text style={styles.fatalText}>Player non inizializzato: {error}</Text>
-              </View>
+            {error && !playerReady ? (
+              <PlayerSetupFailed error={error} retrying={retrying} onRetry={retry} />
             ) : null}
 
             {/* Il MiniPlayer non sta piu' qui: vive dentro la tab bar
@@ -134,8 +187,6 @@ export default function RootLayout() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  fatal: { padding: spacing.md, backgroundColor: colors.danger },
-  fatalText: { ...type.caption, color: colors.bg },
   crash: {
     flex: 1,
     backgroundColor: colors.bg,

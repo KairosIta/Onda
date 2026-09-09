@@ -1,6 +1,6 @@
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useQueue } from '@/hooks/useQueue';
-import { colors, motion, radius, spacing, type } from '@/theme';
+import { colors, motion, radius, spacing, touch, type } from '@/theme';
 import type { Track } from '@/types/track';
 import { Artwork } from './Artwork';
 import { PressableScale } from './PressableScale';
@@ -40,8 +40,7 @@ export function TrackStrip({ title, tracks, loading = false, more, onPlay }: Pro
         {more ? (
           <Pressable
             onPress={more.onPress}
-            hitSlop={10}
-            style={({ pressed }) => pressed && styles.morePressed}
+            style={({ pressed }) => [touch.target, pressed && styles.morePressed]}
             accessibilityRole="button"
             accessibilityLabel={more.accessibilityLabel ?? more.label}
           >

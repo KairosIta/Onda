@@ -2,7 +2,17 @@ import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -24,7 +34,9 @@ import { usePlaybackStatus } from '@/hooks/usePlaybackStatus';
 import { useUpNext } from '@/hooks/useUpNext';
 import { haptics } from '@/services/haptics';
 import { trackFromMediaItem } from '@/services/mediaItems';
+import { notificationRemedy } from '@/services/notificationPolicy';
 import { describePlayButton } from '@/services/playbackStatus';
+import { artworkLayout } from '@/services/playerLayout';
 import {
   retryPlayback,
   skipToNext,
@@ -32,11 +44,15 @@ import {
   togglePlayback,
 } from '@/services/playerCommands';
 import { resolve } from '@/store/library';
+import {
+  resolveNotificationPermission,
+  useNotificationPermission,
+} from '@/store/notificationPermission';
 import { cycleRepeat, toggleShuffle, usePlaybackPrefs } from '@/store/playback';
 import { useProgress } from '@/store/progress';
 import { activateSession, seekPending, useNowPlaying } from '@/store/session';
 import { cancelSleepTimer, startSleepTimer, useSleepTimer } from '@/store/sleepTimer';
-import { colors, formatTime, motion, radius, spacing, type } from '@/theme';
+import { colors, formatTime, motion, radius, spacing, touch, type } from '@/theme';
 import type { Track } from '@/types/track';
 import { upNextLabel } from '@/utils/upNext';
 
@@ -91,10 +107,22 @@ export default function PlayerScreen() {
   // di navigazione, e senza questo margine la riga della licenza ci finisce
   // sotto — proprio quella che per Jamendo deve restare leggibile.
   const insets = useSafeAreaInsets();
+  // La copertina si adatta a quel che resta dello schermo, cosi' controlli
+  // e licenza non finiscono mai fuori; se non basta, il pannello scorre.
+  const window = useWindowDimensions();
+  const art = artworkLayout({
+    width: window.width,
+    height: window.height,
+    fontScale: window.fontScale,
+    insetTop: insets.top,
+    insetBottom: insets.bottom,
+    horizontalPadding: spacing.xl,
+  });
   // Il brano puo' venire dal player nativo o dalla coda ripristinata dopo
   // un riavvio: finche' e' `pending` il player non lo conosce ancora.
   const { item: active, pending } = useNowPlaying();
   const status = usePlaybackStatus();
+  const notificationFix = notificationRemedy(useNotificationPermission());
   const { position, duration, buffered } = useProgress();
   const { shuffle, repeat } = usePlaybackPrefs();
   const sleepEndsAt = useSleepTimer();
@@ -219,274 +247,310 @@ export default function PlayerScreen() {
       <Animated.View style={[StyleSheet.absoluteFill, styles.scrim, scrimStyle]} />
 
       <Animated.View style={[styles.panel, { paddingBottom: insets.bottom }, panelStyle]}>
-        <GestureDetector gesture={pan}>
-          <View>
-            {/* Icone sole: tutte con la scala da icona, cosi' nella stessa
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          scrollEnabled={art.cramped}
+          bounces={false}
+          showsVerticalScrollIndicator={false}
+        >
+          <GestureDetector gesture={pan}>
+            <View>
+              {/* Icone sole: tutte con la scala da icona, cosi' nella stessa
                 riga niente risponde in modo diverso dal vicino. */}
-            <View style={styles.topBar}>
-              <PressableScale
-                onPress={() => router.back()}
-                hitSlop={16}
-                scaleTo={motion.iconPressScale}
-                accessibilityRole="button"
-                accessibilityLabel="Chiudi"
-              >
-                <Ionicons name="chevron-down" size={28} color={colors.textMuted} />
-              </PressableScale>
-
-              <View style={styles.topActions}>
+              <View style={styles.topBar}>
                 <PressableScale
-                  onPress={() => setSleepOpen(true)}
-                  hitSlop={12}
+                  onPress={() => router.back()}
+                  containerStyle={touch.target}
                   scaleTo={motion.iconPressScale}
                   accessibilityRole="button"
-                  accessibilityLabel="Timer di spegnimento"
+                  accessibilityLabel="Chiudi"
                 >
-                  <Ionicons
-                    name={sleepEndsAt ? 'moon' : 'moon-outline'}
-                    size={22}
-                    color={sleepEndsAt ? colors.accent : colors.textMuted}
-                  />
+                  <Ionicons name="chevron-down" size={28} color={colors.textMuted} />
                 </PressableScale>
-                <PressableScale
-                  onPress={openQueue}
-                  hitSlop={12}
-                  scaleTo={motion.iconPressScale}
-                  accessibilityRole="button"
-                  accessibilityLabel="Coda di riproduzione"
-                >
-                  <Ionicons name="list" size={24} color={colors.textMuted} />
-                </PressableScale>
-              </View>
-            </View>
 
-            <Animated.View style={[styles.artWrap, artStyle]}>
-              {/* Qui l'immagine e' larga quanto lo schermo: la misura da lista
-                  ci arriverebbe sgranata. */}
-              <Artwork
-                uri={track.artworkLargeUrl ?? track.artworkUrl}
-                radius={radius.lg}
-                priority="high"
-                style={styles.art}
-              />
-            </Animated.View>
-
-            <View style={styles.metaRow}>
-              <View style={styles.meta}>
-                <Text numberOfLines={2} style={styles.title}>
-                  {track.title}
-                </Text>
-                {track.artistId ? (
-                  <Pressable
-                    onPress={() => {
-                      router.back();
-                      router.push({
-                        pathname: '/artist/[source]/[id]',
-                        params: { source: track.source, id: track.artistId! },
-                      });
-                    }}
-                    hitSlop={8}
-                    accessibilityRole="link"
-                    accessibilityLabel={`Vai alla pagina di ${track.artist}`}
+                <View style={styles.topActions}>
+                  <PressableScale
+                    onPress={() => setSleepOpen(true)}
+                    containerStyle={touch.target}
+                    scaleTo={motion.iconPressScale}
+                    accessibilityRole="button"
+                    accessibilityLabel="Timer di spegnimento"
                   >
-                    <Text numberOfLines={1} style={[styles.artist, styles.artistLink]}>
+                    <Ionicons
+                      name={sleepEndsAt ? 'moon' : 'moon-outline'}
+                      size={22}
+                      color={sleepEndsAt ? colors.accent : colors.textMuted}
+                    />
+                  </PressableScale>
+                  <PressableScale
+                    onPress={openQueue}
+                    containerStyle={touch.target}
+                    scaleTo={motion.iconPressScale}
+                    accessibilityRole="button"
+                    accessibilityLabel="Coda di riproduzione"
+                  >
+                    <Ionicons name="list" size={24} color={colors.textMuted} />
+                  </PressableScale>
+                </View>
+              </View>
+
+              <Animated.View style={[styles.artWrap, artStyle]}>
+                {/* Qui l'immagine e' larga quanto lo schermo: la misura da lista
+                  ci arriverebbe sgranata. */}
+                <Artwork
+                  uri={track.artworkLargeUrl ?? track.artworkUrl}
+                  radius={radius.lg}
+                  priority="high"
+                  style={{ width: art.size, height: art.size }}
+                />
+              </Animated.View>
+
+              <View style={styles.metaRow}>
+                <View style={styles.meta}>
+                  <Text numberOfLines={2} style={styles.title}>
+                    {track.title}
+                  </Text>
+                  {track.artistId ? (
+                    <Pressable
+                      onPress={() => {
+                        router.back();
+                        router.push({
+                          pathname: '/artist/[source]/[id]',
+                          params: { source: track.source, id: track.artistId! },
+                        });
+                      }}
+                      hitSlop={8}
+                      accessibilityRole="link"
+                      accessibilityLabel={`Vai alla pagina di ${track.artist}`}
+                    >
+                      <Text numberOfLines={1} style={[styles.artist, styles.artistLink]}>
+                        {track.artist}
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    <Text numberOfLines={1} style={styles.artist}>
                       {track.artist}
                     </Text>
-                  </Pressable>
-                ) : (
-                  <Text numberOfLines={1} style={styles.artist}>
-                    {track.artist}
-                  </Text>
-                )}
+                  )}
+                </View>
+                <HeartButton track={track} size={26} />
               </View>
-              <HeartButton track={track} size={26} />
             </View>
-          </View>
-        </GestureDetector>
+          </GestureDetector>
 
-        {/* La porzione gia' scaricata sta dietro lo slider, che disegna
+          {/* La porzione gia' scaricata sta dietro lo slider, che disegna
             solo la parte suonata e il pallino: la traccia di sfondo e' la
             nostra, cosi' ci si puo' disegnare sopra il buffer. */}
-        <View style={styles.sliderWrap}>
-          <View style={styles.sliderTrack} pointerEvents="none">
-            <View style={[styles.sliderBuffered, { transform: [{ scaleX: bufferedPct }] }]} />
-          </View>
-          <Slider
-            minimumValue={0}
-            maximumValue={Math.max(1, duration)}
-            value={shown}
-            minimumTrackTintColor={colors.accent}
-            maximumTrackTintColor="transparent"
-            thumbTintColor={colors.accent}
-            onValueChange={setSeekTo}
-            onSlidingComplete={(v) => {
-              // Prima del primo play il brano non e' nel player: si
-              // ricorda solo da dove ripartira'.
-              if (pending) seekPending(v);
-              else TrackPlayer.seekTo(v);
-              setSeekTo(null);
-            }}
-            accessibilityLabel="Posizione nel brano"
-          />
-        </View>
-
-        <View style={styles.times}>
-          <Text style={styles.time}>{formatTime(shown)}</Text>
-          <Text style={styles.time}>{formatTime(duration)}</Text>
-        </View>
-
-        <View style={styles.controls}>
-          <PressableScale
-            onPress={() => {
-              haptics.toggle(!shuffle);
-              toggleShuffle();
-            }}
-            hitSlop={12}
-            scaleTo={motion.iconPressScale}
-            accessibilityRole="button"
-            accessibilityLabel="Riproduzione casuale"
-            accessibilityState={{ selected: shuffle }}
-          >
-            <Ionicons name="shuffle" size={24} color={shuffle ? colors.accent : colors.textMuted} />
-          </PressableScale>
-
-          <PressableScale
-            onPress={skipToPrevious}
-            hitSlop={16}
-            scaleTo={motion.iconPressScale}
-            haptic="tap"
-            accessibilityRole="button"
-            accessibilityLabel="Traccia precedente"
-          >
-            <Ionicons name="play-skip-back" size={30} color={colors.text} />
-          </PressableScale>
-
-          <PressableScale
-            style={styles.playButton}
-            onPress={() => togglePlayback(status)}
-            scaleTo={motion.iconPressScale}
-            haptic="tap"
-            accessibilityRole="button"
-            accessibilityLabel={playButton.label}
-            accessibilityState={{ busy: playButton.busy }}
-          >
-            {playButton.busy ? (
-              <ActivityIndicator color={colors.bg} />
-            ) : (
-              <Ionicons name={playButton.icon} size={32} color={colors.bg} />
-            )}
-          </PressableScale>
-
-          <PressableScale
-            onPress={skipToNext}
-            hitSlop={16}
-            scaleTo={motion.iconPressScale}
-            haptic="tap"
-            accessibilityRole="button"
-            accessibilityLabel="Traccia successiva"
-          >
-            <Ionicons name="play-skip-forward" size={30} color={colors.text} />
-          </PressableScale>
-
-          <PressableScale
-            onPress={() => haptics.toggle(cycleRepeat() !== RepeatMode.Off)}
-            hitSlop={12}
-            scaleTo={motion.iconPressScale}
-            accessibilityRole="button"
-            accessibilityLabel="Modalita' di ripetizione"
-            accessibilityState={{ selected: repeat !== RepeatMode.Off }}
-          >
-            <View>
-              <Ionicons
-                name="repeat"
-                size={24}
-                color={repeat === RepeatMode.Off ? colors.textMuted : colors.accent}
-              />
-              {repeat === RepeatMode.One ? <Text style={styles.repeatOne}>1</Text> : null}
+          <View style={styles.sliderWrap}>
+            <View style={styles.sliderTrack} pointerEvents="none">
+              <View style={[styles.sliderBuffered, { transform: [{ scaleX: bufferedPct }] }]} />
             </View>
-          </PressableScale>
-        </View>
+            <Slider
+              minimumValue={0}
+              maximumValue={Math.max(1, duration)}
+              value={shown}
+              minimumTrackTintColor={colors.accent}
+              maximumTrackTintColor="transparent"
+              thumbTintColor={colors.accent}
+              onValueChange={setSeekTo}
+              onSlidingComplete={(v) => {
+                // Prima del primo play il brano non e' nel player: si
+                // ricorda solo da dove ripartira'.
+                if (pending) seekPending(v);
+                else TrackPlayer.seekTo(v);
+                setSeekTo(null);
+              }}
+              accessibilityLabel="Posizione nel brano"
+            />
+          </View>
 
-        {/* Cosa viene dopo, senza aprire la Coda: e' la domanda piu'
-            frequente davanti a un player, e la risposta sta in una riga. */}
-        {nextLabel ? (
-          <Pressable
-            onPress={openQueue}
-            style={({ pressed }) => [styles.upNext, pressed && styles.upNextPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={`Prossimo: ${nextLabel}. Apri la coda di riproduzione`}
-          >
-            <Ionicons name="list-outline" size={16} color={colors.textMuted} />
-            <Text numberOfLines={1} style={styles.upNextText}>
-              <Text style={styles.upNextKey}>Prossimo · </Text>
-              {nextLabel}
-            </Text>
-          </Pressable>
-        ) : null}
+          <View style={styles.times}>
+            <Text style={styles.time}>{formatTime(shown)}</Text>
+            <Text style={styles.time}>{formatTime(duration)}</Text>
+          </View>
 
-        {/* L'errore si dice e si risolve qui, non solo con un'icona: il
-            budget di salti (playbackPolicy) copre i brani rotti, ma una
-            rete caduta lascia il player fermo in attesa di qualcuno. */}
-        {status === 'error' ? (
-          <View style={styles.problem} accessibilityLiveRegion="polite">
-            <Ionicons name="cloud-offline-outline" size={18} color={colors.danger} />
-            <Text style={styles.problemText}>Il brano non risponde. Controlla la rete.</Text>
+          <View style={styles.controls}>
             <PressableScale
-              onPress={retryPlayback}
-              haptic="tap"
-              style={styles.problemAction}
+              onPress={() => {
+                haptics.toggle(!shuffle);
+                toggleShuffle();
+              }}
+              containerStyle={touch.target}
+              scaleTo={motion.iconPressScale}
               accessibilityRole="button"
-              accessibilityLabel="Riprova a riprodurre"
+              accessibilityLabel="Riproduzione casuale"
+              accessibilityState={{ selected: shuffle }}
             >
-              <Text style={styles.problemActionText}>Riprova</Text>
+              <Ionicons
+                name="shuffle"
+                size={24}
+                color={shuffle ? colors.accent : colors.textMuted}
+              />
+            </PressableScale>
+
+            <PressableScale
+              onPress={skipToPrevious}
+              containerStyle={touch.target}
+              scaleTo={motion.iconPressScale}
+              haptic="tap"
+              accessibilityRole="button"
+              accessibilityLabel="Traccia precedente"
+            >
+              <Ionicons name="play-skip-back" size={30} color={colors.text} />
+            </PressableScale>
+
+            <PressableScale
+              style={styles.playButton}
+              onPress={() => togglePlayback(status)}
+              scaleTo={motion.iconPressScale}
+              haptic="tap"
+              accessibilityRole="button"
+              accessibilityLabel={playButton.label}
+              accessibilityState={{ busy: playButton.busy }}
+            >
+              {playButton.busy ? (
+                <ActivityIndicator color={colors.bg} />
+              ) : (
+                <Ionicons name={playButton.icon} size={32} color={colors.bg} />
+              )}
+            </PressableScale>
+
+            <PressableScale
+              onPress={skipToNext}
+              containerStyle={touch.target}
+              scaleTo={motion.iconPressScale}
+              haptic="tap"
+              accessibilityRole="button"
+              accessibilityLabel="Traccia successiva"
+            >
+              <Ionicons name="play-skip-forward" size={30} color={colors.text} />
+            </PressableScale>
+
+            <PressableScale
+              onPress={() => haptics.toggle(cycleRepeat() !== RepeatMode.Off)}
+              containerStyle={touch.target}
+              scaleTo={motion.iconPressScale}
+              accessibilityRole="button"
+              accessibilityLabel="Modalità di ripetizione"
+              accessibilityState={{ selected: repeat !== RepeatMode.Off }}
+            >
+              <View>
+                <Ionicons
+                  name="repeat"
+                  size={24}
+                  color={repeat === RepeatMode.Off ? colors.textMuted : colors.accent}
+                />
+                {repeat === RepeatMode.One ? <Text style={styles.repeatOne}>1</Text> : null}
+              </View>
             </PressableScale>
           </View>
-        ) : null}
 
-        {sleepEndsAt ? <SleepCountdown key={sleepEndsAt} endsAt={sleepEndsAt} /> : null}
+          {/* Cosa viene dopo, senza aprire la Coda: e' la domanda piu'
+            frequente davanti a un player, e la risposta sta in una riga. */}
+          {nextLabel ? (
+            <Pressable
+              onPress={openQueue}
+              style={({ pressed }) => [styles.upNext, pressed && styles.upNextPressed]}
+              accessibilityRole="button"
+              accessibilityLabel={`Prossimo: ${nextLabel}. Apri la coda di riproduzione`}
+            >
+              <Ionicons name="list-outline" size={16} color={colors.textMuted} />
+              <Text numberOfLines={1} style={styles.upNextText}>
+                <Text style={styles.upNextKey}>Prossimo · </Text>
+                {nextLabel}
+              </Text>
+            </Pressable>
+          ) : null}
 
-        {/* Provenienza e condizioni sono parte dell'attribuzione del contenuto. */}
-        <View style={styles.attribution}>
-          <Text style={styles.attributionSource}>
-            Brano fornito da {track.source === 'audius' ? 'Audius' : 'Jamendo'}
-          </Text>
-          <View style={styles.attributionLinks}>
-            {track.sourceUrl ? (
-              <Pressable
-                onPress={() => Linking.openURL(track.sourceUrl!)}
-                hitSlop={8}
-                accessibilityRole="link"
+          {/* L'errore si dice e si risolve qui, non solo con un'icona: il
+            budget di salti (playbackPolicy) copre i brani rotti, ma una
+            rete caduta lascia il player fermo in attesa di qualcuno. */}
+          {status === 'error' ? (
+            <View style={styles.problem} accessibilityLiveRegion="polite">
+              <Ionicons name="cloud-offline-outline" size={18} color={colors.danger} />
+              <Text style={styles.problemText}>Il brano non risponde. Controlla la rete.</Text>
+              <PressableScale
+                onPress={retryPlayback}
+                haptic="tap"
+                style={styles.problemAction}
+                accessibilityRole="button"
+                accessibilityLabel="Riprova a riprodurre"
               >
-                <Text style={styles.attributionLink}>Pagina del brano</Text>
-              </Pressable>
-            ) : null}
-            {track.licenseUrl ? (
-              <Pressable
-                onPress={() => Linking.openURL(track.licenseUrl!)}
-                hitSlop={8}
-                accessibilityRole="link"
+                <Text style={styles.problemActionText}>Riprova</Text>
+              </PressableScale>
+            </View>
+          ) : null}
+
+          {/* Senza permesso la notifica non compare e nessuno lo dice: qui si
+            spiega cosa manca e si offre la via per rimediare. */}
+          {notificationFix ? (
+            <View style={styles.problem} accessibilityLiveRegion="polite">
+              <Ionicons name="notifications-off-outline" size={18} color={colors.danger} />
+              <Text style={styles.problemText}>
+                Notifiche disattivate: niente controlli nella schermata di blocco.
+              </Text>
+              <PressableScale
+                onPress={resolveNotificationPermission}
+                haptic="tap"
+                style={styles.problemAction}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  notificationFix.kind === 'request'
+                    ? 'Consenti le notifiche'
+                    : 'Apri le impostazioni delle notifiche'
+                }
               >
-                <Text style={styles.attributionLink}>
-                  {track.rightsLabel ?? 'Creative Commons'}
-                </Text>
-              </Pressable>
-            ) : null}
-            {track.source === 'audius' ? (
-              <>
-                <Text style={styles.attributionText}>
-                  {track.rightsLabel ?? 'Regime di diritti non specificato'}
-                </Text>
+                <Text style={styles.problemActionText}>{notificationFix.label}</Text>
+              </PressableScale>
+            </View>
+          ) : null}
+
+          {sleepEndsAt ? <SleepCountdown key={sleepEndsAt} endsAt={sleepEndsAt} /> : null}
+
+          {/* Provenienza e condizioni sono parte dell'attribuzione del contenuto. */}
+          <View style={styles.attribution}>
+            <Text style={styles.attributionSource}>
+              Brano fornito da {track.source === 'audius' ? 'Audius' : 'Jamendo'}
+            </Text>
+            <View style={styles.attributionLinks}>
+              {track.sourceUrl ? (
                 <Pressable
-                  onPress={() => Linking.openURL(AUDIUS_OPEN_MUSIC_LICENSE_URL)}
+                  onPress={() => Linking.openURL(track.sourceUrl!)}
                   hitSlop={8}
                   accessibilityRole="link"
                 >
-                  <Text style={styles.attributionLink}>Open Music License</Text>
+                  <Text style={styles.attributionLink}>Pagina del brano</Text>
                 </Pressable>
-              </>
-            ) : null}
+              ) : null}
+              {track.licenseUrl ? (
+                <Pressable
+                  onPress={() => Linking.openURL(track.licenseUrl!)}
+                  hitSlop={8}
+                  accessibilityRole="link"
+                >
+                  <Text style={styles.attributionLink}>
+                    {track.rightsLabel ?? 'Creative Commons'}
+                  </Text>
+                </Pressable>
+              ) : null}
+              {track.source === 'audius' ? (
+                <>
+                  <Text style={styles.attributionText}>
+                    {track.rightsLabel ?? 'Regime di diritti non specificato'}
+                  </Text>
+                  <Pressable
+                    onPress={() => Linking.openURL(AUDIUS_OPEN_MUSIC_LICENSE_URL)}
+                    hitSlop={8}
+                    accessibilityRole="link"
+                  >
+                    <Text style={styles.attributionLink}>Open Music License</Text>
+                  </Pressable>
+                </>
+              ) : null}
+            </View>
           </View>
-        </View>
+        </ScrollView>
 
         <Modal
           visible={sleepOpen}
@@ -553,8 +617,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   topActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  scroll: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
   artWrap: { alignItems: 'center', marginTop: spacing.md },
-  art: { width: '100%', aspectRatio: 1 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, marginTop: spacing.xl },
   meta: { flex: 1, gap: spacing.xs },
   title: { ...type.display, color: colors.text },
@@ -611,6 +676,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.lg,
     paddingVertical: spacing.xs,
+    minHeight: touch.target.minHeight,
   },
   upNextPressed: { opacity: 0.5 },
   upNextText: { ...type.caption, color: colors.text, flex: 1 },
@@ -628,8 +694,9 @@ const styles = StyleSheet.create({
   },
   problemText: { ...type.caption, color: colors.textMuted, flex: 1 },
   problemAction: {
+    justifyContent: 'center',
+    minHeight: touch.target.minHeight - spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceHigh,
   },

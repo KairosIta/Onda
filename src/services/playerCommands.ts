@@ -1,4 +1,5 @@
 import TrackPlayer from '@rntp/player';
+import { requestNotificationPermission } from '@/store/notificationPermission';
 import { activateSession } from '@/store/session';
 import type { PlaybackStatus } from './playbackStatus';
 
@@ -9,15 +10,20 @@ import type { PlaybackStatus } from './playbackStatus';
  */
 
 export function togglePlayback(status: PlaybackStatus): void {
+  if (status === 'playing' || status === 'buffering') {
+    // Chi tocca uno spinner vuole fermare il caricamento.
+    TrackPlayer.pause();
+    return;
+  }
+
+  // È un play: il momento giusto per chiedere il permesso notifiche, che
+  // senza una riproduzione in corso non avrebbe senso per nessuno.
+  requestNotificationPermission();
+
   // La coda in attesa: caricarla e' gia' il play.
   if (activateSession({ play: true })) return;
 
   switch (status) {
-    case 'playing':
-    case 'buffering':
-      // Chi tocca uno spinner vuole fermare il caricamento.
-      TrackPlayer.pause();
-      return;
     case 'error':
       retryPlayback();
       return;
