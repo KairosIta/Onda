@@ -16,7 +16,7 @@ import { usePlaybackStatus } from '@/hooks/usePlaybackStatus';
 import { describePlayButton } from '@/services/playbackStatus';
 import { skipToNext, togglePlayback } from '@/services/playerCommands';
 import { useProgress } from '@/store/progress';
-import { colors, motion, spacing, type } from '@/theme';
+import { colors, motion, spacing, touch, type } from '@/theme';
 import { Artwork } from './Artwork';
 import { PressableScale } from './PressableScale';
 
@@ -137,7 +137,7 @@ export function MiniPlayer() {
         <PressableScale
           scaleTo={motion.iconPressScale}
           haptic="tap"
-          hitSlop={12}
+          containerStyle={touch.target}
           onPress={() => togglePlayback(status)}
           accessibilityRole="button"
           accessibilityLabel={play.label}
@@ -159,7 +159,7 @@ export function MiniPlayer() {
         <PressableScale
           scaleTo={motion.iconPressScale}
           haptic="tap"
-          hitSlop={12}
+          containerStyle={touch.target}
           onPress={skipToNext}
           accessibilityRole="button"
           accessibilityLabel="Traccia successiva"

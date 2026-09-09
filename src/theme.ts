@@ -74,6 +74,17 @@ export const motion = {
 } as const;
 
 /**
+ * Bersaglio minimo di un controllo a icona: 48×48 dp. `hitSlop` allarga
+ * solo la zona del tocco, mentre il fuoco di TalkBack e di Switch Access
+ * segue i bordi veri della vista: un'icona da 22 dp resta un bersaglio
+ * da 22 dp per chi naviga senza dito. Va sul contenitore esterno, quello
+ * che riceve il tocco, non sulla vista che si anima.
+ */
+export const touch = {
+  target: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
+} as const;
+
+/**
  * Durata leggibile. Le ore compaiono solo quando ci sono: `3:07` resta
  * `3:07` e non diventa `0:03:07`, che a colpo d'occhio si legge come tre
  * secondi. Oltre l'ora minuti e secondi passano a due cifre, altrimenti

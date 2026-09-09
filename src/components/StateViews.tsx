@@ -1,5 +1,5 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { colors, radius, spacing, type } from '@/theme';
+import { colors, radius, spacing, touch, type } from '@/theme';
 import { PressableScale } from './PressableScale';
 
 export function Loading() {
@@ -51,11 +51,34 @@ export function Empty({
   );
 }
 
-/** Dice cosa e' andato storto e cosa fare, non "ops qualcosa e' andato storto". */
-export function ErrorNotice({ message }: { message: string }) {
+/**
+ * Dice cosa e' andato storto e cosa fare, non "ops qualcosa e' andato storto".
+ * Con `action` offre un Riprova mirato a quella sola richiesta: il profilo
+ * di un artista può cadere mentre i suoi brani ci sono, e viceversa.
+ */
+export function ErrorNotice({
+  message,
+  action,
+}: {
+  message: string;
+  action?: { label: string; onPress: () => void; busy?: boolean };
+}) {
   return (
-    <View style={styles.notice}>
+    <View style={styles.notice} accessibilityLiveRegion="polite">
       <Text style={styles.noticeText}>{message}</Text>
+      {action ? (
+        <PressableScale
+          onPress={action.onPress}
+          disabled={action.busy}
+          haptic="tap"
+          style={[styles.noticeAction, action.busy && styles.actionOff]}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: action.busy, busy: action.busy }}
+        >
+          {action.busy ? <ActivityIndicator size="small" color={colors.text} /> : null}
+          <Text style={styles.noticeActionText}>{action.label}</Text>
+        </PressableScale>
+      ) : null}
     </View>
   );
 }
@@ -74,15 +97,19 @@ const styles = StyleSheet.create({
   action: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.sm,
+    minHeight: touch.target.minHeight,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 2,
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceHigh,
   },
   actionOff: { opacity: 0.5 },
   actionText: { ...type.label, color: colors.text },
   notice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,
     padding: spacing.md,
@@ -91,5 +118,15 @@ const styles = StyleSheet.create({
     borderLeftWidth: 2,
     borderLeftColor: colors.danger,
   },
-  noticeText: { ...type.caption, color: colors.textMuted },
+  noticeText: { ...type.caption, color: colors.textMuted, flex: 1 },
+  noticeAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    minHeight: touch.target.minHeight - spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+  },
+  noticeActionText: { ...type.label, fontSize: 13, color: colors.text },
 });

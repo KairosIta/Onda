@@ -11,13 +11,15 @@ import { useInfiniteTracks } from '@/hooks/useInfiniteTracks';
 import { useQueue } from '@/hooks/useQueue';
 import { sourceById } from '@/services/sources';
 import { colors, radius, spacing, type } from '@/theme';
+import { parseEntityId } from '@/utils/routes';
 import { shuffled } from '@/utils/shuffle';
 
 const PAGE = 25;
 
 export default function ArtistScreen() {
-  const { source, id } = useLocalSearchParams<{ source: string; id: string }>();
+  const { source, id: rawId } = useLocalSearchParams<{ source: string; id: string }>();
   const music = sourceById(source);
+  const id = parseEntityId(rawId) ?? '';
   const { playList } = useQueue();
 
   const info = useQuery({
@@ -26,16 +28,25 @@ export default function ArtistScreen() {
     enabled: Boolean(music && id),
   });
 
-  const { tracks, loadMore, isLoading, isFetchingNextPage, error } = useInfiniteTracks(
-    ['artist-tracks', source, id],
-    (offset) => music!.artistTracks(id, { limit: PAGE, offset }).then((t) => ({ tracks: t })),
-    { pageSize: PAGE, enabled: Boolean(music && id) },
-  );
+  const { tracks, loadMore, retry, isLoading, isFetching, isFetchingNextPage, error } =
+    useInfiniteTracks(
+      ['artist-tracks', source, id],
+      (offset) => music!.artistTracks(id, { limit: PAGE, offset }).then((t) => ({ tracks: t })),
+      { pageSize: PAGE, enabled: Boolean(music && id) },
+    );
+
+  if (!id) {
+    return (
+      <Screen>
+        <Empty title="Artista non indicato" hint="Il collegamento non dice quale artista aprire." />
+      </Screen>
+    );
+  }
 
   if (!music) {
     return (
       <Screen>
-        <Empty title="Sorgente sconosciuta" hint={`"${source}" non e' fra quelle registrate.`} />
+        <Empty title="Sorgente sconosciuta" hint={`"${source}" non è fra quelle registrate.`} />
       </Screen>
     );
   }
@@ -88,8 +99,21 @@ export default function ArtistScreen() {
               </Text>
             ) : null}
 
-            {info.error ? <ErrorNotice message="Non sono riuscito a leggere il profilo." /> : null}
-            {error ? <ErrorNotice message="Non sono riuscito a caricare i brani." /> : null}
+            {/* Con dei brani in lista gli errori si dicono qui, ciascuno
+                con il suo Riprova; a lista vuota parla solo `empty`, così
+                non compaiono insieme due avvisi e «Nessun brano». */}
+            {info.error && tracks.length > 0 ? (
+              <ErrorNotice
+                message="Non sono riuscito a leggere il profilo."
+                action={{ label: 'Riprova', onPress: () => info.refetch(), busy: info.isFetching }}
+              />
+            ) : null}
+            {error && tracks.length > 0 ? (
+              <ErrorNotice
+                message="Non sono riuscito a caricare altri brani."
+                action={{ label: 'Riprova', onPress: retry, busy: isFetching }}
+              />
+            ) : null}
           </View>
         }
         footer={
@@ -98,10 +122,25 @@ export default function ArtistScreen() {
           ) : null
         }
         empty={
-          <Empty
-            title="Nessun brano riproducibile"
-            hint={`Su ${music.label} questo artista non ha tracce in streaming libero.`}
-          />
+          error || info.error ? (
+            <Empty
+              title="Non sono riuscito a caricare l'artista"
+              hint="Controlla la rete e riprova."
+              action={{
+                label: 'Riprova',
+                onPress: () => {
+                  if (error) retry();
+                  if (info.error) info.refetch();
+                },
+                busy: isFetching || info.isFetching,
+              }}
+            />
+          ) : (
+            <Empty
+              title="Nessun brano riproducibile"
+              hint={`Su ${music.label} questo artista non ha tracce in streaming libero.`}
+            />
+          )
         }
       />
     </Screen>

@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { PressableScale } from '@/components/PressableScale';
-import { colors, motion, radius, spacing, type } from '@/theme';
+import { colors, motion, radius, spacing, touch, type } from '@/theme';
 
 interface Props {
   title: string;
@@ -40,7 +40,7 @@ export function CollectionHeader({
       <View style={styles.topRow}>
         <PressableScale
           onPress={() => router.back()}
-          hitSlop={16}
+          containerStyle={touch.target}
           scaleTo={motion.iconPressScale}
           accessibilityRole="button"
           accessibilityLabel="Indietro"

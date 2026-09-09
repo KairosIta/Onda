@@ -1,5 +1,6 @@
 import { type ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet } from 'react-native';
+import { type Snack, Snackbar } from './Snackbar';
 import { useQueue } from '@/hooks/useQueue';
 import { remember, useLibrary } from '@/store/library';
 import { useNowPlaying } from '@/store/session';
@@ -38,6 +39,7 @@ export function TrackList({
   const { item: active } = useNowPlaying();
   const { favorites } = useLibrary();
   const [menuFor, setMenuFor] = useState<Track | null>(null);
+  const [snack, setSnack] = useState<Snack | null>(null);
 
   // Lookup O(1) invece di un includes() per riga.
   const favSet = useMemo(() => new Set(favorites), [favorites]);
@@ -54,6 +56,7 @@ export function TrackList({
   );
   const handleMore = useCallback((track: Track) => setMenuFor(track), []);
   const closeMenu = useCallback(() => setMenuFor(null), []);
+  const dismissSnack = useCallback(() => setSnack(null), []);
 
   const renderItem = useCallback(
     ({ item, index }: { item: Track; index: number }) => (
@@ -87,7 +90,15 @@ export function TrackList({
         windowSize={11}
       />
 
-      <TrackActions track={menuFor} fromPlaylistId={fromPlaylistId} onClose={closeMenu} />
+      <TrackActions
+        track={menuFor}
+        fromPlaylistId={fromPlaylistId}
+        onClose={closeMenu}
+        onDone={setSnack}
+      />
+      {/* Sta in fondo al contenitore della schermata, che finisce sopra il
+          mini-player e la tab bar: non copre mai i controlli. */}
+      <Snackbar snack={snack} onDismiss={dismissSnack} />
     </>
   );
 }

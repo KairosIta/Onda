@@ -10,7 +10,8 @@ import { TrackList } from '@/components/TrackList';
 import { useQueue } from '@/hooks/useQueue';
 import { haptics } from '@/services/haptics';
 import { clearHistory, tracksOf, useLibrary } from '@/store/library';
-import { colors, motion } from '@/theme';
+import { colors, motion, touch } from '@/theme';
+import { parseCollectionKind } from '@/utils/routes';
 import { shuffled } from '@/utils/shuffle';
 
 const COPY = {
@@ -27,9 +28,10 @@ const COPY = {
 } as const;
 
 export default function CollectionScreen() {
-  const { kind } = useLocalSearchParams<{ kind: string }>();
+  const { kind: rawKind } = useLocalSearchParams<{ kind: string }>();
+  const kind = parseCollectionKind(rawKind);
   const isHistory = kind === 'history';
-  const copy = COPY[isHistory ? 'history' : 'favorites'];
+  const copy = COPY[kind ?? 'favorites'];
 
   const library = useLibrary();
   const { playList } = useQueue();
@@ -40,6 +42,15 @@ export default function CollectionScreen() {
     () => tracksOf(isHistory ? library.history : library.favorites),
     [isHistory, library.history, library.favorites],
   );
+
+  // Un deep link con una raccolta ignota: si dice, non si aprono i Preferiti.
+  if (!kind) {
+    return (
+      <Screen>
+        <Empty title="Raccolta sconosciuta" hint={`"${rawKind}" non è fra le raccolte di Onda.`} />
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
@@ -55,7 +66,7 @@ export default function CollectionScreen() {
             actions={
               isHistory && tracks.length > 0 ? (
                 <PressableScale
-                  hitSlop={12}
+                  containerStyle={touch.target}
                   scaleTo={motion.iconPressScale}
                   accessibilityRole="button"
                   accessibilityLabel="Svuota la cronologia"

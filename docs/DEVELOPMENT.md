@@ -100,16 +100,22 @@ app/
   playlist/[id].tsx         playlist locale, con rinomina e riordino
   artist/[source]/[id].tsx  pagina artista (entrambe le sorgenti)
   album/[source]/[id].tsx   pagina album (solo Jamendo, vedi sotto)
+  +not-found.tsx            URL che non corrisponde a niente: messaggio e ritorno a Scopri
 src/
   types/track.ts            modello unificato + interfaccia MusicSource
   services/sources/         adapter Audius e Jamendo + registro federato (brani, vetrine, artisti, album)
   services/genres.ts        unica tabella di traduzione dei generi tra le due API
   services/storage.ts       istanza MMKV + lettura JSON sicura e scrittura
+  services/storageSchema.ts versione dello schema, migrazioni con backup, quarantena (puro)
   services/setupPlayer.ts   configurazione RNTP (una volta per processo)
   services/playbackService.ts  comandi da notifica, lockscreen, Bluetooth
   services/mediaItems.ts    andata e ritorno fra il nostro modello e gli elementi di coda RNTP
   services/playbackStatus.ts  lo stato unico del tasto play, ricavato dai segnali RNTP
   services/playerCommands.ts  play, pausa e skip con la semantica giusta per ogni stato
+  services/playbackPolicy.ts  quando saltare uno stream morto e quando riprovare la rete da soli
+  services/historyPolicy.ts   dopo quanti secondi un brano conta come ascoltato
+  services/notificationPolicy.ts  regole del permesso notifiche (Android 13+), senza React Native
+  services/playerLayout.ts    quanto puo' essere grande la copertina nel player
   services/progressPolicy.ts  quando, e quanto spesso, leggere la posizione dal player
   services/queryClient.ts   React Query reidratata da MMKV; potatura in queryPersistenceSchema.ts
   services/browseTree.ts    l'albero per Android Auto dalla libreria (puro); l'invio sta in browseTreeSync.ts
@@ -118,12 +124,14 @@ src/
   store/session.ts          brano attivo + coda e posizione salvate, "in attesa" all'avvio; useNowPlaying (schema in sessionSchema.ts)
   store/progress.ts         l'unico osservatore di progresso dell'app
   store/playbackFault.ts    "il brano e' morto": su Android lo stato error non arriva mai
+  store/notificationPermission.ts  stato del permesso notifiche, chiesto al primo play
   store/sleepTimer.ts       timer di spegnimento (volatile, di proposito)
   store/searchHistory.ts    le ultime ricerche (persistite); la regola in utils/recentQueries.ts
   hooks/useQueue.ts         sostituzione coda, riproduci dopo, accoda
   hooks/usePlaybackStatus.ts  lo stato del player come hook
   hooks/useUpNext.ts        cosa viene dopo il brano corrente; la regola in utils/upNext.ts
   utils/reorder.ts          geometria del riordino a trascinamento della coda (worklet)
+  utils/routes.ts           validazione dei parametri di route (raccolta, id) da deep link
   hooks/useInfiniteTracks.ts  scroll infinito su qualunque elenco, federato o no
   services/playbackService.ts registra i cambi di traccia, anche in background
   components/               TrackList, TrackRow, MiniPlayer, menu contestuale, ...
@@ -159,6 +167,15 @@ I dati letti da MMKV vengono validati campo per campo prima di entrare negli
 store. Un campo di una vecchia versione o malformato viene normalizzato o
 scartato senza buttare via le altre parti sane della libreria.
 
+Lo storage ha una versione (`schema.version`, `services/storageSchema`,
+puro e testato): `services/storage` la porta alla corrente prima che
+qualunque store legga. Dati senza versione valgono come versione 1; prima di
+migrare ogni chiave nota viene copiata in `backup.*`, e se una migrazione
+lancia si ripristina tutto e la versione non avanza. Una versione piu' nuova
+della nostra non si tocca. Un valore che non si riesce nemmeno a parsare non
+si cancella: finisce in `quarantine.*`. Una migrazione nuova e' una voce in
+`MIGRATIONS` con la sua versione di arrivo e un test da versione vecchia.
+
 La coda invece non e' in uno store nostro: vive dentro RNTP, che resta l'unica
 fonte di verita' anche quando i comandi arrivano dalla notifica. `store/session`
 la fotografa su MMKV quando cambia (anche dal gestore headless) e salva la
@@ -177,7 +194,23 @@ quindi un flag che `playbackService` alza quando un errore ferma il player e
 che il primo caricamento o cambio brano abbassa; e' quel flag che fa comparire
 l'avviso con Riprova. Per lo stesso motivo il salto automatico dopo un brano
 morto chiama `retry()` dopo `skipToNext()`: senza ripreparare la sorgente,
-`play()` su un player `idle` non fa niente.
+`play()` su un player `idle` non fa niente. Un errore di rete invece non
+consuma il budget di salti: `playbackService` riprova da solo tre volte a
+distanze crescenti (`NETWORK_RETRY_DELAYS_MS` in `playbackPolicy`), e solo
+dopo resta all'utente il Riprova.
+
+La cronologia non si aggiorna al cambio di brano ma al tick di progresso:
+`services/historyPolicy` dice quando un brano conta come ascoltato (trenta
+secondi, o meta' se e' piu' corto di un minuto), cosi' un brano saltato non
+finisce in «Ascoltati di recente». Il catalogo volatile viene comunque
+avvisato subito, perche' la cronologia risolve per uid.
+
+Da Android 13 la notifica del player richiede un permesso a runtime. Onda lo
+chiede al primo play (`useQueue.playList` e `playerCommands.togglePlayback`),
+non all'avvio: le regole stanno in `services/notificationPolicy`, lo stato in
+`store/notificationPermission`, che si rilegge a ogni ritorno in primo piano.
+Il player mostra l'avviso con «Consenti» finche' il sistema chiede ancora e
+con «Impostazioni» quando e' bloccato.
 
 React Query e' reidratata da MMKV prima del primo render
 (`services/queryClient`): trending, vetrine, artisti e album tornano da disco
@@ -208,7 +241,20 @@ vuoto a ogni "metti jazz su Onda".
 
 `TrackList` e' l'unica lista dell'app. Si abbona lei alla libreria e al player,
 e passa `isFavorite` / `isActive` alle righe come prop: cosi' `TrackRow` resta
-`memo` e un cuoricino toccato non ridisegna cinquanta righe.
+`memo` e un cuoricino toccato non ridisegna cinquanta righe. E' anche lei a
+mostrare la `Snackbar` con l'esito del menu contestuale (`TrackActions` chiude
+e riferisce con `onDone`): dentro un foglio che si chiude un avviso non fa in
+tempo a essere letto.
+
+Ogni controllo a icona ha un bersaglio di almeno 48x48 dp tramite
+`touch.target` di `theme.ts`, messo sul contenitore che riceve il tocco
+(`containerStyle` di `PressableScale`, `style` di un `Pressable`), non con
+`hitSlop`: il fuoco di TalkBack e Switch Access segue i bordi veri della
+vista. Le schermate artista e album tengono errore, vuoto e contenuto
+mutuamente esclusivi: a lista vuota parla solo lo stato vuoto, con un solo
+Riprova; con dei brani a schermo gli errori si dicono in testa, ciascuno con
+il suo. I parametri di route da deep link passano da `utils/routes`, e un URL
+che non corrisponde a niente apre `+not-found`.
 
 Lo strato di "sensazione" ha quattro regole, e valgono per ogni schermata:
 ogni copertina passa da `Artwork` (mai `Image` di React Native), ogni bottone,

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { haptics } from '@/services/haptics';
-import { colors, formatTime, spacing, type } from '@/theme';
+import { colors, formatTime, spacing, touch, type } from '@/theme';
 import type { Track } from '@/types/track';
 import { Artwork } from './Artwork';
 
@@ -79,8 +79,7 @@ export const TrackRow = memo(function TrackRow({
       {onMore ? (
         <Pressable
           onPress={() => onMore(track)}
-          hitSlop={10}
-          style={({ pressed }) => pressed && styles.iconPressed}
+          style={({ pressed }) => [touch.target, pressed && styles.iconPressed]}
           accessibilityRole="button"
           accessibilityLabel={`Opzioni per ${track.title}`}
         >
@@ -107,7 +106,8 @@ const styles = StyleSheet.create({
   artist: { ...type.caption, color: colors.textMuted },
   right: { alignItems: 'flex-end', gap: 2 },
   rightBottom: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  source: { ...type.caption, color: colors.textMuted, opacity: 0.6, fontSize: 10 },
+  // Piena, non al 60%: a 10 dp e trasparente la sigla misurava 3:1 sul fondo.
+  source: { ...type.caption, color: colors.textMuted, fontSize: 11 },
   duration: {
     ...type.caption,
     ...type.tabular,

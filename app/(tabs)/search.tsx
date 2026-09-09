@@ -11,7 +11,7 @@ import { useDebounced } from '@/hooks/useDebounced';
 import { useInfiniteTracks } from '@/hooks/useInfiniteTracks';
 import { searchAlbumsAll, searchAll, searchArtistsAll } from '@/services/sources';
 import { clearSearches, rememberSearch, useRecentSearches } from '@/store/searchHistory';
-import { colors, radius, spacing, type } from '@/theme';
+import { colors, radius, spacing, touch, type } from '@/theme';
 
 const PAGE = 25;
 
@@ -151,7 +151,7 @@ export default function SearchScreen() {
           !enabled ? (
             <Empty
               title="Cerca nel catalogo"
-              hint="Mezzo milione di tracce Jamendo piu' il catalogo Audius."
+              hint="Mezzo milione di tracce Jamendo più il catalogo Audius."
             />
           ) : isLoading ? null : error ? (
             // Nessuna sorgente ha risposto: dirlo, invece di far credere
@@ -189,8 +189,7 @@ function RecentSearches({ queries, onPick }: { queries: string[]; onPick: (q: st
         </Text>
         <Pressable
           onPress={clearSearches}
-          hitSlop={10}
-          style={({ pressed }) => pressed && styles.recentClearPressed}
+          style={({ pressed }) => [touch.target, pressed && styles.recentClearPressed]}
           accessibilityRole="button"
           accessibilityLabel="Cancella le ricerche recenti"
         >

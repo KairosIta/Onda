@@ -26,7 +26,7 @@ import { type Snack, Snackbar } from '@/components/Snackbar';
 import { Empty } from '@/components/StateViews';
 import { haptics } from '@/services/haptics';
 import { usePlaybackPrefs } from '@/store/playback';
-import { colors, formatTime, motion, spacing, type } from '@/theme';
+import { colors, formatTime, motion, spacing, touch, type } from '@/theme';
 import { describeQueue } from '@/utils/queueSummary';
 import { dropIndex, rowShift } from '@/utils/reorder';
 
@@ -163,9 +163,8 @@ const QueueRow = memo(function QueueRow({
             Togliere un brano vibra `reject` come in playlist: stessa
             azione, stesso feedback. */}
         <Pressable
-          hitSlop={10}
           disabled={isActive}
-          style={({ pressed }) => pressed && styles.textPressed}
+          style={({ pressed }) => [touch.target, pressed && styles.textPressed]}
           onPress={() => onRemove(index)}
           accessibilityRole="button"
           accessibilityLabel={`Togli ${item.title} dalla coda`}
@@ -175,8 +174,7 @@ const QueueRow = memo(function QueueRow({
 
         <GestureDetector gesture={pan}>
           <View
-            style={styles.handle}
-            hitSlop={8}
+            style={[styles.handle, touch.target]}
             accessible={false}
             importantForAccessibility="no-hide-descendants"
           >
@@ -305,7 +303,7 @@ export default function QueueScreen() {
       <View style={styles.header}>
         <PressableScale
           onPress={() => router.back()}
-          hitSlop={16}
+          containerStyle={touch.target}
           scaleTo={motion.iconPressScale}
           accessibilityRole="button"
           accessibilityLabel="Chiudi"
@@ -315,8 +313,7 @@ export default function QueueScreen() {
         {summary.clearLabel ? (
           <Pressable
             onPress={clearBelow}
-            hitSlop={12}
-            style={({ pressed }) => pressed && styles.textPressed}
+            style={({ pressed }) => [touch.target, pressed && styles.textPressed]}
             accessibilityRole="button"
           >
             <Text style={styles.clear}>{summary.clearLabel}</Text>

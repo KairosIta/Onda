@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PressableScale } from '@/components/PressableScale';
+import type { Snack } from '@/components/Snackbar';
 import { useQueue } from '@/hooks/useQueue';
 import { haptics } from '@/services/haptics';
 import {
@@ -19,6 +20,12 @@ import type { Track } from '@/types/track';
 interface Props {
   track: Track | null;
   onClose: () => void;
+  /**
+   * Un'azione riuscita chiude il menu e lascia al genitore l'esito da
+   * mostrare: dentro un foglio che si chiude, un avviso non fa in tempo
+   * a essere letto.
+   */
+  onDone: (snack: Snack) => void;
   /** Se la traccia arriva da una playlist, il menu offre "rimuovi da qui". */
   fromPlaylistId?: string;
 }
@@ -30,13 +37,14 @@ type Pane = 'menu' | 'playlists' | 'new';
  * di tre modali annidate: su Android le modali sovrapposte si chiudono a
  * catena e l'utente si ritrova alla schermata di partenza.
  */
-export function TrackActions({ track, onClose, fromPlaylistId }: Props) {
+export function TrackActions({ track, onClose, onDone, fromPlaylistId }: Props) {
   if (!track) return null;
   return (
     <TrackActionsSheet
       key={track.uid}
       track={track}
       onClose={onClose}
+      onDone={onDone}
       fromPlaylistId={fromPlaylistId}
     />
   );
@@ -45,41 +53,35 @@ export function TrackActions({ track, onClose, fromPlaylistId }: Props) {
 function TrackActionsSheet({
   track,
   onClose,
+  onDone,
   fromPlaylistId,
 }: Omit<Props, 'track'> & { track: Track }) {
   const [pane, setPane] = useState<Pane>('menu');
   const [name, setName] = useState('');
-  const [toast, setToast] = useState<string | null>(null);
   const { playNext, addLast } = useQueue();
   const { playlists, favorites } = useLibrary();
   const router = useRouter();
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Senza, l'ultima voce del menu finisce sotto la barra di navigazione.
   const insets = useSafeAreaInsets();
 
-  const cancelScheduledClose = useCallback(() => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = null;
-  }, []);
+  const close = onClose;
 
-  const close = useCallback(() => {
-    cancelScheduledClose();
-    setToast(null);
+  const done = (message: string, action?: Snack['action']) => {
     onClose();
-  }, [cancelScheduledClose, onClose]);
+    onDone({ message, action });
+  };
 
-  useEffect(() => {
-    return cancelScheduledClose;
-  }, [cancelScheduledClose]);
+  const openQueue = { label: 'Coda', onPress: () => router.push('/queue') };
+  const openPlaylist = (id: string) => ({
+    label: 'Apri',
+    onPress: () => router.push({ pathname: '/playlist/[id]', params: { id } }),
+  });
 
-  const done = useCallback(
-    (message: string) => {
-      cancelScheduledClose();
-      setToast(message);
-      closeTimer.current = setTimeout(close, 550);
-    },
-    [cancelScheduledClose, close],
-  );
+  const create = () => {
+    const id = createPlaylist(name, [track]);
+    haptics.success();
+    done(`Creata ${name.trim()}`, openPlaylist(id));
+  };
 
   const isFav = favorites.includes(track.uid);
 
@@ -99,8 +101,6 @@ function TrackActionsSheet({
           </Text>
         </View>
 
-        {toast ? <Text style={styles.toast}>{toast}</Text> : null}
-
         {pane === 'menu' ? (
           <View>
             <Item
@@ -109,7 +109,7 @@ function TrackActionsSheet({
               onPress={() =>
                 playNext(track).then(() => {
                   haptics.success();
-                  done('Aggiunta dopo la traccia corrente');
+                  done('Aggiunta dopo la traccia corrente', openQueue);
                 })
               }
             />
@@ -119,7 +119,7 @@ function TrackActionsSheet({
               onPress={() =>
                 addLast(track).then(() => {
                   haptics.success();
-                  done('Accodata');
+                  done('Accodata', openQueue);
                 })
               }
             />
@@ -130,7 +130,10 @@ function TrackActionsSheet({
               onPress={() => {
                 haptics.toggle(!isFav);
                 toggleFavorite(track);
-                done(isFav ? 'Rimossa dai preferiti' : 'Aggiunta ai preferiti');
+                done(isFav ? 'Rimossa dai preferiti' : 'Aggiunta ai preferiti', {
+                  label: 'Annulla',
+                  onPress: () => toggleFavorite(track),
+                });
               }}
             />
             <Item
@@ -196,7 +199,10 @@ function TrackActionsSheet({
                     onPress={() => {
                       const added = addToPlaylist(p.id, track);
                       if (added) haptics.success();
-                      done(added ? `Aggiunta a ${p.name}` : `Gia' presente in ${p.name}`);
+                      done(
+                        added ? `Aggiunta a ${p.name}` : `Già presente in ${p.name}`,
+                        openPlaylist(p.id),
+                      );
                     }}
                   />
                 ))
@@ -217,19 +223,13 @@ function TrackActionsSheet({
               returnKeyType="done"
               onSubmitEditing={() => {
                 if (!name.trim()) return;
-                createPlaylist(name, [track]);
-                haptics.success();
-                done(`Creata ${name.trim()}`);
+                create();
               }}
             />
             <PressableScale
               style={[styles.cta, !name.trim() && styles.ctaOff]}
               disabled={!name.trim()}
-              onPress={() => {
-                createPlaylist(name, [track]);
-                haptics.success();
-                done(`Creata ${name.trim()}`);
-              }}
+              onPress={create}
               accessibilityRole="button"
             >
               <Text style={styles.ctaText}>Crea e aggiungi</Text>
@@ -293,12 +293,6 @@ const styles = StyleSheet.create({
   head: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: 2 },
   headTitle: { ...type.title, color: colors.text },
   headArtist: { ...type.caption, color: colors.textMuted },
-  toast: {
-    ...type.caption,
-    color: colors.accent,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-  },
   scroll: { maxHeight: 260 },
   hint: { ...type.caption, color: colors.textMuted, padding: spacing.lg },
   item: {
