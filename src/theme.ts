@@ -19,11 +19,41 @@ export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as cons
 
 export const radius = { sm: 4, md: 8, lg: 12, pill: 999 } as const;
 
+/**
+ * Tipografia di brand: Manrope, incorporata nel pacchetto nativo dal config
+ * plugin di expo-font (vedi app.json). Su Android la famiglia XML "Manrope"
+ * risolve il peso da `fontWeight`, quindi i token restano leggibili e, se
+ * il file mancasse, Android ricadrebbe da solo sul font di sistema.
+ *
+ * Incorporato e non caricato a runtime: niente attesa all'avvio e niente
+ * testo che cambia faccia un istante dopo. E' anche l'unico modo di avere
+ * la stessa identita' su ogni telefono: con il font di sistema Onda era
+ * Roboto su un Pixel e un serif su un Motorola.
+ */
+export const fontFamily = 'Manrope';
+
 export const type = {
-  display: { fontSize: 28, fontWeight: '700' as const, letterSpacing: -0.5 },
-  title: { fontSize: 20, fontWeight: '600' as const, letterSpacing: -0.3 },
-  body: { fontSize: 15, fontWeight: '500' as const },
-  caption: { fontSize: 12, fontWeight: '500' as const, letterSpacing: 0.3 },
+  display: { fontFamily, fontSize: 28, fontWeight: '800' as const, letterSpacing: -0.6 },
+  title: { fontFamily, fontSize: 20, fontWeight: '700' as const, letterSpacing: -0.3 },
+  body: { fontFamily, fontSize: 15, fontWeight: '500' as const },
+  /** Bottoni ed etichette di azione: un peso in piu' del corpo. */
+  label: { fontFamily, fontSize: 15, fontWeight: '600' as const },
+  caption: { fontFamily, fontSize: 12, fontWeight: '500' as const, letterSpacing: 0.2 },
+  /**
+   * Cifre a larghezza fissa per durate e contatori: senza, "0:37" si
+   * allarga e si stringe a ogni secondo e il tempo accanto allo slider balla.
+   */
+  tabular: { fontVariant: ['tabular-nums' as const] },
+} as const;
+
+/**
+ * Molla condivisa dai feedback di pressione e dal player: rapida, senza
+ * rimbalzo visibile. Una sola, cosi' tutto quello che si tocca risponde
+ * allo stesso modo.
+ */
+export const motion = {
+  press: { damping: 18, stiffness: 340, mass: 0.6 },
+  pressScale: 0.96,
 } as const;
 
 /**

@@ -6,3 +6,4 @@
 *.keystore binary
 *.apk binary
 *.aab binary
+*.ttf binary
