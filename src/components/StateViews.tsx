@@ -1,5 +1,6 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing, type } from '@/theme';
+import { PressableScale } from './PressableScale';
 
 export function Loading() {
   return (
@@ -15,6 +16,9 @@ export function Loading() {
  * `action` serve ai vuoti che non sono vuoti davvero: quando le sorgenti
  * non rispondono l'elenco non riparte da solo, e senza un bottone l'unica
  * via d'uscita sarebbe cambiare schermata e tornare indietro.
+ *
+ * La pressione e' resa dalla scala del bottone; l'opacita' ridotta dice
+ * solo "sto gia' riprovando", cosi' i due stati non si confondono.
  */
 export function Empty({
   title,
@@ -30,15 +34,18 @@ export function Empty({
       <Text style={styles.title}>{title}</Text>
       {hint ? <Text style={styles.hint}>{hint}</Text> : null}
       {action ? (
-        <Pressable
+        <PressableScale
           onPress={action.onPress}
           disabled={action.busy}
-          style={({ pressed }) => [styles.action, (pressed || action.busy) && styles.actionOff]}
+          haptic="tap"
+          containerStyle={styles.actionSlot}
+          style={[styles.action, action.busy && styles.actionOff]}
           accessibilityRole="button"
+          accessibilityState={{ disabled: action.busy, busy: action.busy }}
         >
           {action.busy ? <ActivityIndicator size="small" color={colors.text} /> : null}
           <Text style={styles.actionText}>{action.label}</Text>
-        </Pressable>
+        </PressableScale>
       ) : null}
     </View>
   );
@@ -63,18 +70,18 @@ const styles = StyleSheet.create({
   },
   title: { ...type.body, color: colors.text, textAlign: 'center' },
   hint: { ...type.caption, color: colors.textMuted, textAlign: 'center' },
+  actionSlot: { marginTop: spacing.md },
   action: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm + 2,
     borderRadius: radius.pill,
     backgroundColor: colors.surfaceHigh,
   },
   actionOff: { opacity: 0.5 },
-  actionText: { ...type.body, color: colors.text },
+  actionText: { ...type.label, color: colors.text },
   notice: {
     marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,

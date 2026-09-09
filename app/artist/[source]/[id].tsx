@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { Artwork } from '@/components/Artwork';
 import { CollectionHeader } from '@/components/CollectionHeader';
 import { Screen } from '@/components/Screen';
-import { Empty, ErrorNotice, Loading } from '@/components/StateViews';
+import { CollectionSkeleton } from '@/components/Skeleton';
+import { Empty, ErrorNotice } from '@/components/StateViews';
 import { TrackList } from '@/components/TrackList';
 import { useInfiniteTracks } from '@/hooks/useInfiniteTracks';
 import { useQueue } from '@/hooks/useQueue';
@@ -38,10 +40,15 @@ export default function ArtistScreen() {
     );
   }
 
-  if (isLoading && info.isLoading) {
+  // Sagoma finche' uno qualunque dei due carica, come per l'album: il
+  // profilo di norma arriva prima dei brani, e con `&&` la lista vuota
+  // mostrerebbe "Nessun brano riproducibile" mentre i brani stanno ancora
+  // caricando.
+  if (isLoading || info.isLoading) {
+    // Sagoma con l'avatar tondo: anticipa la forma della pagina che arriva.
     return (
       <Screen>
-        <Loading />
+        <CollectionSkeleton media="circle" rows={6} />
       </Screen>
     );
   }
@@ -62,7 +69,14 @@ export default function ArtistScreen() {
               media={
                 info.data?.imageUrl ? (
                   <View style={styles.avatarWrap}>
-                    <Image source={{ uri: info.data.imageUrl }} style={styles.avatar} />
+                    {/* Priorita' alta: e' l'unica immagine della pagina e
+                        sta in testa, prima delle copertine delle righe. */}
+                    <Artwork
+                      uri={info.data.imageUrl}
+                      size={132}
+                      radius={radius.pill}
+                      priority="high"
+                    />
                   </View>
                 ) : null
               }
@@ -96,12 +110,6 @@ export default function ArtistScreen() {
 
 const styles = StyleSheet.create({
   avatarWrap: { alignItems: 'center', paddingTop: spacing.xl },
-  avatar: {
-    width: 132,
-    height: 132,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceHigh,
-  },
   bio: {
     ...type.caption,
     color: colors.textMuted,

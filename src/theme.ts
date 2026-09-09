@@ -1,3 +1,5 @@
+import type { FontVariant } from 'react-native';
+
 /**
  * Palette: inchiostro blu freddo con un unico accento ambra.
  * L'ambra e' l'unico colore saturo dell'app: se compare, significa
@@ -39,21 +41,30 @@ export const type = {
   /** Bottoni ed etichette di azione: un peso in piu' del corpo. */
   label: { fontFamily, fontSize: 15, fontWeight: '600' as const },
   caption: { fontFamily, fontSize: 12, fontWeight: '500' as const, letterSpacing: 0.2 },
+  /** Etichette della tab bar: piu' piccole di una caption, col peso di un'azione. */
+  tab: { fontFamily, fontSize: 11, fontWeight: '600' as const },
   /**
    * Cifre a larghezza fissa per durate e contatori: senza, "0:37" si
    * allarga e si stringe a ogni secondo e il tempo accanto allo slider balla.
+   * L'asserzione tiene l'array mutabile dentro l'`as const` del blocco,
+   * altrimenti `{...type.tabular}` non sarebbe un `TextStyle` valido.
    */
-  tabular: { fontVariant: ['tabular-nums' as const] },
+  tabular: { fontVariant: ['tabular-nums'] as FontVariant[] },
 } as const;
 
 /**
  * Molla condivisa dai feedback di pressione e dal player: rapida, senza
- * rimbalzo visibile. Una sola, cosi' tutto quello che si tocca risponde
- * allo stesso modo.
+ * rimbalzo visibile sui bottoni. Una sola, cosi' tutto quello che si tocca
+ * risponde allo stesso modo.
+ *
+ * Due scale, non una per bottone: `pressScale` per i bottoni pieni,
+ * `iconPressScale` per quelli fatti di una sola icona, che senza sfondo
+ * devono ritrarsi di piu' perche' il movimento si veda.
  */
 export const motion = {
   press: { damping: 18, stiffness: 340, mass: 0.6 },
   pressScale: 0.96,
+  iconPressScale: 0.88,
 } as const;
 
 /**

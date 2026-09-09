@@ -1,35 +1,111 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { memo, useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  Easing,
+  FadeInDown,
+  FadeOutDown,
+  ReduceMotion,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import TrackPlayer, { useActiveMediaItem, useIsPlaying, useProgress } from '@rntp/player';
-import { colors, spacing, radius, type } from '@/theme';
+import { colors, motion, spacing, type } from '@/theme';
+import { Artwork } from './Artwork';
+import { PressableScale } from './PressableScale';
+
+const ENTERING = FadeInDown.duration(220).reduceMotion(ReduceMotion.System);
+const EXITING = FadeOutDown.duration(160).reduceMotion(ReduceMotion.System);
 
 /**
- * Montato nel layout radice, FUORI dallo Stack: cosi' non viene smontato
- * quando cambi schermata e la riproduzione resta continua.
+ * `useProgress(0.5)` da' un valore ogni mezzo secondo: la barra insegue il
+ * nuovo valore in altrettanto tempo, lineare, cosi' i tick non si vedono
+ * come scatti ma come un movimento continuo.
+ */
+const TIMING = { duration: 500, easing: Easing.linear, reduceMotion: ReduceMotion.System };
+
+/**
+ * La barra di avanzamento vive in un figlio memoizzato: `useProgress` fa
+ * un setState ogni mezzo secondo, e cosi' il tick ridisegna solo questa
+ * View da 2dp, non copertina e bottoni del mini-player (che possono
+ * essere due, tab bar e `Screen`).
+ */
+const MiniProgress = memo(function MiniProgress() {
+  const { position, duration } = useProgress(0.5);
+  const pct = duration > 0 ? Math.min(1, position / duration) : 0;
+  const progress = useSharedValue(pct);
+  // Ultimo valore inviato. Il confronto si fa su questo e non su
+  // `progress.get()`: dal thread JS quella e' una lettura sincrona verso
+  // il thread UI, un costo inutile due volte al secondo.
+  const last = useRef(pct);
+
+  useEffect(() => {
+    // Indietro (seek, cambio brano) si salta: una barra che si ritira in
+    // mezzo secondo racconterebbe un riavvolgimento che non c'e'.
+    if (pct < last.current) progress.set(pct);
+    else progress.set(withTiming(pct, TIMING));
+    last.current = pct;
+  }, [pct, progress]);
+
+  // Scala e non larghezza: la trasformazione resta sul thread UI senza
+  // rifare il layout a ogni frame, e con l'origine a sinistra non serve
+  // conoscere la larghezza della barra.
+  const fill = useAnimatedStyle(() => ({ transform: [{ scaleX: progress.get() }] }));
+
+  return (
+    <View style={styles.progressTrack}>
+      <Animated.View style={[styles.progressFill, fill]} />
+    </View>
+  );
+});
+
+/**
+ * Vive nella tab bar custom di (tabs)/_layout.tsx e dentro `Screen` per le
+ * schermate spinte sullo Stack. In entrambi i casi il genitore e' una View
+ * che resta montata: il `return null` di quando non c'e' traccia toglie
+ * solo il contenuto, e l'animazione di uscita ha il tempo di finire.
+ *
+ * L'ingresso si anima solo quando una traccia compare, non quando una
+ * schermata si monta con un brano gia' in corso: li' il mini-player e'
+ * parte della schermata che arriva, e farlo salire da sotto mentre lo
+ * Stack scorre sarebbe un secondo movimento senza significato.
  */
 export function MiniPlayer() {
   const router = useRouter();
   const track = useActiveMediaItem();
   const playing = useIsPlaying();
-  const { position, duration } = useProgress(0.5);
+
+  // Stato derivato nel render: si arma quando la traccia manca, cosi' la
+  // prossima che arriva entra animata. Montato con un brano in corso
+  // resta disarmato finche' il brano non finisce.
+  const [enterArmed, setEnterArmed] = useState(!track);
+  if (!track && !enterArmed) setEnterArmed(true);
 
   if (!track) return null;
 
-  const pct = duration > 0 ? Math.min(100, (position / duration) * 100) : 0;
-
   return (
-    <View style={styles.wrap}>
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${pct}%` }]} />
-      </View>
+    <Animated.View
+      style={styles.wrap}
+      entering={enterArmed ? ENTERING : undefined}
+      exiting={EXITING}
+    >
+      <MiniProgress />
 
-      <Pressable style={styles.body} onPress={() => router.push('/player')}>
-        {track.artworkUrl ? (
-          <Image source={{ uri: String(track.artworkUrl) }} style={styles.art} />
-        ) : (
-          <View style={[styles.art, styles.artEmpty]} />
-        )}
+      {/* Apre una schermata: evidenziazione come le righe di lista, non
+          scala, cosi' un bersaglio largo non sembra un bottone. */}
+      <Pressable
+        style={({ pressed }) => [styles.body, pressed && styles.bodyPressed]}
+        onPress={() => router.push('/player')}
+        accessibilityRole="button"
+        accessibilityLabel={`Apri il player: ${track.title} di ${track.artist}`}
+      >
+        <Artwork
+          uri={typeof track.artworkUrl === 'string' ? track.artworkUrl : undefined}
+          size={40}
+          recyclingKey={String(track.mediaId ?? '')}
+        />
 
         <View style={styles.meta}>
           <Text numberOfLines={1} style={styles.title}>
@@ -40,23 +116,29 @@ export function MiniPlayer() {
           </Text>
         </View>
 
-        <Pressable
+        <PressableScale
+          scaleTo={motion.iconPressScale}
+          haptic="tap"
           hitSlop={12}
           onPress={() => (playing ? TrackPlayer.pause() : TrackPlayer.play())}
+          accessibilityRole="button"
           accessibilityLabel={playing ? 'Metti in pausa' : 'Riprendi'}
         >
           <Ionicons name={playing ? 'pause' : 'play'} size={26} color={colors.text} />
-        </Pressable>
+        </PressableScale>
 
-        <Pressable
+        <PressableScale
+          scaleTo={motion.iconPressScale}
+          haptic="tap"
           hitSlop={12}
           onPress={() => TrackPlayer.skipToNext()}
+          accessibilityRole="button"
           accessibilityLabel="Traccia successiva"
         >
           <Ionicons name="play-skip-forward" size={22} color={colors.textMuted} />
-        </Pressable>
+        </PressableScale>
       </Pressable>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -67,7 +149,12 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   progressTrack: { height: 2, backgroundColor: colors.accentDim },
-  progressFill: { height: 2, backgroundColor: colors.accent },
+  progressFill: {
+    height: 2,
+    width: '100%',
+    backgroundColor: colors.accent,
+    transformOrigin: 'left',
+  },
   body: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -75,8 +162,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
   },
-  art: { width: 40, height: 40, borderRadius: radius.sm, backgroundColor: colors.surfaceHigh },
-  artEmpty: { borderWidth: 1, borderColor: colors.border },
+  bodyPressed: { backgroundColor: colors.surfaceHigh },
   meta: { flex: 1, gap: 1 },
   title: { ...type.body, color: colors.text },
   artist: { ...type.caption, color: colors.textMuted },

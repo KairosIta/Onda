@@ -3,14 +3,16 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { Empty, ErrorNotice, Loading } from '@/components/StateViews';
+import { Artwork } from '@/components/Artwork';
+import { PressableScale } from '@/components/PressableScale';
+import { TrackListSkeleton } from '@/components/Skeleton';
+import { Empty, ErrorNotice } from '@/components/StateViews';
 import { TrackList } from '@/components/TrackList';
 import { assertEnv } from '@/config/env';
 import { useInfiniteTracks } from '@/hooks/useInfiniteTracks';
@@ -84,7 +86,10 @@ export default function DiscoverScreen() {
 
             <GenreChips selected={genreKey} onSelect={setGenreKey} />
 
-            {isLoading ? <Loading /> : null}
+            {/* Sagoma nell'header, sotto i chip: cambiando genere titolo e
+                filtri restano al loro posto e si vede solo l'elenco che
+                si rifa'. */}
+            {isLoading ? <TrackListSkeleton rows={8} /> : null}
           </View>
         }
         footer={
@@ -125,16 +130,27 @@ function GenreChips({
   );
 }
 
+/**
+ * Attesa prima di ritrarsi per chip e card negli scroller orizzontali: il
+ * dito che parte per scorrere e' un tocco finche' lo scroll non lo ruba, e
+ * senza attesa ogni avvio di scroll farebbe guizzare l'elemento sotto.
+ */
+const SCROLLER_PRESS_DELAY = 70;
+
+/** Chip piccolo, scala un po' di piu' del resto: a 0.96 su 30dp non si vedrebbe. */
 function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
+      scaleTo={0.94}
+      pressDelay={SCROLLER_PRESS_DELAY}
+      haptic="tap"
       style={[styles.chip, active && styles.chipActive]}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
     >
       <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -147,7 +163,13 @@ function RecentStrip({ tracks }: { tracks: Track[] }) {
     <View style={styles.strip}>
       <View style={styles.stripHead}>
         <Text style={styles.sectionTitle}>Riprendi da dove eri</Text>
-        <Pressable onPress={() => router.push('/collection/history')} hitSlop={10}>
+        <Pressable
+          onPress={() => router.push('/collection/history')}
+          hitSlop={10}
+          style={({ pressed }) => pressed && styles.stripMorePressed}
+          accessibilityRole="button"
+          accessibilityLabel="Tutti gli ascolti recenti"
+        >
           <Text style={styles.stripMore}>Tutti</Text>
         </Pressable>
       </View>
@@ -159,19 +181,28 @@ function RecentStrip({ tracks }: { tracks: Track[] }) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.stripList}
         renderItem={({ item, index }) => (
-          <Pressable style={styles.card} onPress={() => playList(tracks, index)}>
-            {item.artworkUrl ? (
-              <Image source={{ uri: item.artworkUrl }} style={styles.cardArt} />
-            ) : (
-              <View style={[styles.cardArt, styles.cardArtEmpty]} />
-            )}
+          <PressableScale
+            style={styles.card}
+            haptic="tap"
+            pressDelay={SCROLLER_PRESS_DELAY}
+            onPress={() => playList(tracks, index)}
+            accessibilityRole="button"
+            accessibilityLabel={`Riproduci ${item.title} di ${item.artist}`}
+          >
+            <Artwork
+              uri={item.artworkUrl}
+              size={128}
+              radius={radius.md}
+              recyclingKey={item.uid}
+              fade={false}
+            />
             <Text numberOfLines={2} style={styles.cardTitle}>
               {item.title}
             </Text>
             <Text numberOfLines={1} style={styles.cardArtist}>
               {item.artist}
             </Text>
-          </Pressable>
+          </PressableScale>
         )}
       />
     </View>
@@ -215,15 +246,9 @@ const styles = StyleSheet.create({
     paddingRight: spacing.lg,
   },
   stripMore: { ...type.caption, color: colors.accent },
+  stripMorePressed: { opacity: 0.5 },
   stripList: { paddingHorizontal: spacing.lg, gap: spacing.md },
   card: { width: 128, gap: 4 },
-  cardArt: {
-    width: 128,
-    height: 128,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceHigh,
-  },
-  cardArtEmpty: { borderWidth: 1, borderColor: colors.border },
   cardTitle: { ...type.caption, color: colors.text, fontSize: 13 },
   cardArtist: { ...type.caption, color: colors.textMuted },
   more: { paddingVertical: spacing.lg },

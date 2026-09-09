@@ -113,7 +113,12 @@ src/
   hooks/useInfiniteTracks.ts  scroll infinito su qualunque elenco, federato o no
   services/playbackService.ts registra i cambi di traccia, anche in background
   components/               TrackList, TrackRow, MiniPlayer, menu contestuale, ...
-  theme.ts                  palette, spaziature, tipografia
+  components/Artwork.tsx    ogni copertina passa da qui: expo-image, dissolvenza, cache, segnaposto
+  components/PressableScale.tsx  bottone che si ritrae con la molla condivisa; aptica opzionale
+  components/Skeleton.tsx   sagome di caricamento per liste e raccolte, al posto delle rotelle
+  services/haptics.ts       feedback tattile di sistema: l'unico file che parla con expo-haptics
+  theme.ts                  palette, spaziature, tipografia (Manrope), molla condivisa
+assets/fonts/               Manrope (SIL OFL 1.1), incorporata dal plugin expo-font come famiglia XML
 scripts/
   release.ts                pipeline fail-closed per APK di distribuzione
   release-policy.ts         validazione pura di ambiente e credenziali
@@ -141,6 +146,19 @@ fonte di verita' anche quando i comandi arrivano dalla notifica.
 `TrackList` e' l'unica lista dell'app. Si abbona lei alla libreria e al player,
 e passa `isFavorite` / `isActive` alle righe come prop: cosi' `TrackRow` resta
 `memo` e un cuoricino toccato non ridisegna cinquanta righe.
+
+Lo strato di "sensazione" ha quattro regole, e valgono per ogni schermata:
+ogni copertina passa da `Artwork` (mai `Image` di React Native), ogni bottone,
+chip o icona da `PressableScale` (le righe di lista tengono invece
+l'evidenziazione di sfondo), ogni vibrazione da `services/haptics.ts` (mai
+`expo-haptics` diretto, e una regola per azione: `tap`, `toggle`, `longPress`,
+`success`, `reject`, `gestureEnd`), e il font si usa solo tramite i token
+`type.*` di `theme.ts`, dove sta anche la molla condivisa `motion.press`. Ogni
+animazione passa `ReduceMotion.System`, cosi' "Rimuovi animazioni" del sistema
+vale davvero. Il font e' incorporato nel pacchetto nativo dal config plugin di
+expo-font (vedi `app.json`): niente caricamento a runtime, e se manca un
+prebuild Android ricade in silenzio su Roboto, che e' il primo sintomo da
+riconoscere.
 
 ---
 
@@ -226,6 +244,11 @@ Nell'ordine. Se salti un passaggio, il bug lo trovi tre settimane dopo.
    modulo nativo, dopo aver aggiunto la dipendenza).
 8. Tieni premuto un brano Jamendo: il menu mostra "Vai a ..." e "Album: ...".
    Su un brano Audius compare solo l'artista, ed e' corretto (vedi sotto).
+9. Il testo e' in Manrope, tab bar compresa: se vedi Roboto il font non e'
+   entrato nel pacchetto nativo e va rifatto il prebuild.
+10. Nel player trascina la copertina verso il basso: il foglio segue il dito,
+    sotto si intravede la schermata precedente e, oltre un terzo dello schermo,
+    si chiude con una vibrazione leggera. Sotto la soglia torna su.
 
 Il punto 3 e' quello che rompe piu' spesso, ed e' anche quello che fallisce
 in silenzio.

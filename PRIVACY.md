@@ -60,7 +60,9 @@ informativa finalità, conservazione e diritti degli interessati.
 Onda usa l'accesso a Internet per catalogo e streaming. Usa inoltre il servizio
 multimediale in primo piano, il wake lock e, su Android 13 o successivi, può
 chiedere il permesso notifiche per mantenere visibili i controlli del player.
-Non richiede accesso a posizione, microfono, fotocamera, contatti o archivio
+Usa il permesso di vibrazione soltanto per il feedback tattile dei comandi, che
+segue l'impostazione «Vibrazione al tocco» del sistema e non tratta dati. Non
+richiede accesso a posizione, microfono, fotocamera, contatti o archivio
 multimediale condiviso.
 
 ## Conservazione ed eliminazione

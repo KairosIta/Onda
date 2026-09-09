@@ -6,7 +6,7 @@ import { Tabs } from 'expo-router';
 import { BottomTabBar } from 'expo-router/build/react-navigation/bottom-tabs';
 import { View } from 'react-native';
 import { MiniPlayer } from '@/components/MiniPlayer';
-import { colors } from '@/theme';
+import { colors, type } from '@/theme';
 
 /**
  * Il MiniPlayer va *sopra* la tab bar, non sotto. Montato nel layout
@@ -34,7 +34,7 @@ export default function TabsLayout() {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '500' },
+        tabBarLabelStyle: type.tab,
       }}
     >
       <Tabs.Screen

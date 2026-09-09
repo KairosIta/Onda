@@ -1,6 +1,6 @@
 # Roadmap di Onda
 
-Stato aggiornato il **30 agosto 2026** confrontando codice, configurazione e
+Stato aggiornato il **9 settembre 2026** confrontando codice, configurazione e
 documentazione con le prove già raccolte su device e con i controlli automatici,
 di release e da clone pulito.
 
@@ -118,6 +118,12 @@ Una voce si chiude soltanto quando è soddisfatto il relativo **Done**.
 - [x] Splash e privacy policy in-app sono implementati e verificati.
 - [x] Workflow CI Ubuntu/Windows e build personale manuale configurati; la prima
       esecuzione remota avverrà dopo il push del repository.
+- [ ] Font di brand Manrope incorporato nel pacchetto nativo, copertine con
+      dissolvenza e cache, feedback tattile di sistema, bottoni che si
+      ritraggono, sagome di caricamento e chiusura del player col
+      trascinamento. **Implementato il 9 settembre 2026, da collaudare**: il
+      codice passa test, typecheck, lint e prebuild, ma nessuna build reale è
+      stata ancora provata; le verifiche sono nella checklist device.
 
 ### Limiti dichiarati
 
@@ -507,15 +513,52 @@ stati verificati successivamente.
 ### Esperienza e identità
 
 - [ ] Scegliere consapevolmente font di sistema o tipografia di brand, con
-      scaling e fallback accessibili.
+      scaling e fallback accessibili. **Implementato il 9 settembre 2026, da
+      collaudare**: Manrope (SIL OFL 1.1, `assets/fonts/`) in quattro pesi
+      500/600/700/800, incorporata come famiglia XML Android dal config plugin
+      di expo-font e usata soltanto tramite i token `type.*` di
+      `src/theme.ts`, tab bar compresa. Il font segue la scala di sistema e,
+      se il file mancasse, Android ricadrebbe da solo sul font predefinito.
+      Durate e tempi usano cifre tabulari (`type.tabular`). Il prebuild
+      genera `res/font/xml_manrope.xml` con i quattro pesi e la registrazione
+      in `MainApplication.kt`. Resta la prova su dispositivo a font scale
+      1.0/1.3/1.5/2.0.
 - [ ] Correggere apostrofi ASCII e copy italiano (`e'`, `piu'`, `Modalita'`),
       uniformando tono e plurali.
 - [ ] Aggiungere pressed/ripple, loading e feedback non solo cromatico a ogni
-      azione.
+      azione. **Implementato il 9 settembre 2026, da collaudare**:
+      `PressableScale` ritrae bottoni, chip, schede e icone con una molla
+      condivisa (`motion.press`, due scale: piena e da icona) e rispetta
+      «Rimuovi animazioni»; le righe di lista tengono l'evidenziazione di
+      sfondo, che su Android è la convenzione giusta. Il feedback tattile passa
+      da `src/services/haptics.ts`, che usa le costanti di sistema e quindi
+      l'impostazione «Vibrazione al tocco», con una regola per azione: `tap`
+      su avvio brano e bottoni, `toggle` su preferito/shuffle/ripetizione/
+      riordino, `longPress` sul menu contestuale, `success` su accodamenti,
+      creazioni e salvataggi riusciti, `reject` su rimozioni ed eliminazioni,
+      `gestureEnd` sulla chiusura del player; niente vibrazione ad aprire o
+      chiudere schermate e finestre. Il player si chiude trascinandolo verso
+      il basso (route `transparentModal`, scrim che si schiarisce, molla senza
+      rimbalzo), la copertina si ritrae in pausa e il mini-player entra ed
+      esce in dissolvenza con una barra di avanzamento continua. Restano il
+      collaudo su dispositivo e con TalkBack, e due rilievi della revisione
+      rimandati perché senza correzione sicura senza prova: la tab bar si
+      riposiziona di colpo mentre il mini-player sfuma in uscita, e durante
+      il trascinamento la fascia della status bar non è coperta dallo scrim.
 - [ ] Sostituire il toast da 550 ms con snackbar accessibile da 2–4 secondi.
 - [ ] Aggiungere undo o conferma per “Svuota i successivi”.
 - [ ] Migliorare placeholder, errori artwork, skeleton e messaggi distinti per
-      offline, quota, vuoto e contenuto non riproducibile.
+      offline, quota, vuoto e contenuto non riproducibile. **Implementato il 9
+      settembre 2026, da collaudare** per placeholder, errori artwork e
+      skeleton: ogni copertina passa da `src/components/Artwork.tsx`
+      (expo-image) con dissolvenza breve, cache memory-disk, `recyclingKey`
+      nelle liste, dissolvenza spenta nelle righe riciclate e una nota
+      musicale su fondo neutro quando l'artwork manca o l'URL è rotto.
+      `TrackListSkeleton` e `CollectionSkeleton` sostituiscono le rotelle in
+      Scopri, Cerca, artista e album, ricalcano la geometria delle righe e
+      delle intestazioni vere e sono annunciate a TalkBack come un solo
+      «Caricamento in corso». Restano i messaggi distinti per offline, quota,
+      vuoto e contenuto non riproducibile.
 - [ ] Completare Impostazioni/Informazioni: versione, sorgenti, privacy, licenze
       e collegamenti ufficiali sono presenti; restano diagnostica ed export.
 - [ ] Documentare qualità e consumo dati oppure offrire una modalità risparmio
@@ -545,6 +588,37 @@ stati verificati successivamente.
 - [x] Upgrade `adb install -r` fra release con stessa firma e dati conservati.
 - [ ] Splash standalone su più dispositivi reali e themed icon su più maschere;
       telefono Android 16 e form factor tablet virtuale sono già verificati.
+- [ ] Sprint «sensazione» del 9 settembre 2026, mai provato su una build
+      reale. Font: Manrope visibile ovunque, tab bar compresa (se compare
+      Roboto la famiglia XML non è nel pacchetto: rifare il prebuild); cifre
+      tabulari nelle durate; font scale 1.3 e 2.0.
+- [ ] Player: il trascinamento verso il basso chiude oltre 120 dp o con uno
+      strappo, sotto la soglia torna su senza superare il bordo; lo slider
+      non muove il foglio; sotto il foglio si vede la schermata precedente
+      scurita; chevron e tasto back chiudono senza fasce scure; apertura
+      dalla notifica ad app chiusa; copertina a 0,92 in pausa; attribuzione
+      visibile su 360×640 dp.
+- [ ] Mini-player: entra ed esce in dissolvenza sopra la tab bar; la barra
+      avanza in modo continuo e salta a zero su seek indietro o cambio brano;
+      nessuna seconda dissolvenza aprendo playlist, artista o album con un
+      brano in corso.
+- [ ] Aptica: `tap` su righe e bottoni, `toggle` su cuore, shuffle,
+      ripetizione e riordino, `success` su accodamenti, creazioni e
+      salvataggi, `reject` su rimozioni, svuota ed elimina; nessuna
+      vibrazione ad aprire o chiudere schermate e finestre; con «Vibrazione
+      al tocco» spenta niente vibra; sotto Android 11 e 14 le costanti
+      mancanti ricadono sul click di contesto.
+- [ ] Sagome: Scopri (sotto i chip, con titolo e chip fermi), Cerca (input a
+      fuoco e tastiera aperta), artista e album senza salto all'arrivo dei
+      dati; ferme con «Rimuovi animazioni»; TalkBack annuncia «Caricamento in
+      corso».
+- [ ] Copertine: nessuna copertina di un'altra traccia nelle righe riciclate
+      a scroll veloce; nota musicale su artwork mancante o URL rotto; avatar
+      tondo dell'artista ritagliato correttamente.
+- [ ] Pressioni: chip e schede recenti non guizzano all'inizio di uno scroll
+      orizzontale (`pressDelay` 70 ms); bottoni disabilitati non si ritraggono
+      né vibrano; i link di Informazioni mostrano l'opacità da premuto anche
+      con «Rimuovi animazioni».
 
 ---
 

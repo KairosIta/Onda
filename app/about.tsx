@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { PressableScale } from '@/components/PressableScale';
 import {
   AUDIUS_API_TERMS_URL,
   AUDIUS_OPEN_MUSIC_LICENSE_URL,
@@ -17,17 +18,25 @@ import { colors, radius, spacing, type } from '@/theme';
 
 const version = Constants.expoConfig?.version ?? '0.1.0';
 
+/**
+ * Riga larga quanto la scheda: si ritrae appena, perche' su una
+ * superficie cosi' estesa la scala da bottone sembrerebbe un salto. Il 2%
+ * da solo pero' non si vede, e con "Rimuovi animazioni" nemmeno si muove:
+ * resta anche l'opacita' da premuto.
+ */
 function ExternalLink({ label, url }: { label: string; url: string }) {
   return (
-    <Pressable
+    <PressableScale
       onPress={() => Linking.openURL(url)}
-      style={({ pressed }) => [styles.link, pressed && styles.pressed]}
+      style={styles.link}
+      pressedStyle={styles.pressed}
+      scaleTo={0.98}
       accessibilityRole="link"
       accessibilityLabel={`${label}, apre il browser`}
     >
       <Text style={styles.linkText}>{label}</Text>
       <Ionicons name="open-outline" size={18} color={colors.textMuted} />
-    </Pressable>
+    </PressableScale>
   );
 }
 

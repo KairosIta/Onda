@@ -1,14 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
-import { Alert, Pressable } from 'react-native';
+import { Alert } from 'react-native';
 import { CollectionHeader } from '@/components/CollectionHeader';
+import { PressableScale } from '@/components/PressableScale';
 import { Screen } from '@/components/Screen';
 import { Empty } from '@/components/StateViews';
 import { TrackList } from '@/components/TrackList';
 import { useQueue } from '@/hooks/useQueue';
+import { haptics } from '@/services/haptics';
 import { clearHistory, tracksOf, useLibrary } from '@/store/library';
-import { colors } from '@/theme';
+import { colors, motion } from '@/theme';
 import { shuffled } from '@/utils/shuffle';
 
 const COPY = {
@@ -52,8 +54,10 @@ export default function CollectionScreen() {
             onShuffle={() => playList(shuffled(tracks), 0)}
             actions={
               isHistory && tracks.length > 0 ? (
-                <Pressable
+                <PressableScale
                   hitSlop={12}
+                  scaleTo={motion.iconPressScale}
+                  accessibilityRole="button"
                   accessibilityLabel="Svuota la cronologia"
                   onPress={() =>
                     Alert.alert(
@@ -61,13 +65,20 @@ export default function CollectionScreen() {
                       'I brani salvati nei preferiti restano.',
                       [
                         { text: 'Annulla', style: 'cancel' },
-                        { text: 'Svuota', style: 'destructive', onPress: clearHistory },
+                        {
+                          text: 'Svuota',
+                          style: 'destructive',
+                          onPress: () => {
+                            haptics.reject();
+                            clearHistory();
+                          },
+                        },
                       ],
                     )
                   }
                 >
                   <Ionicons name="trash-outline" size={20} color={colors.textMuted} />
-                </Pressable>
+                </PressableScale>
               ) : null
             }
           />
