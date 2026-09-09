@@ -19,6 +19,17 @@ const signingPlugin = require('../plugins/with-release-signing.js') as {
 const qualityPlugin = require('../plugins/with-android-quality.js') as {
   patchSplashStyles: (contents: string) => string;
 };
+type ManifestLike = {
+  manifest: {
+    $: Record<string, string>;
+    application: { $: Record<string, string>; 'meta-data'?: { $: Record<string, string> }[] }[];
+  };
+};
+const autoPlugin = require('../plugins/with-android-auto.js') as {
+  LINT_IGNORES: string[];
+  mergeToolsIgnore: (existing: string | undefined, ids: string[]) => string;
+  declareAutomotiveMediaApp: (manifest: ManifestLike) => ManifestLike;
+};
 const privacyPlugin = require('../plugins/with-android-privacy.js') as {
   DOMAINS: string[];
   FULL_BACKUP_CONTENT: string;
@@ -112,6 +123,35 @@ test('il comportamento splash Android 13 resta esplicitamente limitato alla sua 
     patched,
     '<item name="android:windowSplashScreenBehavior" tools:targetApi="33">icon_preferred</item>',
   );
+});
+
+test('Android Auto: il manifest porta il descrittore e tace solo i due controlli previsti', () => {
+  const manifest: ManifestLike = {
+    manifest: {
+      $: { 'xmlns:android': 'http://schemas.android.com/apk/res/android' },
+      application: [{ $: { 'android:name': '.MainApplication', 'tools:ignore': 'Altro' } }],
+    },
+  };
+
+  autoPlugin.declareAutomotiveMediaApp(manifest);
+  autoPlugin.declareAutomotiveMediaApp(manifest); // un secondo prebuild non duplica niente
+
+  const application = manifest.manifest.application[0];
+  const meta = application['meta-data'] ?? [];
+  assert.equal(manifest.manifest.$['xmlns:tools'], 'http://schemas.android.com/tools');
+  assert.equal(meta.length, 1);
+  assert.equal(meta[0].$['android:name'], 'com.google.android.gms.car.application');
+  assert.equal(meta[0].$['android:resource'], '@xml/automotive_app_desc');
+  assert.equal(
+    application.$['tools:ignore'],
+    'Altro,MissingMediaBrowserServiceIntentFilter,MissingIntentFilterForMediaSearch',
+  );
+  assert.deepEqual(autoPlugin.LINT_IGNORES, [
+    'MissingMediaBrowserServiceIntentFilter',
+    'MissingIntentFilterForMediaSearch',
+  ]);
+  assert.equal(autoPlugin.mergeToolsIgnore(undefined, ['A']), 'A');
+  assert.equal(autoPlugin.mergeToolsIgnore(' A , B ', ['B', 'C']), 'A,B,C');
 });
 
 test('le regole Android escludono ogni dominio da cloud e trasferimento', () => {

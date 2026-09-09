@@ -188,6 +188,15 @@ libreria persistita — preferiti, playlist, ascolti recenti — e
 ravvicinate. Il manifest lo dichiara tramite `plugins/with-android-auto.js`;
 il servizio media e il suo intent filter li porta gia' RNTP.
 
+Quel descrittore accende in Android Lint due controlli in piu', entrambi
+errori ed entrambi letti sul solo manifest sorgente dell'app. Il plugin li
+tace sull'elemento `<application>`, e il perche' sta scritto accanto: il
+controllo sul servizio e' un falso positivo, perche' il filtro
+MediaBrowserService vive nel manifest della libreria RNTP; quello sulla
+ricerca vocale (`MEDIA_PLAY_FROM_SEARCH`) segnala una mancanza vera, aperta
+in TODO.md. Dichiarare quel filtro senza gestire la query aprirebbe Onda a
+vuoto a ogni "metti jazz su Onda".
+
 `TrackList` e' l'unica lista dell'app. Si abbona lei alla libreria e al player,
 e passa `isFavorite` / `isActive` alle righe come prop: cosi' `TrackRow` resta
 `memo` e un cuoricino toccato non ridisegna cinquanta righe.
