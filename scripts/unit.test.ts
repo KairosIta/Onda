@@ -21,6 +21,27 @@ import {
 } from '@/store/libraryExport';
 import { loadLibrary, parseTrack } from '@/store/librarySchema';
 import { loadPlaybackPrefs } from '@/store/playbackSchema';
+import { toMediaItem, trackFromMediaItem } from '@/services/mediaItems';
+import { derivePlaybackStatus, describePlayButton } from '@/services/playbackStatus';
+import {
+  PROGRESS_PAUSED_MS,
+  PROGRESS_PLAYING_MS,
+  progressPollInterval,
+} from '@/services/progressPolicy';
+import {
+  QUERY_CACHE_MAX_AGE_MS,
+  isPersistableKey,
+  loadQueryCache,
+  pruneQueryCache,
+} from '@/services/queryPersistenceSchema';
+import {
+  RESUME_TAIL_SEC,
+  SESSION_MAX_AGE_MS,
+  loadSavedPosition,
+  loadSavedQueue,
+  resumePosition,
+  windowQueue,
+} from '@/store/sessionSchema';
 import { formatTime } from '@/theme';
 import type { Track } from '@/types/track';
 import { describeQueue } from '@/utils/queueSummary';
@@ -648,4 +669,251 @@ test('l anteprima dice cosa entra prima di farlo entrare', () => {
   assert.equal(p.empty, false);
 
   assert.equal(previewImport(mia, mia).empty, true, 'importare se stessi non aggiunge nulla');
+});
+
+// --- sessione di ascolto ----------------------------------------------
+
+const NOW = 1_700_000_000_000;
+
+const codaSalvata = (ids: string[], index: number, over: Record<string, unknown> = {}) => ({
+  tracks: ids.map(track),
+  index,
+  savedAt: NOW - 60_000,
+  ...over,
+});
+
+test('una coda corta si salva intera, una lunga come finestra intorno al brano attivo', () => {
+  const corta = [track('a'), track('b'), track('c')];
+  assert.deepEqual(windowQueue(corta, 1, 200), { tracks: corta, index: 1 });
+
+  const lunga = Array.from({ length: 300 }, (_, i) => track(String(i)));
+  const w = windowQueue(lunga, 150, 200);
+  assert.equal(w.tracks.length, 200);
+  assert.equal(w.tracks[w.index]?.uid, 'audius:150', 'il brano attivo resta quello');
+  assert.equal(w.index, 50, 'un quarto della finestra sta prima del brano attivo');
+  assert.equal(w.tracks[0]?.uid, 'audius:100');
+
+  const inizio = windowQueue(lunga, 3, 200);
+  assert.equal(inizio.index, 3, 'vicino all inizio la finestra parte da zero');
+  assert.equal(inizio.tracks[0]?.uid, 'audius:0');
+
+  const fine = windowQueue(lunga, 299, 200);
+  assert.equal(
+    fine.tracks.at(-1)?.uid,
+    'audius:299',
+    'vicino alla fine la finestra arriva in fondo',
+  );
+  assert.equal(fine.tracks[fine.index]?.uid, 'audius:299');
+});
+
+test('la coda salvata torna intera quando e sana', () => {
+  const q = loadSavedQueue(codaSalvata(['a', 'b', 'c'], 1), NOW);
+  assert.ok(q);
+  assert.equal(q.tracks.length, 3);
+  assert.equal(q.tracks[q.index]?.uid, 'audius:b');
+});
+
+test('un brano corrotto si scarta senza spostare quello attivo', () => {
+  const raw = codaSalvata(['a', 'b', 'c'], 2);
+  raw.tracks[0] = { uid: 'rotto' } as never;
+  const q = loadSavedQueue(raw, NOW);
+  assert.ok(q);
+  assert.equal(q.tracks.length, 2);
+  assert.equal(q.tracks[q.index]?.uid, 'audius:c', 'l indice segue il brano, non la posizione');
+});
+
+test('senza un brano attivo valido non c e niente da riprendere', () => {
+  const raw = codaSalvata(['a', 'b'], 1);
+  raw.tracks[1] = { uid: 'rotto' } as never;
+  assert.equal(loadSavedQueue(raw, NOW), null, 'attivo corrotto');
+  assert.equal(loadSavedQueue(codaSalvata(['a', 'b'], 5), NOW), null, 'indice fuori coda');
+  assert.equal(loadSavedQueue(codaSalvata(['a'], 0, { index: 'x' }), NOW), null);
+  assert.equal(loadSavedQueue(codaSalvata([], 0), NOW), null, 'coda vuota');
+  assert.equal(loadSavedQueue(null, NOW), null);
+  assert.equal(loadSavedQueue('coda', NOW), null);
+});
+
+test('una coda di un mese fa e un ricordo, non una sessione', () => {
+  const vecchia = codaSalvata(['a'], 0, { savedAt: NOW - SESSION_MAX_AGE_MS - 1 });
+  assert.equal(loadSavedQueue(vecchia, NOW), null);
+  const senzaData = codaSalvata(['a'], 0, { savedAt: undefined });
+  assert.equal(loadSavedQueue(senzaData, NOW), null);
+  assert.ok(loadSavedQueue(codaSalvata(['a'], 0, { savedAt: NOW - SESSION_MAX_AGE_MS }), NOW));
+});
+
+test('la posizione salvata vale solo se e un numero sensato', () => {
+  assert.deepEqual(loadSavedPosition({ uid: 'audius:a', position: 42.5, savedAt: 7 }), {
+    uid: 'audius:a',
+    position: 42.5,
+    savedAt: 7,
+  });
+  assert.equal(loadSavedPosition({ uid: 'audius:a', position: -1 }), null);
+  assert.equal(loadSavedPosition({ uid: 'audius:a', position: Number.NaN }), null);
+  assert.equal(loadSavedPosition({ uid: '', position: 3 }), null);
+  assert.equal(loadSavedPosition(undefined), null);
+});
+
+test('si riprende dalla posizione solo se appartiene al brano attivo', () => {
+  const q = loadSavedQueue(codaSalvata(['a', 'b'], 1), NOW)!;
+  assert.equal(resumePosition(q, { uid: 'audius:b', position: 30, savedAt: 0 }), 30);
+  assert.equal(resumePosition(q, { uid: 'audius:a', position: 30, savedAt: 0 }), 0, 'altro brano');
+  assert.equal(resumePosition(q, null), 0);
+});
+
+test('sui titoli di coda si riparte da capo', () => {
+  const q = loadSavedQueue(codaSalvata(['a'], 0), NOW)!; // durationSec: 120
+  const quasiFine = 120 - RESUME_TAIL_SEC;
+  assert.equal(resumePosition(q, { uid: 'audius:a', position: quasiFine, savedAt: 0 }), 0);
+  assert.equal(
+    resumePosition(q, { uid: 'audius:a', position: quasiFine - 1, savedAt: 0 }),
+    quasiFine - 1,
+  );
+
+  // Durata ignota: non si puo' dire dove sia la fine, la posizione resta.
+  const ignota = loadSavedQueue(
+    codaSalvata(['a'], 0, { tracks: [{ ...track('a'), durationSec: 0 }] }),
+    NOW,
+  )!;
+  assert.equal(resumePosition(ignota, { uid: 'audius:a', position: 500, savedAt: 0 }), 500);
+});
+
+test('un elemento della coda RNTP torna al nostro modello', () => {
+  const t = track('a');
+  assert.deepEqual(trackFromMediaItem(toMediaItem(t)), t, 'la copia in extras vince');
+
+  // Un elemento non nostro: si ricostruisce il minimo dall uid.
+  const estraneo = trackFromMediaItem({
+    mediaId: 'jamendo:9',
+    url: 'https://x/9.mp3',
+    title: 'Nove',
+    artist: 'Qualcuno',
+    duration: 61,
+  });
+  assert.equal(estraneo?.source, 'jamendo');
+  assert.equal(estraneo?.id, '9');
+  assert.equal(estraneo?.streamUrl, 'https://x/9.mp3');
+  assert.equal(estraneo?.durationSec, 61);
+
+  assert.equal(trackFromMediaItem({ url: 'https://x' }), null, 'senza uid non e un brano');
+});
+
+// --- stato del player ---------------------------------------------------
+
+test('lo stato del tasto play segue una tabella sola', () => {
+  const s = (
+    state: string,
+    playing: boolean,
+    over: Partial<Parameters<typeof derivePlaybackStatus>[0]> = {},
+  ) => derivePlaybackStatus({ state, playing, hasItem: true, pending: false, ...over });
+
+  assert.equal(s('ready', true), 'playing');
+  assert.equal(s('ready', false), 'paused');
+  assert.equal(s('buffering', false), 'buffering');
+  assert.equal(s('error', false), 'error');
+  assert.equal(s('ended', false), 'ended');
+  assert.equal(s('idle', false), 'paused', 'un brano caricato ma mai preparato e in pausa');
+  assert.equal(s('ready', true, { hasItem: false }), 'idle', 'senza brano non c e stato');
+  assert.equal(
+    s('idle', false, { hasItem: false, pending: true }),
+    'paused',
+    'la coda in attesa e una pausa',
+  );
+});
+
+test('il tasto play e occupato solo durante il caricamento', () => {
+  assert.equal(describePlayButton('buffering').busy, true);
+  assert.equal(describePlayButton('buffering').icon, 'pause', 'toccare lo spinner ferma');
+  for (const status of ['idle', 'playing', 'paused', 'ended', 'error'] as const) {
+    assert.equal(describePlayButton(status).busy, false, status);
+  }
+  assert.equal(describePlayButton('error').icon, 'refresh');
+  assert.equal(describePlayButton('playing').icon, 'pause');
+  assert.equal(describePlayButton('paused').icon, 'play');
+});
+
+test('il progresso si legge solo quando qualcuno guarda e c e qualcosa da guardare', () => {
+  const base = { subscribers: 1, hasTrack: true, appActive: true, playing: true };
+  assert.equal(progressPollInterval(base), PROGRESS_PLAYING_MS);
+  assert.equal(progressPollInterval({ ...base, playing: false }), PROGRESS_PAUSED_MS);
+  assert.equal(progressPollInterval({ ...base, subscribers: 0 }), null, 'nessun lettore');
+  assert.equal(progressPollInterval({ ...base, hasTrack: false }), null, 'nessun brano');
+  assert.equal(progressPollInterval({ ...base, appActive: false }), null, 'app in background');
+  assert.ok(PROGRESS_PAUSED_MS > PROGRESS_PLAYING_MS);
+});
+
+// --- cache di React Query su disco ------------------------------------
+
+const query = (root: string, age: number, over: Record<string, unknown> = {}) => ({
+  queryKey: [root, 'x'],
+  queryHash: `["${root}","x"]`,
+  state: { status: 'success', dataUpdatedAt: NOW - age, data: { ok: true }, ...over },
+});
+
+test('solo le chiavi degli elenchi che si riaprono finiscono su disco', () => {
+  assert.equal(isPersistableKey(['trending', 'all']), true);
+  assert.equal(isPersistableKey(['artist-tracks', 'audius', '1']), true);
+  assert.equal(isPersistableKey(['search', 'yellow']), false, 'la casella e vuota all avvio');
+  assert.equal(isPersistableKey([]), false);
+});
+
+test('la potatura tiene le query riuscite, recenti e persistibili, le piu fresche prime', () => {
+  const stato = {
+    queries: [
+      query('trending', 5_000),
+      query('search', 1_000),
+      query('artist', 2_000, { status: 'pending', data: undefined }),
+      query('album', QUERY_CACHE_MAX_AGE_MS + 1),
+      query('album-tracks', 1),
+    ],
+    mutations: [{ id: 1 }],
+  };
+  const out = pruneQueryCache(stato, { now: NOW });
+  assert.deepEqual(
+    out.queries.map((q) => q.queryKey[0]),
+    ['album-tracks', 'trending'],
+  );
+  assert.deepEqual(out.mutations, [], 'le mutazioni non si persistono');
+});
+
+test('la potatura limita il numero di query e le pagine degli elenchi infiniti', () => {
+  const tante = Array.from({ length: 10 }, (_, i) => query('trending', i * 1000));
+  assert.equal(
+    pruneQueryCache({ queries: tante, mutations: [] }, { now: NOW, maxQueries: 3 }).queries.length,
+    3,
+  );
+
+  const infinita = query('trending', 0, {
+    data: { pages: [{ offset: 0 }, { offset: 20 }, { offset: 40 }], pageParams: [0, 20, 40] },
+  });
+  const [potata] = pruneQueryCache(
+    { queries: [infinita], mutations: [] },
+    { now: NOW, maxPages: 2 },
+  ).queries;
+  assert.deepEqual(potata?.state.data, {
+    pages: [{ offset: 0 }, { offset: 20 }],
+    pageParams: [0, 20],
+  });
+
+  // Una query normale non ha pagine e passa intatta.
+  const semplice = query('album', 0, { data: { name: 'Disco' } });
+  const [intatta] = pruneQueryCache(
+    { queries: [semplice], mutations: [] },
+    { now: NOW, maxPages: 1 },
+  ).queries;
+  assert.deepEqual(intatta?.state.data, { name: 'Disco' });
+});
+
+test('il file della cache si rilegge solo se ha la forma giusta e qualcosa dentro', () => {
+  assert.equal(loadQueryCache(undefined, NOW), null);
+  assert.equal(loadQueryCache({ queries: 'no' }, NOW), null);
+  assert.equal(loadQueryCache({ queries: [{ queryKey: ['trending'] }] }, NOW), null, 'senza stato');
+  assert.equal(
+    loadQueryCache({ queries: [query('search', 0)] }, NOW),
+    null,
+    'niente di persistibile',
+  );
+
+  const letto = loadQueryCache({ queries: [query('trending', 10), { rotta: true }] }, NOW);
+  assert.equal(letto?.queries.length, 1);
+  assert.deepEqual(letto?.mutations, []);
 });

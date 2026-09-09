@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -15,22 +15,28 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
-import TrackPlayer, {
-  RepeatMode,
-  useActiveMediaItem,
-  useIsPlaying,
-  useProgress,
-} from '@rntp/player';
+import TrackPlayer, { RepeatMode } from '@rntp/player';
 import { Artwork } from '@/components/Artwork';
 import { HeartButton } from '@/components/HeartButton';
 import { PressableScale } from '@/components/PressableScale';
 import { AUDIUS_OPEN_MUSIC_LICENSE_URL } from '@/config/legal';
+import { usePlaybackStatus } from '@/hooks/usePlaybackStatus';
 import { haptics } from '@/services/haptics';
+import { trackFromMediaItem } from '@/services/mediaItems';
+import { describePlayButton } from '@/services/playbackStatus';
+import {
+  retryPlayback,
+  skipToNext,
+  skipToPrevious,
+  togglePlayback,
+} from '@/services/playerCommands';
 import { resolve } from '@/store/library';
 import { cycleRepeat, toggleShuffle, usePlaybackPrefs } from '@/store/playback';
+import { useProgress } from '@/store/progress';
+import { activateSession, seekPending, useNowPlaying } from '@/store/session';
 import { cancelSleepTimer, startSleepTimer, useSleepTimer } from '@/store/sleepTimer';
 import { colors, formatTime, motion, radius, spacing, type } from '@/theme';
-import type { SourceId, Track } from '@/types/track';
+import type { Track } from '@/types/track';
 
 const SLEEP_OPTIONS = [15, 30, 45, 60, 90];
 
@@ -51,6 +57,13 @@ const DISMISS_DISTANCE = 120;
 const DISMISS_VELOCITY = 900;
 /** In pausa la copertina si ritrae di poco: il "respiro" dei player di riferimento. */
 const PAUSED_SCALE = 0.92;
+/**
+ * Rientro orizzontale e altezza della traccia della SeekBar Android
+ * (stile AppCompat): la nostra traccia di sfondo, con la porzione
+ * bufferizzata, deve sovrapporsi a quella nativa.
+ */
+const SLIDER_INSET = 16;
+const SLIDER_TRACK_HEIGHT = 4;
 
 function SleepCountdown({ endsAt }: { endsAt: number }) {
   const [minutes, setMinutes] = useState(1);
@@ -76,9 +89,11 @@ export default function PlayerScreen() {
   // di navigazione, e senza questo margine la riga della licenza ci finisce
   // sotto — proprio quella che per Jamendo deve restare leggibile.
   const insets = useSafeAreaInsets();
-  const active = useActiveMediaItem();
-  const playing = useIsPlaying();
-  const { position, duration } = useProgress(0.5);
+  // Il brano puo' venire dal player nativo o dalla coda ripristinata dopo
+  // un riavvio: finche' e' `pending` il player non lo conosce ancora.
+  const { item: active, pending } = useNowPlaying();
+  const status = usePlaybackStatus();
+  const { position, duration, buffered } = useProgress();
   const { shuffle, repeat } = usePlaybackPrefs();
   const sleepEndsAt = useSleepTimer();
 
@@ -116,11 +131,15 @@ export default function PlayerScreen() {
    */
   const translateY = useSharedValue(0);
   const scrimFade = useSharedValue(1);
-  const artScale = useSharedValue(playing ? 1 : PAUSED_SCALE);
+  // Anche il buffering tiene la copertina a misura piena: e' un brano che
+  // sta andando avanti, non una pausa, e un respiro a ogni buco di rete
+  // racconterebbe una pausa che nessuno ha chiesto.
+  const engaged = status === 'playing' || status === 'buffering';
+  const artScale = useSharedValue(engaged ? 1 : PAUSED_SCALE);
 
   useEffect(() => {
-    artScale.set(withSpring(playing ? 1 : PAUSED_SCALE, SPRING));
-  }, [artScale, playing]);
+    artScale.set(withSpring(engaged ? 1 : PAUSED_SCALE, SPRING));
+  }, [artScale, engaged]);
 
   const dismiss = useCallback(() => {
     // Aperto da un deep link senza niente sotto, `back()` non farebbe nulla
@@ -170,31 +189,19 @@ export default function PlayerScreen() {
 
   /**
    * RNTP conserva solo i campi che gli abbiamo dato. Per il cuoricino
-   * serve il nostro modello: prima si prova il catalogo, poi si
-   * ricostruisce dal minimo indispensabile.
+   * serve il nostro modello: prima si prova il catalogo, poi la copia
+   * che viaggia dentro l'elemento della coda.
    */
   const track = useMemo<Track | null>(() => {
     if (!uid || !active) return null;
-    const known = resolve(uid);
-    if (known) return known;
-    const embedded = active.extras?.track as Track | undefined;
-    if (embedded?.uid === uid) return embedded;
-    const [source, id] = uid.split(':');
-    return {
-      uid,
-      source: (source === 'jamendo' ? 'jamendo' : 'audius') as SourceId,
-      id: id ?? '',
-      title: String(active.title ?? ''),
-      artist: String(active.artist ?? ''),
-      artworkUrl: typeof active.artworkUrl === 'string' ? active.artworkUrl : undefined,
-      durationSec: Number(active.duration ?? 0),
-      streamUrl: String(active.url ?? ''),
-    };
+    return resolve(uid) ?? trackFromMediaItem(active);
   }, [uid, active]);
 
   if (!active || !track) return null;
 
   const shown = seekTo ?? position;
+  const bufferedPct = duration > 0 ? Math.min(1, Math.max(0, buffered / duration)) : 0;
+  const playButton = describePlayButton(status);
 
   return (
     <View style={styles.root}>
@@ -231,7 +238,12 @@ export default function PlayerScreen() {
                   />
                 </PressableScale>
                 <PressableScale
-                  onPress={() => router.push('/queue')}
+                  onPress={() => {
+                    // La Coda legge il player nativo: la coda ripristinata
+                    // va caricata prima, senza far partire niente.
+                    activateSession({ play: false });
+                    router.push('/queue');
+                  }}
                   hitSlop={12}
                   scaleTo={motion.iconPressScale}
                   accessibilityRole="button"
@@ -286,21 +298,31 @@ export default function PlayerScreen() {
           </View>
         </GestureDetector>
 
-        <Slider
-          style={styles.slider}
-          minimumValue={0}
-          maximumValue={Math.max(1, duration)}
-          value={shown}
-          minimumTrackTintColor={colors.accent}
-          maximumTrackTintColor={colors.surfaceHigh}
-          thumbTintColor={colors.accent}
-          onValueChange={setSeekTo}
-          onSlidingComplete={(v) => {
-            TrackPlayer.seekTo(v);
-            setSeekTo(null);
-          }}
-          accessibilityLabel="Posizione nel brano"
-        />
+        {/* La porzione gia' scaricata sta dietro lo slider, che disegna
+            solo la parte suonata e il pallino: la traccia di sfondo e' la
+            nostra, cosi' ci si puo' disegnare sopra il buffer. */}
+        <View style={styles.sliderWrap}>
+          <View style={styles.sliderTrack} pointerEvents="none">
+            <View style={[styles.sliderBuffered, { transform: [{ scaleX: bufferedPct }] }]} />
+          </View>
+          <Slider
+            minimumValue={0}
+            maximumValue={Math.max(1, duration)}
+            value={shown}
+            minimumTrackTintColor={colors.accent}
+            maximumTrackTintColor="transparent"
+            thumbTintColor={colors.accent}
+            onValueChange={setSeekTo}
+            onSlidingComplete={(v) => {
+              // Prima del primo play il brano non e' nel player: si
+              // ricorda solo da dove ripartira'.
+              if (pending) seekPending(v);
+              else TrackPlayer.seekTo(v);
+              setSeekTo(null);
+            }}
+            accessibilityLabel="Posizione nel brano"
+          />
+        </View>
 
         <View style={styles.times}>
           <Text style={styles.time}>{formatTime(shown)}</Text>
@@ -323,7 +345,7 @@ export default function PlayerScreen() {
           </PressableScale>
 
           <PressableScale
-            onPress={() => TrackPlayer.skipToPrevious()}
+            onPress={skipToPrevious}
             hitSlop={16}
             scaleTo={motion.iconPressScale}
             haptic="tap"
@@ -335,17 +357,22 @@ export default function PlayerScreen() {
 
           <PressableScale
             style={styles.playButton}
-            onPress={() => (playing ? TrackPlayer.pause() : TrackPlayer.play())}
+            onPress={() => togglePlayback(status)}
             scaleTo={motion.iconPressScale}
             haptic="tap"
             accessibilityRole="button"
-            accessibilityLabel={playing ? 'Metti in pausa' : 'Riprendi'}
+            accessibilityLabel={playButton.label}
+            accessibilityState={{ busy: playButton.busy }}
           >
-            <Ionicons name={playing ? 'pause' : 'play'} size={32} color={colors.bg} />
+            {playButton.busy ? (
+              <ActivityIndicator color={colors.bg} />
+            ) : (
+              <Ionicons name={playButton.icon} size={32} color={colors.bg} />
+            )}
           </PressableScale>
 
           <PressableScale
-            onPress={() => TrackPlayer.skipToNext()}
+            onPress={skipToNext}
             hitSlop={16}
             scaleTo={motion.iconPressScale}
             haptic="tap"
@@ -373,6 +400,25 @@ export default function PlayerScreen() {
             </View>
           </PressableScale>
         </View>
+
+        {/* L'errore si dice e si risolve qui, non solo con un'icona: il
+            budget di salti (playbackPolicy) copre i brani rotti, ma una
+            rete caduta lascia il player fermo in attesa di qualcuno. */}
+        {status === 'error' ? (
+          <View style={styles.problem} accessibilityLiveRegion="polite">
+            <Ionicons name="cloud-offline-outline" size={18} color={colors.danger} />
+            <Text style={styles.problemText}>Il brano non risponde. Controlla la rete.</Text>
+            <PressableScale
+              onPress={retryPlayback}
+              haptic="tap"
+              style={styles.problemAction}
+              accessibilityRole="button"
+              accessibilityLabel="Riprova a riprodurre"
+            >
+              <Text style={styles.problemActionText}>Riprova</Text>
+            </PressableScale>
+          </View>
+        ) : null}
 
         {sleepEndsAt ? <SleepCountdown key={sleepEndsAt} endsAt={sleepEndsAt} /> : null}
 
@@ -491,7 +537,27 @@ const styles = StyleSheet.create({
   title: { ...type.display, color: colors.text },
   artist: { ...type.body, color: colors.textMuted },
   artistLink: { textDecorationLine: 'underline' },
-  slider: { marginTop: spacing.lg, marginHorizontal: -spacing.sm },
+  sliderWrap: { marginTop: spacing.lg, marginHorizontal: -spacing.sm, justifyContent: 'center' },
+  sliderTrack: {
+    position: 'absolute',
+    left: SLIDER_INSET,
+    right: SLIDER_INSET,
+    top: '50%',
+    marginTop: -SLIDER_TRACK_HEIGHT / 2,
+    height: SLIDER_TRACK_HEIGHT,
+    borderRadius: SLIDER_TRACK_HEIGHT / 2,
+    backgroundColor: colors.surfaceHigh,
+    overflow: 'hidden',
+  },
+  sliderBuffered: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: colors.border,
+    transformOrigin: 'left',
+  },
   times: { flexDirection: 'row', justifyContent: 'space-between' },
   time: { ...type.caption, ...type.tabular, color: colors.textMuted },
   controls: {
@@ -516,6 +582,25 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.accent,
   },
+  problem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.danger,
+  },
+  problemText: { ...type.caption, color: colors.textMuted, flex: 1 },
+  problemAction: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceHigh,
+  },
+  problemActionText: { ...type.label, fontSize: 13, color: colors.text },
   sleepNote: {
     ...type.caption,
     ...type.tabular,

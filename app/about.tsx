@@ -61,8 +61,10 @@ export default function AboutScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>I tuoi dati</Text>
         <Text style={styles.body}>
-          Preferiti, cronologia, playlist e preferenze di riproduzione restano nello spazio privato
-          dell’app. Onda non integra pubblicità, analytics o segnalazioni automatiche dei crash.
+          Preferiti, cronologia, playlist, preferenze di riproduzione, l’ultima coda con la
+          posizione raggiunta e una copia temporanea dei cataloghi consultati restano nello spazio
+          privato dell’app. Onda non integra pubblicità, analytics o segnalazioni automatiche dei
+          crash.
         </Text>
         <Text style={styles.body}>
           Il backup cloud e il trasferimento Android dei dati dell’app sono disabilitati. Puoi
