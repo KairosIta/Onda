@@ -3,10 +3,12 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CollectionHeader } from '@/components/CollectionHeader';
+import { PressableScale } from '@/components/PressableScale';
 import { Screen } from '@/components/Screen';
 import { Empty } from '@/components/StateViews';
 import { TrackList } from '@/components/TrackList';
 import { useQueue } from '@/hooks/useQueue';
+import { haptics } from '@/services/haptics';
 import {
   deletePlaylist,
   movePlaylistTrack,
@@ -15,7 +17,7 @@ import {
   tracksOf,
   useLibrary,
 } from '@/store/library';
-import { colors, radius, spacing, type } from '@/theme';
+import { colors, motion, radius, spacing, type } from '@/theme';
 import { shuffled } from '@/utils/shuffle';
 
 export default function PlaylistScreen() {
@@ -49,12 +51,30 @@ export default function PlaylistScreen() {
           text: 'Elimina',
           style: 'destructive',
           onPress: () => {
+            haptics.reject();
             deletePlaylist(playlist.id);
             router.back();
           },
         },
       ],
     );
+
+  // Le frecce agli estremi sono gia' disabilitate; il controllo resta
+  // perche' il feedback deve seguire uno spostamento avvenuto, non un tocco.
+  const move = (from: number, to: number) => {
+    if (to < 0 || to >= tracks.length) return;
+    haptics.tap();
+    movePlaylistTrack(playlist.id, from, to);
+  };
+
+  // Lo stesso salvataggio da bottone e da tastiera, con lo stesso feedback:
+  // `success` come "Crea e aggiungi" del menu contestuale. Un nome vuoto
+  // lascia quello vecchio, quindi non c'e' niente di riuscito da segnalare.
+  const save = () => {
+    if (draft.trim()) haptics.success();
+    renamePlaylist(playlist.id, draft);
+    setRenaming(false);
+  };
 
   const header = (
     <CollectionHeader
@@ -65,10 +85,18 @@ export default function PlaylistScreen() {
       onShuffle={() => playList(shuffled(tracks), 0)}
       actions={
         <>
+          {/* Il riordino e' un interruttore: vibra come gli altri toggle
+              (preferito, shuffle), non come un bottone. */}
           {tracks.length > 1 ? (
-            <Pressable
+            <PressableScale
               hitSlop={12}
-              onPress={() => setEditing((v) => !v)}
+              scaleTo={motion.iconPressScale}
+              onPress={() => {
+                haptics.toggle(!editing);
+                setEditing((v) => !v);
+              }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: editing }}
               accessibilityLabel={editing ? 'Fine riordino' : 'Riordina i brani'}
             >
               <Ionicons
@@ -76,21 +104,29 @@ export default function PlaylistScreen() {
                 size={22}
                 color={editing ? colors.accent : colors.textMuted}
               />
-            </Pressable>
+            </PressableScale>
           ) : null}
-          <Pressable
+          <PressableScale
             hitSlop={12}
+            scaleTo={motion.iconPressScale}
             onPress={() => {
               setDraft(playlist.name);
               setRenaming(true);
             }}
+            accessibilityRole="button"
             accessibilityLabel="Rinomina la playlist"
           >
             <Ionicons name="pencil-outline" size={20} color={colors.textMuted} />
-          </Pressable>
-          <Pressable hitSlop={12} onPress={confirmDelete} accessibilityLabel="Elimina la playlist">
+          </PressableScale>
+          <PressableScale
+            hitSlop={12}
+            scaleTo={motion.iconPressScale}
+            onPress={confirmDelete}
+            accessibilityRole="button"
+            accessibilityLabel="Elimina la playlist"
+          >
             <Ionicons name="trash-outline" size={20} color={colors.textMuted} />
-          </Pressable>
+          </PressableScale>
         </>
       }
     />
@@ -119,7 +155,7 @@ export default function PlaylistScreen() {
               <Pressable
                 hitSlop={8}
                 disabled={index === 0}
-                onPress={() => movePlaylistTrack(playlist.id, index, index - 1)}
+                onPress={() => move(index, index - 1)}
                 accessibilityLabel="Sposta su"
               >
                 <Ionicons
@@ -131,7 +167,7 @@ export default function PlaylistScreen() {
               <Pressable
                 hitSlop={8}
                 disabled={index === tracks.length - 1}
-                onPress={() => movePlaylistTrack(playlist.id, index, index + 1)}
+                onPress={() => move(index, index + 1)}
                 accessibilityLabel="Sposta giu'"
               >
                 <Ionicons
@@ -142,7 +178,10 @@ export default function PlaylistScreen() {
               </Pressable>
               <Pressable
                 hitSlop={8}
-                onPress={() => removeFromPlaylist(playlist.id, item.uid)}
+                onPress={() => {
+                  haptics.reject();
+                  removeFromPlaylist(playlist.id, item.uid);
+                }}
                 accessibilityLabel="Rimuovi dalla playlist"
               >
                 <Ionicons name="remove-circle-outline" size={22} color={colors.danger} />
@@ -181,21 +220,18 @@ export default function PlaylistScreen() {
             selectTextOnFocus
             returnKeyType="done"
             placeholderTextColor={colors.textMuted}
-            onSubmitEditing={() => {
-              renamePlaylist(playlist.id, draft);
-              setRenaming(false);
-            }}
+            onSubmitEditing={save}
           />
-          <Pressable
+          {/* L'opacita' da spento sta sul contenitore che si anima, cosi' il
+              bottone resta un pezzo solo anche mentre si ritrae. */}
+          <PressableScale
             style={[styles.cta, !draft.trim() && styles.ctaOff]}
             disabled={!draft.trim()}
-            onPress={() => {
-              renamePlaylist(playlist.id, draft);
-              setRenaming(false);
-            }}
+            onPress={save}
+            accessibilityRole="button"
           >
             <Text style={styles.ctaText}>Salva</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </Modal>
     </Screen>
@@ -247,5 +283,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ctaOff: { opacity: 0.4 },
-  ctaText: { ...type.body, color: colors.bg },
+  ctaText: { ...type.label, color: colors.bg },
 });

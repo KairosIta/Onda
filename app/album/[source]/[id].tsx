@@ -1,13 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Artwork } from '@/components/Artwork';
 import { CollectionHeader } from '@/components/CollectionHeader';
 import { Screen } from '@/components/Screen';
-import { Empty, ErrorNotice, Loading } from '@/components/StateViews';
+import { CollectionSkeleton } from '@/components/Skeleton';
+import { Empty, ErrorNotice } from '@/components/StateViews';
 import { TrackList } from '@/components/TrackList';
 import { useQueue } from '@/hooks/useQueue';
 import { sourceById } from '@/services/sources';
-import { colors, radius, spacing } from '@/theme';
+import { radius, spacing } from '@/theme';
 import { shuffled } from '@/utils/shuffle';
 
 /**
@@ -49,9 +51,10 @@ export default function AlbumScreen() {
   }
 
   if (info.isLoading || list.isLoading) {
+    // Sagoma con la copertina quadrata: anticipa la forma della pagina che arriva.
     return (
       <Screen>
-        <Loading />
+        <CollectionSkeleton media="square" rows={6} />
       </Screen>
     );
   }
@@ -73,7 +76,14 @@ export default function AlbumScreen() {
               media={
                 info.data?.imageUrl ? (
                   <View style={styles.coverWrap}>
-                    <Image source={{ uri: info.data.imageUrl }} style={styles.cover} />
+                    {/* Priorita' alta: e' l'unica immagine della pagina e
+                        sta in testa, prima delle copertine delle righe. */}
+                    <Artwork
+                      uri={info.data.imageUrl}
+                      size={180}
+                      radius={radius.md}
+                      priority="high"
+                    />
                   </View>
                 ) : null
               }
@@ -90,5 +100,4 @@ export default function AlbumScreen() {
 
 const styles = StyleSheet.create({
   coverWrap: { alignItems: 'center', paddingTop: spacing.xl },
-  cover: { width: 180, height: 180, borderRadius: radius.md, backgroundColor: colors.surfaceHigh },
 });

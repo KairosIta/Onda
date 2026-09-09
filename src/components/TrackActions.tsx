@@ -3,7 +3,9 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PressableScale } from '@/components/PressableScale';
 import { useQueue } from '@/hooks/useQueue';
+import { haptics } from '@/services/haptics';
 import {
   addToPlaylist,
   createPlaylist,
@@ -104,18 +106,29 @@ function TrackActionsSheet({
             <Item
               icon="play-forward-outline"
               label="Riproduci dopo"
-              onPress={() => playNext(track).then(() => done('Aggiunta dopo la traccia corrente'))}
+              onPress={() =>
+                playNext(track).then(() => {
+                  haptics.success();
+                  done('Aggiunta dopo la traccia corrente');
+                })
+              }
             />
             <Item
               icon="list-outline"
               label="Aggiungi in fondo alla coda"
-              onPress={() => addLast(track).then(() => done('Accodata'))}
+              onPress={() =>
+                addLast(track).then(() => {
+                  haptics.success();
+                  done('Accodata');
+                })
+              }
             />
             <Item
               icon={isFav ? 'heart' : 'heart-outline'}
               label={isFav ? 'Togli dai preferiti' : 'Aggiungi ai preferiti'}
               tint={isFav ? colors.accent : undefined}
               onPress={() => {
+                haptics.toggle(!isFav);
                 toggleFavorite(track);
                 done(isFav ? 'Rimossa dai preferiti' : 'Aggiunta ai preferiti');
               }}
@@ -158,6 +171,7 @@ function TrackActionsSheet({
                 label="Rimuovi da questa playlist"
                 tint={colors.danger}
                 onPress={() => {
+                  haptics.reject();
                   removeFromPlaylist(fromPlaylistId, track.uid);
                   close();
                 }}
@@ -181,6 +195,7 @@ function TrackActionsSheet({
                     detail={`${p.trackUids.length}`}
                     onPress={() => {
                       const added = addToPlaylist(p.id, track);
+                      if (added) haptics.success();
                       done(added ? `Aggiunta a ${p.name}` : `Gia' presente in ${p.name}`);
                     }}
                   />
@@ -203,19 +218,22 @@ function TrackActionsSheet({
               onSubmitEditing={() => {
                 if (!name.trim()) return;
                 createPlaylist(name, [track]);
+                haptics.success();
                 done(`Creata ${name.trim()}`);
               }}
             />
-            <Pressable
+            <PressableScale
               style={[styles.cta, !name.trim() && styles.ctaOff]}
               disabled={!name.trim()}
               onPress={() => {
                 createPlaylist(name, [track]);
+                haptics.success();
                 done(`Creata ${name.trim()}`);
               }}
+              accessibilityRole="button"
             >
               <Text style={styles.ctaText}>Crea e aggiungi</Text>
-            </Pressable>
+            </PressableScale>
           </View>
         ) : null}
       </View>
@@ -311,5 +329,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ctaOff: { opacity: 0.4 },
-  ctaText: { ...type.body, color: colors.bg },
+  ctaText: { ...type.label, color: colors.bg },
 });

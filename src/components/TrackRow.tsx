@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { memo } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, formatTime, radius, spacing, type } from '@/theme';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { haptics } from '@/services/haptics';
+import { colors, formatTime, spacing, type } from '@/theme';
 import type { Track } from '@/types/track';
+import { Artwork } from './Artwork';
 
 interface Props {
   track: Track;
@@ -19,6 +21,11 @@ interface Props {
  * "in riproduzione" arrivano come prop dalla lista, che si abbona una
  * volta sola. Altrimenti ogni cuoricino toccato ridisegnerebbe l'intera
  * schermata riga per riga.
+ *
+ * Resta un Pressable con l'evidenziazione di sfondo, non si ritrae: e'
+ * la convenzione Android per le righe di lista. Il tocco vibra prima
+ * che il brano parta, perche' il feedback deve arrivare col dito, non
+ * col buffering.
  */
 export const TrackRow = memo(function TrackRow({
   track,
@@ -30,18 +37,24 @@ export const TrackRow = memo(function TrackRow({
 }: Props) {
   return (
     <Pressable
-      onPress={() => onPress(track, index)}
-      onLongPress={onMore ? () => onMore(track) : undefined}
+      onPress={() => {
+        haptics.tap();
+        onPress(track, index);
+      }}
+      onLongPress={
+        onMore
+          ? () => {
+              haptics.longPress();
+              onMore(track);
+            }
+          : undefined
+      }
       delayLongPress={300}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel={`Riproduci ${track.title} di ${track.artist}`}
     >
-      {track.artworkUrl ? (
-        <Image source={{ uri: track.artworkUrl }} style={styles.art} />
-      ) : (
-        <View style={[styles.art, styles.artEmpty]} />
-      )}
+      <Artwork uri={track.artworkUrl} size={48} recyclingKey={track.uid} fade={false} />
 
       <View style={styles.meta}>
         <Text numberOfLines={1} style={[styles.title, isActive && styles.titleActive]}>
@@ -60,10 +73,15 @@ export const TrackRow = memo(function TrackRow({
         </View>
       </View>
 
+      {/* Icona dentro una riga: segue la convenzione della riga (evidenziazione,
+          qui in opacita') e non quella dei bottoni; una molla per riga
+          sarebbe un valore animato in piu' per ogni riga a schermo. */}
       {onMore ? (
         <Pressable
           onPress={() => onMore(track)}
           hitSlop={10}
+          style={({ pressed }) => pressed && styles.iconPressed}
+          accessibilityRole="button"
           accessibilityLabel={`Opzioni per ${track.title}`}
         >
           <Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} />
@@ -82,8 +100,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   pressed: { backgroundColor: colors.surface },
-  art: { width: 48, height: 48, borderRadius: radius.sm, backgroundColor: colors.surfaceHigh },
-  artEmpty: { borderWidth: 1, borderColor: colors.border },
+  iconPressed: { opacity: 0.5 },
   meta: { flex: 1, gap: 2 },
   title: { ...type.body, color: colors.text },
   titleActive: { color: colors.accent },
@@ -91,5 +108,9 @@ const styles = StyleSheet.create({
   right: { alignItems: 'flex-end', gap: 2 },
   rightBottom: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   source: { ...type.caption, color: colors.textMuted, opacity: 0.6, fontSize: 10 },
-  duration: { ...type.caption, color: colors.textMuted },
+  duration: {
+    ...type.caption,
+    ...type.tabular,
+    color: colors.textMuted,
+  },
 });

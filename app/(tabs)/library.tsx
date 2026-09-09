@@ -2,12 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { PressableScale } from '@/components/PressableScale';
 import { Empty } from '@/components/StateViews';
+import { haptics } from '@/services/haptics';
 import { exportLibrary, pickBackup, saveLibrary } from '@/services/libraryBackup';
 import { createPlaylist, getLibrary, importLibrary, useLibrary } from '@/store/library';
 import { previewImport, type ImportPreview } from '@/store/libraryExport';
 import type { LibraryState } from '@/store/librarySchema';
-import { colors, radius, spacing, type } from '@/theme';
+import { colors, motion, radius, spacing, type } from '@/theme';
 
 /** Righe dell'anteprima: si mostra solo cio' che cambia davvero. */
 function previewLines(p: ImportPreview): string[] {
@@ -41,17 +43,31 @@ export default function LibraryScreen() {
     setBusy(true);
     const esito = await exportLibrary(getLibrary());
     setBusy(false);
-    if (!esito.ok) setMessage(`Export non riuscito: ${esito.reason}`);
-    else if (!esito.shared) setMessage(`File scritto in ${esito.uri}`);
+    if (!esito.ok) {
+      haptics.reject();
+      setMessage(`Export non riuscito: ${esito.reason}`);
+    } else if (!esito.shared) {
+      haptics.success();
+      setMessage(`File scritto in ${esito.uri}`);
+    }
+    // Con il menu di condivisione la promessa si risolve al ritorno
+    // nell'app, anche se l'utente ha solo chiuso il menu: non sappiamo
+    // se la copia e' uscita davvero, quindi niente conferma tattile.
   };
 
   const doSave = async () => {
     setBusy(true);
     const esito = await saveLibrary(getLibrary());
     setBusy(false);
-    if (esito.ok) setMessage(`Salvata come ${esito.name}.`);
+    if (esito.ok) {
+      haptics.success();
+      setMessage(`Salvata come ${esito.name}.`);
+      return;
+    }
     // Un ripensamento non e' un errore: si tace.
-    else if (!('canceled' in esito)) setMessage(`Salvataggio non riuscito: ${esito.reason}`);
+    if ('canceled' in esito) return;
+    haptics.reject();
+    setMessage(`Salvataggio non riuscito: ${esito.reason}`);
   };
 
   const doPick = async () => {
@@ -61,6 +77,7 @@ export default function LibraryScreen() {
     if (esito.ok) {
       setPending({ library: esito.library, preview: previewImport(getLibrary(), esito.library) });
     } else if (!('canceled' in esito)) {
+      haptics.reject();
       setMessage(esito.reason);
     }
   };
@@ -69,12 +86,18 @@ export default function LibraryScreen() {
     if (!pending) return;
     const fatto = importLibrary(pending.library);
     setPending(null);
+    // Un file che non aggiunge niente non e' un errore: si tace.
+    if (!fatto.empty) haptics.success();
     setMessage(fatto.empty ? 'Niente da aggiungere.' : 'Libreria importata.');
   };
 
+  // La vibrazione sta qui e non sul bottone: da tastiera (Invio) e da
+  // "Crea" la playlist nasce allo stesso modo, con lo stesso `success`
+  // di "Crea e aggiungi" nel menu contestuale.
   const create = () => {
     if (!name.trim()) return;
     const id = createPlaylist(name);
+    haptics.success();
     setName('');
     setCreating(false);
     router.push({ pathname: '/playlist/[id]', params: { id } });
@@ -103,13 +126,18 @@ export default function LibraryScreen() {
 
         <View style={styles.sectionHead}>
           <Text style={styles.sectionTitle}>Playlist</Text>
-          <Pressable
+          {/* Icona sola, senza sfondo: si ritrae piu' di un bottone pieno,
+              altrimenti il movimento non si vede. Senza `haptic`: apre una
+              finestra, e le aperture nell'app non vibrano. */}
+          <PressableScale
             onPress={() => setCreating(true)}
             hitSlop={12}
+            scaleTo={motion.iconPressScale}
+            accessibilityRole="button"
             accessibilityLabel="Nuova playlist"
           >
             <Ionicons name="add" size={24} color={colors.accent} />
-          </Pressable>
+          </PressableScale>
         </View>
 
         {playlists.length === 0 ? (
@@ -182,13 +210,16 @@ export default function LibraryScreen() {
             returnKeyType="done"
             onSubmitEditing={create}
           />
-          <Pressable
+          {/* L'opacita' da spento sta sul contenitore che si anima, cosi' il
+              bottone resta un pezzo solo anche mentre si ritrae. */}
+          <PressableScale
             style={[styles.cta, !name.trim() && styles.ctaOff]}
             disabled={!name.trim()}
             onPress={create}
+            accessibilityRole="button"
           >
             <Text style={styles.ctaText}>Crea</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </Modal>
 
@@ -220,13 +251,15 @@ export default function LibraryScreen() {
             <Pressable onPress={() => setPending(null)} hitSlop={12}>
               <Text style={styles.dialogCancel}>Annulla</Text>
             </Pressable>
-            <Pressable
+            {/* Senza `haptic`: il feedback lo da' l'esito dell'import, non il tocco. */}
+            <PressableScale
               style={[styles.cta, pending?.preview.empty && styles.ctaOff]}
               disabled={pending?.preview.empty}
               onPress={confirmImport}
+              accessibilityRole="button"
             >
               <Text style={styles.ctaText}>Importa</Text>
-            </Pressable>
+            </PressableScale>
           </View>
         </View>
       </Modal>
@@ -242,9 +275,14 @@ export default function LibraryScreen() {
           <Text style={styles.dialogBody} selectable>
             {message}
           </Text>
-          <Pressable style={styles.cta} onPress={() => setMessage(null)}>
+          {/* Senza `haptic`: chiude un dialogo, come "Annulla" e i backdrop. */}
+          <PressableScale
+            style={styles.cta}
+            onPress={() => setMessage(null)}
+            accessibilityRole="button"
+          >
             <Text style={styles.ctaText}>Ho capito</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </Modal>
     </View>
@@ -375,5 +413,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ctaOff: { opacity: 0.4 },
-  ctaText: { ...type.body, color: colors.bg },
+  ctaText: { ...type.label, color: colors.bg },
 });

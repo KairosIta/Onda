@@ -108,7 +108,15 @@ export default function RootLayout() {
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen
                   name="player"
-                  options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+                  options={{
+                    // Il player si chiude trascinandolo: sotto deve intravedersi
+                    // la schermata precedente, quindi la route e' trasparente e
+                    // lo sfondo lo mette il player stesso. Lo Stack imposta uno
+                    // sfondo opaco per tutti: qui va sovrascritto.
+                    presentation: 'transparentModal',
+                    animation: 'slide_from_bottom',
+                    contentStyle: { backgroundColor: 'transparent' },
+                  }}
                 />
                 <Stack.Screen
                   name="queue"
@@ -157,5 +165,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
   },
   crashButtonOff: { opacity: 0.6 },
-  crashButtonText: { ...type.body, color: colors.bg },
+  crashButtonText: { ...type.label, color: colors.bg },
 });

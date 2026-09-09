@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Empty, ErrorNotice, Loading } from '@/components/StateViews';
+import { TrackListSkeleton } from '@/components/Skeleton';
+import { Empty, ErrorNotice } from '@/components/StateViews';
 import { TrackList } from '@/components/TrackList';
 import { useDebounced } from '@/hooks/useDebounced';
 import { useInfiniteTracks } from '@/hooks/useInfiniteTracks';
@@ -49,8 +50,10 @@ export default function SearchScreen() {
         <ErrorNotice key={f.source} message={`${f.source} non risponde: ${f.message}`} />
       ))}
 
+      {/* La sagoma prende il posto della lista, non dell'intestazione:
+          l'input resta montato e a fuoco mentre si scrive. */}
       {isLoading && enabled ? (
-        <Loading />
+        <TrackListSkeleton rows={8} />
       ) : (
         <TrackList
           tracks={tracks}

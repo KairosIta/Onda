@@ -21,6 +21,12 @@ Il repository non include né modifica il sorgente RNTP: dichiara soltanto la
 dipendenza npm. Questo non autorizza a ridistribuire RNTP o un APK che lo
 incorpora.
 
+Il carattere tipografico Manrope, in `assets/fonts/`, è Copyright 2018 The
+Manrope Project Authors ed è distribuito sotto la
+[SIL Open Font License 1.1](assets/fonts/OFL.txt). Viene incorporato nell'APK
+dal config plugin di expo-font. La licenza OFL resta quella del font: la MIT di
+Onda non lo rilicenzia.
+
 ## Musica, metadati e artwork
 
 Brani, registrazioni, composizioni, metadati e artwork ottenuti da Audius o

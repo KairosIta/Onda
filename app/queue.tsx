@@ -1,12 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TrackPlayer, { Event, type MediaItem } from '@rntp/player';
+import { Artwork } from '@/components/Artwork';
+import { PressableScale } from '@/components/PressableScale';
 import { Empty } from '@/components/StateViews';
+import { haptics } from '@/services/haptics';
 import { usePlaybackPrefs } from '@/store/playback';
-import { colors, formatTime, radius, spacing, type } from '@/theme';
+import { colors, formatTime, motion, spacing, type } from '@/theme';
 import { describeQueue } from '@/utils/queueSummary';
 
 /**
@@ -44,6 +47,7 @@ export default function QueueScreen() {
   const clearBelow = () => {
     if (activeIndex === null) return;
     if (activeIndex >= items.length - 1) return;
+    haptics.reject();
     TrackPlayer.removeMediaItems(activeIndex + 1, items.length);
     load();
   };
@@ -51,11 +55,22 @@ export default function QueueScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={16} accessibilityLabel="Chiudi">
+        <PressableScale
+          onPress={() => router.back()}
+          hitSlop={16}
+          scaleTo={motion.iconPressScale}
+          accessibilityRole="button"
+          accessibilityLabel="Chiudi"
+        >
           <Ionicons name="chevron-down" size={28} color={colors.textMuted} />
-        </Pressable>
+        </PressableScale>
         {summary.clearLabel ? (
-          <Pressable onPress={clearBelow} hitSlop={12}>
+          <Pressable
+            onPress={clearBelow}
+            hitSlop={12}
+            style={({ pressed }) => pressed && styles.textPressed}
+            accessibilityRole="button"
+          >
             <Text style={styles.clear}>{summary.clearLabel}</Text>
           </Pressable>
         ) : null}
@@ -89,17 +104,21 @@ export default function QueueScreen() {
                 isPast && styles.past,
               ]}
               onPress={() => {
+                haptics.tap();
                 TrackPlayer.skipToIndex(index);
                 TrackPlayer.play();
                 load();
               }}
               accessibilityLabel={`Passa a ${item.title}`}
             >
-              {typeof item.artworkUrl === 'string' ? (
-                <Image source={{ uri: item.artworkUrl }} style={styles.art} />
-              ) : (
-                <View style={[styles.art, styles.artEmpty]} />
-              )}
+              {/* In RNTP l'artwork puo' essere anche una risorsa locale, non
+                  solo un URL: qui si mostra solo la stringa. */}
+              <Artwork
+                uri={typeof item.artworkUrl === 'string' ? item.artworkUrl : undefined}
+                size={44}
+                recyclingKey={String(item.mediaId ?? '') + ':' + index}
+                fade={false}
+              />
 
               <View style={styles.meta}>
                 <Text
@@ -115,14 +134,19 @@ export default function QueueScreen() {
 
               <Text style={styles.duration}>{formatTime(Number(item.duration ?? 0))}</Text>
 
-              {/* RNTP non permette di rimuovere la traccia in riproduzione. */}
+              {/* RNTP non permette di rimuovere la traccia in riproduzione.
+                  Togliere un brano vibra `reject` come in playlist: stessa
+                  azione, stesso feedback. */}
               <Pressable
                 hitSlop={10}
                 disabled={isActive}
+                style={({ pressed }) => pressed && styles.textPressed}
                 onPress={() => {
+                  haptics.reject();
                   TrackPlayer.removeMediaItem(index);
                   load();
                 }}
+                accessibilityRole="button"
                 accessibilityLabel={`Togli ${item.title} dalla coda`}
               >
                 <Ionicons
@@ -148,6 +172,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   clear: { ...type.caption, color: colors.accent },
+  // Testo e icone dentro le righe: evidenziazione, non scala, come le righe.
+  textPressed: { opacity: 0.5 },
   title: {
     ...type.display,
     color: colors.text,
@@ -171,11 +197,13 @@ const styles = StyleSheet.create({
   },
   pressed: { backgroundColor: colors.surface },
   past: { opacity: 0.45 },
-  art: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: colors.surfaceHigh },
-  artEmpty: { borderWidth: 1, borderColor: colors.border },
   meta: { flex: 1, gap: 2 },
   rowTitle: { ...type.body, color: colors.text },
   rowTitleActive: { color: colors.accent },
   rowArtist: { ...type.caption, color: colors.textMuted },
-  duration: { ...type.caption, color: colors.textMuted },
+  duration: {
+    ...type.caption,
+    ...type.tabular,
+    color: colors.textMuted,
+  },
 });
