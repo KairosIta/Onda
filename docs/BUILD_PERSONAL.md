@@ -100,6 +100,12 @@ il terminale. Installa esattamente `platforms;android-36` e
 telefono oppure avvia un emulatore. Se compaiono più dispositivi, fermane uno o
 usa soltanto `npm run build:personal` e installa manualmente l'APK scelto.
 
+**TypeScript rifiuta una rotta che esiste.** I tipi delle rotte stanno in
+`.expo/types/router.d.ts`, un file generato e ignorato da Git che un vecchio
+`expo start` può lasciare indietro rispetto alle schermate nel repository.
+`npm run typecheck` lo rigenera da solo; se lanci `tsc` a mano, prima esegui
+`npx expo customize tsconfig.json`.
+
 **Firma incompatibile durante l'installazione.** Una copia precedente può
 essere firmata da un altro computer. Disinstallarla elimina anche i dati locali;
 fallo soltanto dopo aver deciso che preferiti e playlist non servono più.
