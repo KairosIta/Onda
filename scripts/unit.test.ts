@@ -13,6 +13,7 @@ import {
   type SkipContext,
 } from '@/services/playbackPolicy';
 import { combine, describeFailure, interleave } from '@/services/sources/federation';
+import { REQUEST_TIMEOUT_MS, fetchJSON, timeoutMessage } from '@/services/sources/http';
 import { SOURCES, searchAll, spotlightAll } from '@/services/sources';
 import { creativeCommonsLabel, decodeEntities, orderAlbum } from '@/services/sources/jamendo';
 import {
@@ -1327,4 +1328,66 @@ test('il confronto con il telefono distingue assente, allineato e diverso', () =
   assert.equal(compareInstalled('0.2.0+abcdef1', '0.2.0+9999999').state, 'diverso');
   // Lo stesso commit con worktree sporco non e' lo stesso APK.
   assert.equal(compareInstalled('0.2.0+abcdef1', '0.2.0+abcdef1.dirty').state, 'diverso');
+});
+
+// --- richieste di catalogo --------------------------------------------
+
+/** Sostituisce `fetch` per la durata di una prova e lo rimette com'era. */
+async function withFetch(fake: typeof globalThis.fetch, body: () => Promise<void>): Promise<void> {
+  const original = globalThis.fetch;
+  globalThis.fetch = fake;
+  try {
+    await body();
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+/** Una rete che accetta la connessione e poi tace, fino all'abort. */
+const hanging: typeof globalThis.fetch = (_url, init) =>
+  new Promise((_resolve, reject) => {
+    init?.signal?.addEventListener('abort', () => reject(new Error('The operation was aborted.')));
+  });
+
+const responding =
+  (status: number, payload: unknown): typeof globalThis.fetch =>
+  async () =>
+    ({ ok: status >= 200 && status < 300, status, json: async () => payload }) as Response;
+
+test('catalogo: una richiesta che resta appesa si arrende invece di aspettare per sempre', async () => {
+  await withFetch(hanging, async () => {
+    await assert.rejects(
+      () => fetchJSON('Jamendo', 'https://esempio.invalid/tracks', 20),
+      (error: Error) => {
+        assert.equal(error.message, timeoutMessage('Jamendo', 20));
+        // Il messaggio deve arrivare a schermo come un guasto di rete, non
+        // come il testo tecnico di un'eccezione: e' la stessa esperienza di
+        // un DNS che non risolve, e la federazione lo sa gia' tradurre.
+        assert.equal(describeFailure(error), 'rete non raggiungibile');
+        return true;
+      },
+    );
+  });
+});
+
+test('catalogo: il tetto di tempo lascia passare una risposta che arriva', async () => {
+  // Con il timer non disarmato questo test finirebbe comunque, ma il
+  // processo resterebbe vivo fino alla scadenza: qui il tetto e' quello
+  // vero, quindi `node --test` uscirebbe quindici secondi piu' tardi.
+  await withFetch(responding(200, { results: [1, 2] }), async () => {
+    const json = await fetchJSON<{ results: number[] }>('Jamendo', 'https://esempio.invalid/');
+    assert.deepEqual(json.results, [1, 2]);
+  });
+});
+
+test('catalogo: uno stato HTTP di errore dice quale sorgente ha risposto cosa', async () => {
+  await withFetch(responding(503, {}), async () => {
+    await assert.rejects(() => fetchJSON('Audius', 'https://esempio.invalid/'), {
+      message: 'Audius ha risposto 503',
+    });
+  });
+  // Non e' un guasto di rete: il messaggio resta intero, perche' un 503
+  // ripetuto e' esattamente cio' che si vuole poter leggere.
+  assert.equal(describeFailure(new Error('Audius ha risposto 503')), 'Audius ha risposto 503');
+  assert.equal(REQUEST_TIMEOUT_MS > 0, true);
 });

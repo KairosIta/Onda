@@ -10,6 +10,7 @@ import {
   type Track,
   type TrendingParams,
 } from '@/types/track';
+import { fetchJSON } from './http';
 
 const BASE = 'https://api.jamendo.com/v3.0';
 
@@ -225,12 +226,10 @@ function mapAlbum(a: JamendoAlbum): AlbumInfo {
  * travestito da "nessun risultato".
  */
 async function once<T>(requestUrl: string): Promise<T[]> {
-  const res = await fetch(requestUrl);
-  if (!res.ok) throw new Error(`Jamendo ha risposto ${res.status}`);
-  const json = (await res.json()) as {
+  const json = await fetchJSON<{
     headers?: { status?: string; error_message?: string };
     results?: T[];
-  };
+  }>('Jamendo', requestUrl);
   if (json.headers?.status !== 'success') {
     throw new Error(json.headers?.error_message || 'Errore Jamendo');
   }
