@@ -36,6 +36,8 @@ jobs:
       - run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
       - run: npm ci
       - run: npm run build:personal
-      - name: Assert that no binary is staged for publication
+      # L'APK resta nel runner e non viene caricato da nessuna parte: qui
+      # si verifica soltanto che la build lo abbia davvero prodotto.
+      - name: Assert that the personal APK was produced
         shell: bash
         run: test -f dist/personal/Onda-personal.apk
