@@ -30,6 +30,7 @@ import {
   npxExecutable,
   parseJavaMajor,
 } from './personal-policy.ts';
+import { versionName } from './build-provenance.ts';
 
 const root = resolve(import.meta.dirname, '..');
 const envPath = join(root, '.env');
@@ -313,6 +314,7 @@ function build(): string {
   const appConfig = JSON.parse(readFileSync(join(root, 'app.json'), 'utf8')) as {
     expo: { android: { package: string; versionCode: number }; version: string };
   };
+  const commit = capture('git', ['rev-parse', 'HEAD'], env).stdout?.trim() || null;
   const bytes = statSync(personalApkPath).size;
   const sha256 = createHash('sha256').update(readFileSync(personalApkPath)).digest('hex');
   writeFileSync(
@@ -329,6 +331,16 @@ function build(): string {
         sha256,
         certificateSha256,
         standaloneBundle: true,
+        // Il commit e' quello che distingue due build personali della stessa
+        // versione: senza, questo file non basta a dire cosa c'e' nell'APK.
+        commit,
+        // Quello che finisce nel manifest e che il telefono riporta: la
+        // versione dichiarata piu' il commit. E' il campo su cui
+        // `npm run check:installed` fa il confronto.
+        versionName: versionName(appConfig.expo.version, 'personal', {
+          commit,
+          dirty: Boolean(capture('git', ['status', '--porcelain'], env).stdout?.trim()),
+        }),
         builtAt: new Date().toISOString(),
       },
       null,

@@ -69,6 +69,12 @@ import {
   resumePosition,
   windowQueue,
 } from '@/store/sessionSchema';
+import {
+  SHORT_COMMIT_LENGTH,
+  compareInstalled,
+  shortCommit,
+  versionName,
+} from './build-provenance.ts';
 import { formatTime } from '@/theme';
 import type { MusicSource, SourceId, Track } from '@/types/track';
 import { describeQueue } from '@/utils/queueSummary';
@@ -1295,4 +1301,30 @@ test('federazione: ogni sorgente viene interrogata una volta sola', async () => 
   } finally {
     Object.assign(SOURCES, original);
   }
+});
+
+// --- identita' della build --------------------------------------------
+
+test('la build personale porta il commit nel nome di versione, la release no', () => {
+  const pulito = { commit: 'abcdef1234567890', dirty: false };
+  assert.equal(versionName('0.2.0', 'personal', pulito), '0.2.0+abcdef1');
+  // La release ha il suo numero: il commit la' dentro non aiuterebbe nessuno.
+  assert.equal(versionName('0.2.0', 'release', pulito), '0.2.0');
+  // Worktree sporco: lo dice, altrimenti due APK diversi si chiamerebbero uguale.
+  assert.equal(versionName('0.2.0', 'personal', { ...pulito, dirty: true }), '0.2.0+abcdef1.dirty');
+  // Sorgente senza Git: meglio dichiarare di non sapere che tacere.
+  assert.equal(
+    versionName('0.2.0', 'personal', { commit: null, dirty: false }),
+    '0.2.0+sconosciuto',
+  );
+  assert.equal(shortCommit('abcdef1234567890')?.length, SHORT_COMMIT_LENGTH);
+  assert.equal(shortCommit(null), null);
+});
+
+test('il confronto con il telefono distingue assente, allineato e diverso', () => {
+  assert.equal(compareInstalled(null, '0.2.0+abcdef1').state, 'assente');
+  assert.equal(compareInstalled('0.2.0+abcdef1', '0.2.0+abcdef1').state, 'allineato');
+  assert.equal(compareInstalled('0.2.0+abcdef1', '0.2.0+9999999').state, 'diverso');
+  // Lo stesso commit con worktree sporco non e' lo stesso APK.
+  assert.equal(compareInstalled('0.2.0+abcdef1', '0.2.0+abcdef1.dirty').state, 'diverso');
 });

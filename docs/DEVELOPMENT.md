@@ -607,6 +607,46 @@ persistenza dopo `am force-stop`. Se un giorno qualcosa si rompe _solo_ in
 release, e' quasi certamente qui — guarda `ClassNotFound` / `NoSuchMethod`
 in logcat prima di cercare altrove.
 
+### Che versione ho sul telefono
+
+`version` e `versionCode` in `app.json` dicono a quale release appartiene
+l'app, non da quale commit e' stata costruita. Fra due build personali dello
+stesso pomeriggio erano identici, e sul telefono non resta altro: "ho
+l'ultima versione?" era una domanda senza risposta.
+
+`app.config.ts` ci aggiunge la provenienza. Legge Git al momento della build
+e mette il commit in due posti:
+
+- nel nome di versione, che diventa `0.2.0+68d225e`, con `.dirty` in coda se
+  il worktree non era pulito. E' quello che risponde a
+  `adb shell dumpsys package com.onda.player | grep versionName`, quindi si
+  legge da fuori senza aprire l'app;
+- in `extra.build`, che la schermata Informazioni mostra per esteso: numero
+  di build, canale, commit e data.
+
+Il confronto e' uno script:
+
+```bash
+npm run check:installed
+```
+
+Non costruisce e non installa niente: legge il telefono collegato, calcola
+il nome di versione che una build fatta adesso produrrebbe e dice se
+combaciano. Esce 0 se il telefono e' allineato, 2 se e' indietro o se Onda
+non c'e'.
+
+Il commit finisce nel nome di versione solo per le build personali, quelle
+con `ONDA_FORCE_DEBUG_RELEASE=1`. La release ufficiale tiene il suo numero
+pulito: e' quello che deve leggersi in un negozio o in una segnalazione.
+La regola sta in `scripts/build-provenance.ts`, che non tocca ne' Git ne' il
+filesystem ed e' coperta dai test.
+
+`app.json` resta la fonte di verita' dell'identita' di release: gli script
+che lo leggono come JSON (`personal.ts`, `release.ts`, `verify-signing.ts`)
+continuano a vedere i valori dichiarati. Quando esce una release nuova si
+alzano li', a mano: `version` in semver e `versionCode` di uno, perche' e'
+il numero che Android confronta per accettare l'aggiornamento.
+
 ### Aggiornare l'app installata
 
 Debug e release hanno firme diverse, quindi Android rifiuta l'aggiornamento
