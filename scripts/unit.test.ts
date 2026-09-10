@@ -14,6 +14,9 @@ import {
 } from '@/services/playbackPolicy';
 import { combine, describeFailure, interleave } from '@/services/sources/federation';
 import { REQUEST_TIMEOUT_MS, fetchJSON, timeoutMessage } from '@/services/sources/http';
+import { describeBuild, parseBuildInfo } from '@/services/buildInfoSchema';
+import { GENRES, genreFor } from '@/services/genres';
+import { shuffled } from '@/utils/shuffle';
 import { SOURCES, searchAll, spotlightAll } from '@/services/sources';
 import { creativeCommonsLabel, decodeEntities, orderAlbum } from '@/services/sources/jamendo';
 import {
@@ -1390,4 +1393,136 @@ test('catalogo: uno stato HTTP di errore dice quale sorgente ha risposto cosa', 
   // ripetuto e' esattamente cio' che si vuole poter leggere.
   assert.equal(describeFailure(new Error('Audius ha risposto 503')), 'Audius ha risposto 503');
   assert.equal(REQUEST_TIMEOUT_MS > 0, true);
+});
+
+// --- identita' della build, letta dal manifest -------------------------
+
+test('informazioni: il manifest di una build personale si legge per intero', () => {
+  const info = parseBuildInfo({
+    version: '0.2.0',
+    android: { versionCode: 2 },
+    extra: {
+      build: {
+        channel: 'personal',
+        declaredVersion: '0.2.0',
+        shortCommit: '1a2b3c4',
+        dirty: true,
+        builtAt: '2026-09-10T12:00:00.000Z',
+      },
+    },
+  });
+
+  assert.equal(info.version, '0.2.0');
+  assert.equal(info.versionCode, 2);
+  assert.equal(info.channel, 'personal');
+  assert.equal(info.shortCommit, '1a2b3c4');
+  assert.equal(info.dirty, true);
+  assert.equal(info.builtAt?.toISOString(), '2026-09-10T12:00:00.000Z');
+  assert.equal(
+    describeBuild(info),
+    'build 2, personale, commit 1a2b3c4 (modificato), del 10 settembre 2026',
+  );
+});
+
+test('informazioni: un manifest incompleto non impedisce alla schermata di aprirsi', () => {
+  // Un APK compilato prima che `extra.build` esistesse: la versione c'e'
+  // ancora, il resto si dichiara sconosciuto invece di far esplodere la
+  // pagina che dovrebbe spiegare proprio che build e'.
+  const vecchia = parseBuildInfo({ version: '0.1.0', android: { versionCode: 1 } });
+  assert.equal(vecchia.version, '0.1.0');
+  assert.equal(vecchia.channel, 'sconosciuto');
+  assert.equal(vecchia.shortCommit, null);
+  assert.equal(vecchia.dirty, false);
+  assert.equal(vecchia.builtAt, null);
+  assert.equal(describeBuild(vecchia), 'build 1, sconosciuto');
+
+  // Nessun manifest affatto.
+  assert.equal(parseBuildInfo(null).version, '0.0.0');
+  assert.equal(parseBuildInfo(undefined).versionCode, null);
+});
+
+test('informazioni: i campi di forma sbagliata valgono come assenti', () => {
+  const info = parseBuildInfo({
+    version: '0.2.0',
+    // versionCode come stringa: Android non lo userebbe, noi non lo mostriamo.
+    android: { versionCode: '2' as unknown as number },
+    extra: {
+      build: {
+        channel: 42,
+        shortCommit: { commit: 'no' },
+        // Solo il booleano vero significa sporco: la stringa 'false' e'
+        // pur sempre una stringa, e sarebbe un guaio leggerla come vera.
+        dirty: 'false',
+        builtAt: 'non e una data',
+      },
+    },
+  });
+
+  assert.equal(info.versionCode, null);
+  assert.equal(info.channel, 'sconosciuto');
+  assert.equal(info.shortCommit, null);
+  assert.equal(info.dirty, false);
+  assert.equal(info.builtAt, null);
+  // Resta comunque una frase da leggere ad alta voce.
+  assert.equal(describeBuild(info), 'sconosciuto');
+});
+
+test('informazioni: la release pulita non si porta dietro il commit', () => {
+  const release = parseBuildInfo({
+    version: '0.2.0',
+    android: { versionCode: 2 },
+    extra: { build: { channel: 'release', declaredVersion: '0.2.0', dirty: false } },
+  });
+  assert.equal(describeBuild(release), 'build 2, release');
+});
+
+// --- generi e mescolata ------------------------------------------------
+
+test('generi: la stessa chiave nomina il genere nella lingua di ogni sorgente', () => {
+  assert.equal(genreFor('hiphop', 'audius'), 'Hip-Hop/Rap');
+  assert.equal(genreFor('hiphop', 'jamendo'), 'hiphop');
+  assert.equal(genreFor('soul', 'audius'), 'R&B/Soul');
+  // Una chiave che non c'e' non e' un errore: la schermata resta vuota di
+  // quel genere, non si rompe.
+  assert.equal(genreFor('polka', 'audius'), undefined);
+  assert.equal(genreFor(undefined, 'jamendo'), undefined);
+});
+
+test('generi: la tabella non ha chiavi doppie ne caselle vuote', () => {
+  // Cresce a mano, una riga alla volta: due righe con la stessa chiave
+  // renderebbero irraggiungibile la seconda, e `find` non lo direbbe.
+  const keys = GENRES.map((g) => g.key);
+  assert.equal(new Set(keys).size, keys.length);
+  for (const g of GENRES) {
+    assert.equal(
+      Boolean(g.key && g.label && g.audius && g.jamendo),
+      true,
+      `genere incompleto: ${g.key}`,
+    );
+  }
+});
+
+test('mescolata: escono gli stessi brani, e la lista di partenza non si tocca', () => {
+  const originale = ['a', 'b', 'c', 'd', 'e'];
+  const copia = [...originale];
+  const mescolata = shuffled(originale);
+
+  assert.deepEqual(originale, copia, 'shuffled non deve mutare il suo argomento');
+  assert.equal(mescolata.length, originale.length);
+  assert.deepEqual([...mescolata].sort(), [...originale].sort());
+  assert.deepEqual(shuffled([]), []);
+  assert.deepEqual(shuffled(['solo']), ['solo']);
+});
+
+test('mescolata: ogni posizione puo finire ovunque', () => {
+  // Fisher-Yates scritto male tiene fermo il primo elemento, o non
+  // raggiunge mai l'ultima posizione: si vede solo ripetendo.
+  const items = [0, 1, 2, 3, 4];
+  const visto = items.map(() => new Set<number>());
+  for (let i = 0; i < 400; i++) {
+    shuffled(items).forEach((value, position) => visto[position].add(value));
+  }
+  for (const [position, valori] of visto.entries()) {
+    assert.equal(valori.size, items.length, `la posizione ${position} non vede tutti i valori`);
+  }
 });
