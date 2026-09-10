@@ -65,17 +65,24 @@ compilare e installare Onda, PowerShell nativo ha meno punti di rottura.
 
 ## Comandi
 
-| Comando                    | Effetto                                                             |
-| -------------------------- | ------------------------------------------------------------------- |
-| `npm run setup:personal`   | Crea `.env` dal modello solo se manca.                              |
-| `npm run doctor`           | Controlla versioni, SDK, dipendenze e configurazione Jamendo.       |
-| `npm run build:personal`   | Esegue qualità, prebuild, Android Lint e crea l'APK standalone.     |
-| `npm run install:personal` | Ricompila e installa su un unico dispositivo/emulatore autorizzato. |
+| Comando                    | Effetto                                                               |
+| -------------------------- | --------------------------------------------------------------------- |
+| `npm run setup:personal`   | Crea `.env` dal modello solo se manca.                                |
+| `npm run doctor`           | Controlla versioni, SDK, dipendenze e configurazione Jamendo.         |
+| `npm run build:personal`   | Esegue qualità, prebuild, Android Lint e crea l'APK standalone.       |
+| `npm run install:personal` | Ricompila e installa su un unico dispositivo/emulatore autorizzato.   |
+| `npm run check:installed`  | Dice se il telefono collegato ha gia' questo commit, senza compilare. |
 
 Gli output sono `dist/personal/Onda-personal.apk` e il manifest con hash
 `dist/personal/Onda-personal.json`; entrambi sono ignorati da Git. La pipeline
 verifica che il bundle standalone sia presente e rifiuta un certificato che
 coincida con l'identità di release ufficiale, anche sul computer del maintainer.
+
+L'APK personale porta il commit nel nome di versione, per esempio
+`0.2.0+68d225e`, con `.dirty` in coda se il worktree non era pulito. Lo
+leggi dalla schermata Informazioni dell'app, oppure da fuori con
+`npm run check:installed`, che confronta il telefono con il repository e non
+compila niente.
 
 La prima build crea `.onda/personal-debug.keystore` e le successive riusano la
 stessa chiave, così Android può installare gli aggiornamenti senza cancellare i

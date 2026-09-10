@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { PressableScale } from '@/components/PressableScale';
@@ -14,9 +13,10 @@ import {
   PROJECT_URL,
   THIRD_PARTY_CONTENT_URL,
 } from '@/config/legal';
+import { describeBuild, readBuildInfo } from '@/services/buildInfo';
 import { colors, radius, spacing, touch, type } from '@/theme';
 
-const version = Constants.expoConfig?.version ?? '0.1.0';
+const build = readBuildInfo();
 
 /**
  * Riga larga quanto la scheda: si ritrae appena, perche' su una
@@ -59,7 +59,13 @@ export default function AboutScreen() {
 
       <View style={styles.hero}>
         <Text style={styles.appName}>Onda</Text>
-        <Text style={styles.version}>Versione {version}</Text>
+        <Text style={styles.version}>Versione {build.version}</Text>
+        {/* Fra due build personali dello stesso pomeriggio la versione e'
+            identica: il commit e' l'unica cosa che le distingue, e da qui
+            si legge senza collegare il telefono al computer. */}
+        <Text style={styles.build} selectable>
+          {describeBuild(build)}
+        </Text>
         <Text style={styles.lead}>Un player musicale locale, senza account Onda.</Text>
       </View>
 
@@ -126,6 +132,7 @@ const styles = StyleSheet.create({
   hero: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl },
   appName: { ...type.display, color: colors.text },
   version: { ...type.caption, color: colors.accent, marginTop: spacing.xs },
+  build: { ...type.caption, color: colors.textMuted, marginTop: spacing.xs },
   lead: { ...type.body, color: colors.textMuted, marginTop: spacing.sm },
   section: {
     marginHorizontal: spacing.lg,
