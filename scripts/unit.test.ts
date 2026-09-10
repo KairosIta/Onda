@@ -13,6 +13,7 @@ import {
   type SkipContext,
 } from '@/services/playbackPolicy';
 import { combine, describeFailure, interleave } from '@/services/sources/federation';
+import { SOURCES, searchAll, spotlightAll } from '@/services/sources';
 import { creativeCommonsLabel, decodeEntities, orderAlbum } from '@/services/sources/jamendo';
 import {
   buildExport,
@@ -69,7 +70,7 @@ import {
   windowQueue,
 } from '@/store/sessionSchema';
 import { formatTime } from '@/theme';
-import type { Track } from '@/types/track';
+import type { MusicSource, SourceId, Track } from '@/types/track';
 import { describeQueue } from '@/utils/queueSummary';
 
 const track = (id: string): Track => ({
@@ -1245,4 +1246,50 @@ test('rete: tre tentativi automatici a distanze crescenti, poi resta il Riprova'
     NETWORK_RETRY_DELAYS_MS.every((d, i) => i === 0 || d > NETWORK_RETRY_DELAYS_MS[i - 1]),
     true,
   );
+});
+
+test('federazione: ogni sorgente viene interrogata una volta sola', async () => {
+  const original = { ...SOURCES };
+  let audiusCalls = 0;
+  let jamendoCalls = 0;
+  const fake = (id: SourceId, count: () => void, withSpotlight: boolean): MusicSource =>
+    ({
+      id,
+      label: id,
+      search: async () => {
+        count();
+        return [];
+      },
+      trending: async () => [],
+      artistTracks: async () => [],
+      artistInfo: async () => ({ id, name: id, source: id }) as never,
+      ...(withSpotlight
+        ? {
+            spotlight: async () => {
+              count();
+              return [];
+            },
+          }
+        : {}),
+    }) as MusicSource;
+
+  SOURCES.audius = { source: fake('audius', () => audiusCalls++, true), enabled: true };
+  SOURCES.jamendo = { source: fake('jamendo', () => jamendoCalls++, false), enabled: true };
+  try {
+    await searchAll('onda');
+    // Una richiesta di rete per sorgente. Prima erano due: la stessa
+    // funzione veniva chiamata anche solo per sapere se ritornava null,
+    // e quella scartata restava una promise senza gestore.
+    assert.equal(audiusCalls, 1);
+    assert.equal(jamendoCalls, 1);
+
+    audiusCalls = 0;
+    jamendoCalls = 0;
+    // Jamendo non offre le vetrine: viene saltata, non interrogata.
+    await spotlightAll('rising');
+    assert.equal(audiusCalls, 1);
+    assert.equal(jamendoCalls, 0);
+  } finally {
+    Object.assign(SOURCES, original);
+  }
 });

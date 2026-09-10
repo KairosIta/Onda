@@ -40,13 +40,19 @@ const active = (): MusicSource[] =>
  * `call` ritorna `null` per una sorgente che non offre quella funzione:
  * viene saltata, non contata come caduta. Solo se nessuna la offre il
  * risultato e' vuoto senza errore.
+ *
+ * `call` si invoca una volta sola per sorgente: chiamarlo anche solo per
+ * sapere se ritorna `null` fa gia' partire la richiesta di rete, e quella
+ * scartata resterebbe una promise senza gestore.
  */
 async function federate<T>(
   call: (s: MusicSource) => Promise<T[]> | null,
 ): Promise<FederatedResult<T>> {
-  const sources = active().filter((s) => call(s) !== null);
-  const settled = await Promise.allSettled(sources.map((s) => call(s) as Promise<T[]>));
-  return combine(sources.map((source, i) => ({ source: source.id, result: settled[i] })));
+  const started = active()
+    .map((source) => ({ source, promise: call(source) }))
+    .filter((c): c is { source: MusicSource; promise: Promise<T[]> } => c.promise !== null);
+  const settled = await Promise.allSettled(started.map((c) => c.promise));
+  return combine(started.map(({ source }, i) => ({ source: source.id, result: settled[i] })));
 }
 
 /**
