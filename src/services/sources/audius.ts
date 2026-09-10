@@ -9,6 +9,7 @@ import {
   type Track,
   type TrendingParams,
 } from '@/types/track';
+import { fetchJSON as httpJSON } from './http';
 
 const BASE = 'https://api.audius.co/v1';
 
@@ -106,10 +107,8 @@ function mapUser(u: AudiusUser): ArtistInfo {
  */
 const playable = (t: AudiusTrack): boolean => !t.is_stream_gated && t.is_streamable !== false;
 
-async function fetchJSON<T>(url: string): Promise<T> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Audius ha risposto ${res.status}`);
-  return (await res.json()) as T;
+function fetchJSON<T>(url: string): Promise<T> {
+  return httpJSON<T>('Audius', url);
 }
 
 async function fetchTracks(url: string): Promise<Track[]> {
