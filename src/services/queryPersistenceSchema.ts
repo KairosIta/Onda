@@ -41,9 +41,16 @@ export const PERSISTED_QUERY_ROOTS: readonly string[] = [
 export const isPersistableKey = (key: readonly unknown[]): boolean =>
   typeof key[0] === 'string' && PERSISTED_QUERY_ROOTS.includes(key[0]);
 
-/** I soli campi che la potatura legge; il resto della query passa intatto. */
+/**
+ * I soli campi che la potatura legge; il resto della query passa intatto.
+ *
+ * `queryHash` non lo legge nessuno qui, ma e' la chiave con cui React Query
+ * ritrova la query al ripristino: senza, la voce riletta da disco non
+ * servirebbe a niente, quindi si pretende insieme agli altri.
+ */
 export interface PersistedQuery {
   queryKey: readonly unknown[];
+  queryHash: string;
   state: { status: string; dataUpdatedAt: number; data?: unknown };
 }
 
@@ -117,6 +124,7 @@ export function loadQueryCache(value: unknown, now: number): PersistedState | nu
     (q): q is PersistedQuery =>
       isRecord(q) &&
       Array.isArray(q.queryKey) &&
+      typeof q.queryHash === 'string' &&
       isRecord(q.state) &&
       typeof q.state.status === 'string' &&
       typeof q.state.dataUpdatedAt === 'number',
