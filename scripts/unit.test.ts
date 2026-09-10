@@ -74,7 +74,7 @@ import {
   compareInstalled,
   shortCommit,
   versionName,
-} from './build-provenance.ts';
+} from './build-provenance.cjs';
 import { formatTime } from '@/theme';
 import type { MusicSource, SourceId, Track } from '@/types/track';
 import { describeQueue } from '@/utils/queueSummary';

@@ -7,7 +7,7 @@ import {
   type Provenance,
   shortCommit,
   versionName,
-} from './scripts/build-provenance.ts';
+} from './scripts/build-provenance.cjs';
 
 /**
  * `app.json` resta la fonte di verita' dell'identita' di release: version,

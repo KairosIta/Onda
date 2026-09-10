@@ -13,7 +13,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { compareInstalled, versionName } from './build-provenance.ts';
+import { compareInstalled, versionName } from './build-provenance.cjs';
 
 const root = resolve(import.meta.dirname, '..');
 

@@ -30,7 +30,7 @@ import {
   npxExecutable,
   parseJavaMajor,
 } from './personal-policy.ts';
-import { versionName } from './build-provenance.ts';
+import { versionName } from './build-provenance.cjs';
 
 const root = resolve(import.meta.dirname, '..');
 const envPath = join(root, '.env');

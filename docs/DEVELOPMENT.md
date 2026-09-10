@@ -638,8 +638,12 @@ non c'e'.
 Il commit finisce nel nome di versione solo per le build personali, quelle
 con `ONDA_FORCE_DEBUG_RELEASE=1`. La release ufficiale tiene il suo numero
 pulito: e' quello che deve leggersi in un negozio o in una segnalazione.
-La regola sta in `scripts/build-provenance.ts`, che non tocca ne' Git ne' il
-filesystem ed e' coperta dai test.
+La regola sta in `scripts/build-provenance.cjs`, che non tocca ne' Git ne' il
+filesystem ed e' coperta dai test. E' CommonJS e non TypeScript di proposito:
+`app.config.ts` lo carica Expo, che dal SDK 57 non transpila i moduli
+importati e si affida alla rimozione dei tipi di Node, presente dalla 22.18 e
+assente sulla 22.15 che il progetto dichiara come minimo. Un modulo `.cjs` si
+carica su entrambe; i tipi stanno in `build-provenance.d.cts`.
 
 `app.json` resta la fonte di verita' dell'identita' di release: gli script
 che lo leggono come JSON (`personal.ts`, `release.ts`, `verify-signing.ts`)
