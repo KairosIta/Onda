@@ -1,4 +1,5 @@
 import {
+  type DehydratedState,
   QueryClient,
   defaultShouldDehydrateQuery,
   dehydrate,
@@ -46,7 +47,14 @@ export function createQueryClient(): QueryClient {
   });
 
   const saved = loadQueryCache(readJSON(KEY), Date.now());
-  if (saved) hydrate(client, saved);
+  // `queryPersistenceSchema` sta fuori da TanStack apposta, cosi' la
+  // potatura si verifica in Node: descrive i campi che legge, non tutta la
+  // forma disidratata. Da 5.102 `hydrate` non accetta piu' `unknown` e
+  // pretende quella forma intera, che sul disco c'e' davvero — l'ha
+  // scritta `dehydrate` — ma che il tipo del modulo puro non dichiara. Il
+  // cast dice esattamente questo; a garantire il contenuto e' il controllo
+  // di forma che `loadQueryCache` fa a ogni voce.
+  if (saved) hydrate(client, saved as unknown as DehydratedState);
 
   persist(client);
   bindFocus();

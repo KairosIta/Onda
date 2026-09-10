@@ -940,6 +940,9 @@ test('il file della cache si rilegge solo se ha la forma giusta e qualcosa dentr
   assert.equal(loadQueryCache(undefined, NOW), null);
   assert.equal(loadQueryCache({ queries: 'no' }, NOW), null);
   assert.equal(loadQueryCache({ queries: [{ queryKey: ['trending'] }] }, NOW), null, 'senza stato');
+  // Senza `queryHash` React Query non ritroverebbe la query: la voce si scarta.
+  const { queryHash: _via, ...senzaHash } = query('trending', 10);
+  assert.equal(loadQueryCache({ queries: [senzaHash] }, NOW), null, 'senza queryHash');
   assert.equal(
     loadQueryCache({ queries: [query('search', 0)] }, NOW),
     null,
