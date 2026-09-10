@@ -253,6 +253,21 @@ player adattivo, bersagli da 48 dp).
 - [x] Il dump di `uiautomator` fallisce con «could not get idle state» mentre
       la barra del mini-player avanza: si mette in pausa dalla sessione media
       (`cmd media_session dispatch pause`) e poi si misura.
+- [x] Ripresa, le due varianti che mancavano al 9 settembre. Swipe dai
+      recenti: il processo sopravvive sia in riproduzione sia in pausa, perché
+      il foreground service (`isForeground=true`, `types=0x2`) lo protegge, e
+      nemmeno `am kill` lo scalfisce; quindi lo swipe da solo non dimostra
+      niente sulla persistenza. Dopo un riavvio del telefono, con RAM azzerata
+      e pid nuovo: mini-player con lo stesso brano, zero notifiche, **zero
+      byte** di rete misurati su `dumpsys netstats` per uid 10542, sessione
+      media `NONE(0) position=0`; al play la sequenza è `PAUSED 0` →
+      `PAUSED 71158` → `BUFFERING` → `PLAYING 71160`, cioè due millisecondi
+      di scarto dalla posizione salvata prima del riavvio. Con il force-stop
+      lo scarto era di sette millisecondi. Buffering di 6 s a rete fredda
+      contro 1,4 s a rete già stabilita.
+- [x] Cronologia e avanzamento durante la stessa prova: un brano ascoltato
+      oltre la soglia finisce in «Ascoltati di recente», e a fine traccia la
+      coda avanza da sola al brano seguente.
 
 ### Verificato il 22 agosto 2026
 
@@ -800,13 +815,10 @@ stati verificati successivamente.
       scurita; chevron e tasto back chiudono senza fasce scure; apertura
       dalla notifica ad app chiusa; copertina a 0,92 in pausa; attribuzione
       visibile su 360×640 dp.
-- [ ] Sprint «continuità» del 9 settembre 2026, mai provato su una build
-      reale. Ripresa: riprodurre, mettere in pausa a metà brano, chiudere con
-      `am force-stop`, riaprire: mini-player presente con lo stesso brano, nessuna
-      notifica e nessun traffico di rete finché non si preme play; al play
-      riparte dalla posizione salvata (tolleranza cinque secondi) e la Coda
-      mostra l'elenco intero. Stessa prova togliendo l'app dai recenti mentre
-      suona e dopo un riavvio del telefono.
+- [x] Sprint «continuità» del 9 settembre 2026. Ripresa con `am force-stop`,
+      togliendo l'app dai recenti e dopo un riavvio del telefono: verificato
+      il 10 settembre 2026, vedi la baseline. Il traffico nullo prima del play
+      è misurato, non dedotto.
 - [ ] Coda in attesa: trascinare lo slider e poi premere play; skip avanti dal
       mini-player; «Riproduci dopo» e «Accoda» dal menu di un brano; apertura
       della Coda dal player. In ogni caso il mini-player non deve sparire e il
