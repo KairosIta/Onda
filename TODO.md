@@ -671,6 +671,12 @@ stati verificati successivamente.
       tiene un solo timer per tutta l'app, a 500 ms in riproduzione e 2 s in
       pausa, fermo senza brano, senza lettori o con l'app in background
       (`progressPolicy.ts`, un test); mini-player e player leggono da lì.
+      Dal 9 ottobre 2026 anche il player legge il progresso in un figlio
+      memoizzato (`SeekBar` in `app/player.tsx`), come `MiniProgress` nel
+      mini-player: prima `useProgress` stava in cima alla schermata e ogni
+      tick ridisegnava tutto il player. Da collaudare con «Highlight updates»
+      di React DevTools a player aperto: in riproduzione deve lampeggiare
+      solo la riga dello slider, non copertina e controlli.
 - [x] Tetto di 500 voci sul catalogo volatile `session`, con sfratto del più
       vecchio e reinserimento in coda a ogni accesso in scrittura: prima cresceva
       per tutta la vita del processo. Sfrattare è sicuro perché ciò che l'utente
