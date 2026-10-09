@@ -22,7 +22,7 @@ export interface KeyValue {
   keys(): string[];
 }
 
-export const STORAGE_VERSION = 2;
+export const STORAGE_VERSION = 3;
 export const VERSION_KEY = 'schema.version';
 export const BACKUP_PREFIX = 'backup.';
 export const QUARANTINE_PREFIX = 'quarantine.';
@@ -66,6 +66,29 @@ const MIGRATIONS: readonly Migration[] = [
       if (!isRecord(saved) || typeof saved.repeat !== 'number') return;
       const repeat = (['off', 'one', 'all'] as const)[saved.repeat] ?? 'off';
       kv.set('playback.v1', JSON.stringify({ ...saved, repeat }));
+    },
+  },
+  {
+    to: 3,
+    describe: "query-cache.v1: via gli elenchi a scorrimento salvati con l'offset unico",
+    /**
+     * Le pagine scritte prima del cursore per sorgente non portano il
+     * cursore della successiva: rilette cosi', lo scroll infinito si
+     * fermerebbe finche' la rete non le rinfresca. Si tolgono solo le query
+     * a pagine (quelle con `pageParams`); profili, album e vetrine restano,
+     * e gli elenchi tolti si ricaricano dalla rete al primo avvio.
+     */
+    run(kv) {
+      const saved = readValue(kv, 'query-cache.v1');
+      if (!isRecord(saved) || !Array.isArray(saved.queries)) return;
+      const paged = (q: unknown): boolean =>
+        isRecord(q) &&
+        isRecord(q.state) &&
+        isRecord(q.state.data) &&
+        Array.isArray(q.state.data.pageParams);
+      const queries = saved.queries.filter((q) => !paged(q));
+      if (queries.length === saved.queries.length) return;
+      kv.set('query-cache.v1', JSON.stringify({ ...saved, queries }));
     },
   },
 ];

@@ -26,8 +26,7 @@ export default function SearchScreen() {
   // query nuova dal refetch di una gia' vista. Con isFetching la lista
   // spariva e ricompariva a ogni ricarica dalla cache.
   const { tracks, failed, loadMore, retry, isLoading, isFetching, isFetchingNextPage, error } =
-    useInfiniteTracks(['search', query], (offset) => searchAll(query, { limit: PAGE, offset }), {
-      pageSize: PAGE,
+    useInfiniteTracks(['search', query], (cursor) => searchAll(query, { limit: PAGE, cursor }), {
       enabled,
     });
 

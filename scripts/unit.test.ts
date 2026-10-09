@@ -2,7 +2,6 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { nextTracksOffset } from '@/hooks/infiniteTracksCursor';
 import { audiusRightsLabel, audiusTrackUrl } from '@/services/sources/audius';
 import {
   MAX_SOURCE_SKIPS,
@@ -12,12 +11,24 @@ import {
   networkRetryDelay,
   type SkipContext,
 } from '@/services/playbackPolicy';
-import { combine, describeFailure, interleave } from '@/services/sources/federation';
+import {
+  advanceCursor,
+  combine,
+  describeFailure,
+  interleave,
+  resolveCursor,
+} from '@/services/sources/federation';
 import { REQUEST_TIMEOUT_MS, fetchJSON, timeoutMessage } from '@/services/sources/http';
 import { describeBuild, parseBuildInfo } from '@/services/buildInfoSchema';
 import { GENRES, genreFor } from '@/services/genres';
 import { shuffled } from '@/utils/shuffle';
-import { SOURCES, searchAll, spotlightAll } from '@/services/sources';
+import {
+  SOURCES,
+  artistTracksPage,
+  searchAll,
+  spotlightAll,
+  trendingAll,
+} from '@/services/sources';
 import { creativeCommonsLabel, decodeEntities, orderAlbum } from '@/services/sources/jamendo';
 import {
   buildExport,
@@ -80,7 +91,8 @@ import {
   versionName,
 } from './build-provenance.cjs';
 import { formatTime } from '@/theme';
-import type { MusicSource, SourceId, Track } from '@/types/track';
+import type { ListParams, MusicSource, SourceId, Track } from '@/types/track';
+import type { FederatedPage } from '@/services/sources';
 import { describeQueue } from '@/utils/queueSummary';
 
 const track = (id: string): Track => ({
@@ -177,16 +189,50 @@ test('loadLibrary limita la cronologia a cento tracce', () => {
   assert.equal(loadLibrary({ tracks, history }).history.length, 100);
 });
 
-test('il cursore termina su una pagina vuota completa', () => {
-  assert.equal(nextTracksOffset({ offset: 40, trackCount: 0, failedCount: 0 }, 20), undefined);
+test('il cursore parte da zero per ogni sorgente e ignora quelle spente o sconosciute', () => {
+  assert.deepEqual(resolveCursor(null, ['audius', 'jamendo']), { audius: 0, jamendo: 0 });
+  // Qualunque cosa non sia un cursore vale come prima pagina.
+  assert.deepEqual(resolveCursor(40, ['audius']), { audius: 0 });
+  assert.deepEqual(resolveCursor({ audius: 40, jamendo: 20 }, ['audius', 'jamendo']), {
+    audius: 40,
+    jamendo: 20,
+  });
+  // Jamendo spenta nel frattempo, o un offset che non e' un offset: non si interroga.
+  assert.deepEqual(resolveCursor({ audius: 40, jamendo: 20 }, ['audius']), { audius: 40 });
+  assert.deepEqual(resolveCursor({ audius: -1, jamendo: 2.5 }, ['audius', 'jamendo']), {});
 });
 
-test('il cursore riprova una pagina parziale senza saltare risultati', () => {
-  assert.equal(nextTracksOffset({ offset: 40, trackCount: 20, failedCount: 1 }, 20), 40);
-});
-
-test('il cursore avanza dopo una pagina completa', () => {
-  assert.equal(nextTracksOffset({ offset: 40, trackCount: 40, failedCount: 0 }, 20), 60);
+test('il cursore avanza chi risponde, ferma chi cade e toglie chi ha finito', () => {
+  assert.deepEqual(
+    advanceCursor(
+      { audius: 40, jamendo: 40 },
+      [
+        { source: 'audius', result: ok([track('a')]) },
+        { source: 'jamendo', result: ko(new Error('Jamendo ha risposto 429')) },
+      ],
+      20,
+    ),
+    // Audius va avanti anche se Jamendo e' caduta: era il blocco di prima.
+    { audius: 60, jamendo: 40 },
+  );
+  assert.deepEqual(
+    advanceCursor(
+      { audius: 40, jamendo: 40 },
+      [
+        { source: 'audius', result: ok([]) },
+        { source: 'jamendo', result: ok([jamendoTrack('j')]) },
+      ],
+      20,
+    ),
+    { jamendo: 60 },
+  );
+  // Tutte finite: l'elenco e' finito.
+  assert.equal(
+    advanceCursor({ audius: 40 }, [{ source: 'audius', result: ok([]) }], 20),
+    undefined,
+  );
+  // Un esito di una sorgente che non era nel cursore non la rimette dentro.
+  assert.equal(advanceCursor({}, [{ source: 'audius', result: ok([track('a')]) }], 20), undefined);
 });
 
 const repeatModes = { off: 'off', one: 'one', all: 'all' } as const;
@@ -1194,7 +1240,9 @@ test('storage: da 1 a 2 il repeat numerico diventa stringa, con backup e senza r
   assert.equal(first.outcome, 'upgraded');
   assert.equal(first.from, 1);
   assert.equal(first.to, STORAGE_VERSION);
-  assert.equal(first.applied.length, 1);
+  // Una migrazione per ogni passo di versione, nell'ordine.
+  assert.equal(first.applied.length, STORAGE_VERSION - 1);
+  assert.match(first.applied[0], /repeat/);
   assert.deepEqual(JSON.parse(kv.get('playback.v1')!), { shuffle: true, repeat: 'all' });
   assert.equal(kv.get('library.v1'), '{"favorites":["audius:1"]}');
   // Il backup e' la fotografia di prima, con la sua versione.
@@ -1225,6 +1273,37 @@ test('storage: una versione più nuova non si tocca e un dato illeggibile va in 
   quarantine(kv, 'library.v1', '{"favorites":[');
   assert.equal(kv.get('library.v1'), undefined);
   assert.equal(kv.get(QUARANTINE_PREFIX + 'library.v1'), '{"favorites":[');
+});
+
+test('storage: da 2 a 3 si tolgono dalla cache solo gli elenchi a scorrimento', () => {
+  const at = (hash: string, data: unknown) => ({
+    queryKey: [hash],
+    queryHash: hash,
+    state: { status: 'success', dataUpdatedAt: 1, data },
+  });
+  const list = at('trending', { pages: [{ tracks: [], offset: 0 }], pageParams: [0] });
+  const artist = at('artist', { id: '1', name: 'Artista' });
+  const cache = (queries: unknown[]) => JSON.stringify({ queries, mutations: [] });
+
+  const kv = memoryKV({ [VERSION_KEY]: '2', 'query-cache.v1': cache([list, artist]) });
+  const report = migrateStorage(kv);
+  assert.equal(report.outcome, 'upgraded');
+  assert.equal(report.from, 2);
+  assert.equal(report.applied.length, 1);
+  assert.deepEqual(
+    JSON.parse(kv.get('query-cache.v1')!).queries.map((q: { queryHash: string }) => q.queryHash),
+    ['artist'],
+  );
+  // Il backup conserva le pagine di prima.
+  assert.equal(kv.get(BACKUP_PREFIX + 'query-cache.v1'), cache([list, artist]));
+
+  // Una cache senza elenchi, o illeggibile, resta com'e'.
+  const clean = memoryKV({ [VERSION_KEY]: '2', 'query-cache.v1': cache([artist]) });
+  migrateStorage(clean);
+  assert.equal(clean.get('query-cache.v1'), cache([artist]));
+  const broken = memoryKV({ [VERSION_KEY]: '2', 'query-cache.v1': '{"queries":[' });
+  assert.equal(migrateStorage(broken).outcome, 'upgraded');
+  assert.equal(broken.get('query-cache.v1'), '{"queries":[');
 });
 
 test("player: la copertina si adatta all'altezza e sotto il minimo il pannello scorre", () => {
@@ -1305,6 +1384,119 @@ test('federazione: ogni sorgente viene interrogata una volta sola', async () => 
   } finally {
     Object.assign(SOURCES, original);
   }
+});
+
+/**
+ * Una sorgente finta con un catalogo vero di `size` brani, a pagine.
+ * `down` dice, richiesta per richiesta, se in quel momento e' giu'.
+ */
+function pagedSource(
+  id: SourceId,
+  size: number,
+  down: (request: number) => boolean = () => false,
+): MusicSource {
+  const make = id === 'audius' ? track : jamendoTrack;
+  const items = Array.from({ length: size }, (_, i) => make(String(i)));
+  let requests = 0;
+  const page = async ({ limit = 20, offset = 0 }: ListParams = {}): Promise<Track[]> => {
+    if (down(requests++)) throw new Error(`${id} ha risposto 503`);
+    return items.slice(offset, offset + limit);
+  };
+  return {
+    id,
+    label: id,
+    search: page,
+    trending: page,
+    artistTracks: (_artistId, params) => page(params),
+    artistInfo: async () => ({ id, name: id, source: id }),
+  };
+}
+
+/** Scorre un elenco fino in fondo come lo scroll infinito, pagina dopo pagina. */
+async function scrollToEnd(
+  fetchPage: (cursor: unknown) => Promise<FederatedPage>,
+): Promise<FederatedPage[]> {
+  const pages: FederatedPage[] = [];
+  let cursor: unknown = null;
+  for (let i = 0; i < 20; i++) {
+    const page = await fetchPage(cursor);
+    pages.push(page);
+    if (page.next === undefined) return pages;
+    cursor = page.next;
+  }
+  throw new Error("l'elenco non finisce mai");
+}
+
+const uids = (pages: FederatedPage[]): string[] => pages.flatMap((p) => p.tracks.map((t) => t.uid));
+
+test('paginazione: con Jamendo giu, Audius arriva comunque in fondo', async () => {
+  const original = { ...SOURCES };
+  SOURCES.audius = { source: pagedSource('audius', 50), enabled: true };
+  SOURCES.jamendo = { source: pagedSource('jamendo', 30, () => true), enabled: true };
+  try {
+    const seen: string[] = [];
+    let cursor: unknown = null;
+    // Prima la seconda pagina richiedeva ad Audius di nuovo i brani 0-19,
+    // il dedup li scartava e l'elenco restava fermo a venti per sempre.
+    for (let i = 0; i < 4; i++) {
+      const page = await trendingAll({ limit: 20, cursor });
+      seen.push(...page.tracks.map((t) => t.uid));
+      assert.deepEqual(
+        page.failed.map((f) => f.source),
+        ['jamendo'],
+      );
+      cursor = page.next;
+    }
+    assert.equal(seen.length, 50);
+    assert.equal(new Set(seen).size, 50);
+    // Audius ha finito; Jamendo resta, ferma alla sua prima pagina.
+    assert.deepEqual(cursor, { jamendo: 0 });
+    // Ora risponde solo lei, e cade: e' una caduta totale, cioe' un errore.
+    await assert.rejects(trendingAll({ limit: 20, cursor }), /jamendo ha risposto 503/);
+  } finally {
+    Object.assign(SOURCES, original);
+  }
+});
+
+test('paginazione: una sorgente che torna riparte da dove era, senza buchi ne doppioni', async () => {
+  const original = { ...SOURCES };
+  SOURCES.audius = { source: pagedSource('audius', 30), enabled: true };
+  // Giu' per le prime due richieste, poi torna.
+  SOURCES.jamendo = { source: pagedSource('jamendo', 45, (n) => n < 2), enabled: true };
+  try {
+    const pages = await scrollToEnd((cursor) => searchAll('onda', { limit: 20, cursor }));
+    const all = uids(pages);
+    assert.equal(all.length, 75);
+    assert.equal(new Set(all).size, 75);
+    // Jamendo arriva tutta e nell'ordine del catalogo: nessuna pagina saltata.
+    assert.deepEqual(
+      all.filter((u) => u.startsWith('jamendo:')),
+      Array.from({ length: 45 }, (_, i) => `jamendo:${i}`),
+    );
+    // L'avviso dice lo stato dell'ultima pagina: c'e' finche' Jamendo e' giu'.
+    assert.deepEqual(
+      pages.map((p) => p.failed.length),
+      [1, 1, 0, 0, 0, 0],
+    );
+  } finally {
+    Object.assign(SOURCES, original);
+  }
+});
+
+test('paginazione: i brani di un artista seguono lo stesso cursore, anche dopo un errore', async () => {
+  // Seconda richiesta caduta: la pagina fallisce intera e si riprova la stessa.
+  const source = pagedSource('audius', 45, (n) => n === 1);
+  const first = await artistTracksPage(source, 'artista', { limit: 20 });
+  assert.deepEqual(first.next, { audius: 20 });
+  await assert.rejects(artistTracksPage(source, 'artista', { limit: 20, cursor: first.next }));
+
+  const rest = await scrollToEnd((cursor) =>
+    artistTracksPage(source, 'artista', { limit: 20, cursor: cursor ?? first.next }),
+  );
+  assert.deepEqual(
+    [...first.tracks.map((t) => t.uid), ...uids(rest)],
+    Array.from({ length: 45 }, (_, i) => `audius:${i}`),
+  );
 });
 
 // --- identita' della build --------------------------------------------

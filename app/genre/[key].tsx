@@ -27,8 +27,8 @@ export default function GenreScreen() {
   const { tracks, failed, loadMore, retry, isLoading, isFetching, isFetchingNextPage, error } =
     useInfiniteTracks(
       ['trending', key ?? ''],
-      (offset) => trendingAll({ limit: PAGE, offset, genreKey: key }),
-      { pageSize: PAGE, enabled: Boolean(genre) },
+      (cursor) => trendingAll({ limit: PAGE, cursor, genreKey: key }),
+      { enabled: Boolean(genre) },
     );
 
   // Un deep link con una chiave ignota: si dice, non si apre "Tutti".
