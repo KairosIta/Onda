@@ -27,7 +27,7 @@ export default function GenreScreen() {
   const { tracks, failed, loadMore, retry, isLoading, isFetching, isFetchingNextPage, error } =
     useInfiniteTracks(
       ['trending', key ?? ''],
-      (cursor) => trendingAll({ limit: PAGE, cursor, genreKey: key }),
+      (cursor, signal) => trendingAll({ limit: PAGE, cursor, signal, genreKey: key }),
       { enabled: Boolean(genre) },
     );
 

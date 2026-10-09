@@ -74,6 +74,7 @@ export interface PageParams {
   limit?: number;
   /** Il `next` della pagina precedente; assente per la prima. */
   cursor?: unknown;
+  signal?: AbortSignal;
 }
 
 /**
@@ -83,7 +84,7 @@ export interface PageParams {
  */
 async function paginate(
   sources: readonly MusicSource[],
-  { limit = 20, cursor }: PageParams,
+  { limit = 20, cursor, signal }: PageParams,
   call: (s: MusicSource, page: ListParams) => Promise<Track[]>,
 ): Promise<FederatedPage> {
   const from = resolveCursor(
@@ -92,7 +93,7 @@ async function paginate(
   );
   const outcomes = await settle(
     sources.filter((s) => from[s.id] !== undefined),
-    (s) => call(s, { limit, offset: from[s.id] }),
+    (s) => call(s, { limit, offset: from[s.id], signal }),
   );
   // `combine` lancia se sono cadute tutte: la pagina fallisce intera e la
   // richiesta successiva riparte dallo stesso cursore.

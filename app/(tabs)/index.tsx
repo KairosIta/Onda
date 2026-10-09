@@ -25,7 +25,7 @@ const PAGE = 20;
 function useSpotlight(kind: SpotlightKind) {
   return useQuery({
     queryKey: ['spotlight', kind],
-    queryFn: () => spotlightAll(kind),
+    queryFn: ({ signal }) => spotlightAll(kind, { signal }),
     staleTime: 30 * 60_000,
   });
 }
@@ -43,7 +43,9 @@ export default function DiscoverScreen() {
   const fresh = useSpotlight('fresh');
 
   const { tracks, failed, loadMore, retry, isLoading, isFetching, isFetchingNextPage, error } =
-    useInfiniteTracks(['trending', 'all'], (cursor) => trendingAll({ limit: PAGE, cursor }));
+    useInfiniteTracks(['trending', 'all'], (cursor, signal) =>
+      trendingAll({ limit: PAGE, cursor, signal }),
+    );
 
   const recent = useMemo(() => tracksOf(history.slice(0, 12)), [history]);
 

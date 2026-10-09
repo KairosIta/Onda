@@ -37,7 +37,8 @@ export default function AlbumScreen() {
     queryKey: ['album-tracks', source, id],
     // Senza `limit` la sorgente pagina da sola fino in fondo: un album
     // va mostrato intero, e il vecchio tetto di 100 troncava in silenzio.
-    queryFn: () => music!.albumTracks!(id),
+    // Il segnale ferma le pagine che mancano se si chiude la schermata.
+    queryFn: ({ signal }) => music!.albumTracks!(id, { signal }),
     enabled: supported && Boolean(id),
   });
 

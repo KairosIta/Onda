@@ -18,7 +18,12 @@ import {
   interleave,
   resolveCursor,
 } from '@/services/sources/federation';
-import { REQUEST_TIMEOUT_MS, fetchJSON, timeoutMessage } from '@/services/sources/http';
+import {
+  REQUEST_TIMEOUT_MS,
+  cancelledError,
+  fetchJSON,
+  timeoutMessage,
+} from '@/services/sources/http';
 import { describeBuild, parseBuildInfo } from '@/services/buildInfoSchema';
 import { GENRES, genreFor } from '@/services/genres';
 import { shuffled } from '@/utils/shuffle';
@@ -26,10 +31,18 @@ import {
   SOURCES,
   artistTracksPage,
   searchAll,
+  searchArtistsAll,
   spotlightAll,
   trendingAll,
 } from '@/services/sources';
-import { creativeCommonsLabel, decodeEntities, orderAlbum } from '@/services/sources/jamendo';
+import {
+  LIST_ATTEMPTS,
+  NAME_SEARCH_ATTEMPTS,
+  creativeCommonsLabel,
+  decodeEntities,
+  jamendoSource,
+  orderAlbum,
+} from '@/services/sources/jamendo';
 import {
   buildExport,
   EXPORT_FORMAT,
@@ -1552,7 +1565,7 @@ const responding =
 test('catalogo: una richiesta che resta appesa si arrende invece di aspettare per sempre', async () => {
   await withFetch(hanging, async () => {
     await assert.rejects(
-      () => fetchJSON('Jamendo', 'https://esempio.invalid/tracks', 20),
+      () => fetchJSON('Jamendo', 'https://esempio.invalid/tracks', { timeoutMs: 20 }),
       (error: Error) => {
         assert.equal(error.message, timeoutMessage('Jamendo', 20));
         // Il messaggio deve arrivare a schermo come un guasto di rete, non
@@ -1585,6 +1598,123 @@ test('catalogo: uno stato HTTP di errore dice quale sorgente ha risposto cosa', 
   // ripetuto e' esattamente cio' che si vuole poter leggere.
   assert.equal(describeFailure(new Error('Audius ha risposto 503')), 'Audius ha risposto 503');
   assert.equal(REQUEST_TIMEOUT_MS > 0, true);
+});
+
+test('catalogo: una richiesta annullata non e un guasto di rete e non aspetta il tetto', async () => {
+  await withFetch(hanging, async () => {
+    const controller = new AbortController();
+    const pending = fetchJSON('Jamendo', 'https://esempio.invalid/tracks', {
+      signal: controller.signal,
+    });
+    controller.abort();
+    await assert.rejects(pending, (error: Error) => {
+      assert.equal(error.name, 'AbortError');
+      assert.equal(error.message, cancelledError('Jamendo').message);
+      // Non diventa "rete non raggiungibile": nessuno la mostrera'.
+      assert.notEqual(describeFailure(error), 'rete non raggiungibile');
+      return true;
+    });
+  });
+
+  // Gia' annullata: la connessione non si apre nemmeno.
+  let calls = 0;
+  const counting: typeof globalThis.fetch = async (...args) => {
+    calls++;
+    return responding(200, {})(...args);
+  };
+  await withFetch(counting, async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await assert.rejects(
+      fetchJSON('Audius', 'https://esempio.invalid/', { signal: controller.signal }),
+      { name: 'AbortError' },
+    );
+  });
+  assert.equal(calls, 0);
+});
+
+/** Jamendo che risponde sempre `success` con questi risultati, e conta le chiamate. */
+function jamendoReplying(results: unknown[], onCall: (n: number) => void = () => {}) {
+  let calls = 0;
+  const fake: typeof globalThis.fetch = async () => {
+    onCall(++calls);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ headers: { status: 'success' }, results }),
+    } as Response;
+  };
+  return { fake, calls: () => calls };
+}
+
+test('jamendo: gli elenchi riprovano una lista vuota, le vetrine di nomi una volta sola', async () => {
+  const empty = jamendoReplying([]);
+  await withFetch(empty.fake, async () => {
+    assert.deepEqual(await jamendoSource.search({ query: 'nessuno' }), []);
+  });
+  assert.equal(empty.calls(), LIST_ATTEMPTS);
+
+  const artists = jamendoReplying([]);
+  await withFetch(artists.fake, async () => {
+    assert.deepEqual(await jamendoSource.searchArtists!({ query: 'nessuno' }), []);
+  });
+  assert.equal(artists.calls(), NAME_SEARCH_ATTEMPTS);
+
+  const albums = jamendoReplying([]);
+  await withFetch(albums.fake, async () => {
+    assert.deepEqual(await jamendoSource.searchAlbums!({ query: 'nessuno' }), []);
+  });
+  assert.equal(albums.calls(), NAME_SEARCH_ATTEMPTS);
+  assert.equal(NAME_SEARCH_ATTEMPTS < LIST_ATTEMPTS, true);
+
+  // Con dei risultati basta una chiamata, come prima.
+  const found = jamendoReplying([{ id: '7', name: 'Trovato' }]);
+  await withFetch(found.fake, async () => {
+    assert.equal((await jamendoSource.searchArtists!({ query: 'trovato' })).length, 1);
+  });
+  assert.equal(found.calls(), 1);
+});
+
+test("jamendo: una ricerca annullata fra un tentativo e l'altro non ne fa partire altri", async () => {
+  const controller = new AbortController();
+  // Annullata appena arriva la prima lista vuota, cioe' durante l'attesa.
+  const empty = jamendoReplying([], () => controller.abort());
+  await withFetch(empty.fake, async () => {
+    await assert.rejects(jamendoSource.search({ query: 'ja', signal: controller.signal }), {
+      name: 'AbortError',
+    });
+  });
+  assert.equal(empty.calls(), 1);
+});
+
+test('federazione: il segnale di chi aspetta arriva a ogni sorgente', async () => {
+  const original = { ...SOURCES };
+  const seen: (AbortSignal | undefined)[] = [];
+  const spy = (id: SourceId): MusicSource => ({
+    ...pagedSource(id, 5),
+    search: async (params) => {
+      seen.push(params.signal);
+      return [];
+    },
+    searchArtists: async (params) => {
+      seen.push(params.signal);
+      return [];
+    },
+  });
+  SOURCES.audius = { source: spy('audius'), enabled: true };
+  SOURCES.jamendo = { source: spy('jamendo'), enabled: true };
+  try {
+    const controller = new AbortController();
+    await searchAll('onda', { limit: 20, signal: controller.signal });
+    await searchArtistsAll('onda', { signal: controller.signal });
+    assert.equal(seen.length, 4);
+    assert.equal(
+      seen.every((s) => s === controller.signal),
+      true,
+    );
+  } finally {
+    Object.assign(SOURCES, original);
+  }
 });
 
 // --- identita' della build, letta dal manifest -------------------------

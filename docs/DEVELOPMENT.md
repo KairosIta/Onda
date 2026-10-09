@@ -745,8 +745,12 @@ allora il tag e' davvero fuori uso: la traduzione sta in
 arrivano con `status: success` e zero risultati anche quando i risultati
 esistono, e non dipende dalla frequenza delle chiamate. E' il motivo per cui
 `fetchResults` in `sources/jamendo.ts` riprova fino a tre volte prima di
-credere a una lista vuota — senza, lo scroll infinito si ferma per sempre
-(una pagina vuota per lui significa "fine elenco") e i generi sembrano rotti.
+credere a una lista vuota — senza, lo scroll infinito toglie Jamendo
+dall'elenco (una pagina vuota per lui significa "questa sorgente ha finito")
+e i generi sembrano rotti. Le vetrine di artisti e album della ricerca fanno
+due tentativi invece di tre (`NAME_SEARCH_ATTEMPTS`): li' una lista vuota e'
+il caso normale, e una vuota per errore costa una riga di vetrina, non un
+elenco che si chiude.
 
 **Una traccia parte, poi il player salta da solo alla successiva.** Voluto.
 Nel catalogo Jamendo esistono brani il cui file audio non c'e' piu' (404
@@ -799,6 +803,14 @@ Audius, e quando Jamendo torna riparte da dove era: niente buchi, niente
 doppioni, e il dedup per uid resta solo come difesa per il trending che cambia
 ordine. I brani di un artista (`artistTracksPage`) usano lo stesso cursore con
 una sorgente sola.
+
+**Le richieste di catalogo si annullano.** Ogni `queryFn` passa il `signal`
+di React Query alla sorgente (`ListParams.signal`) e da li' a `fetchJSON`:
+una ricerca superata o una schermata chiusa mentre carica interrompono le
+richieste in volo e i tentativi ancora da fare. `fetchJSON` distingue chi ha
+interrotto: il tetto di tempo e' un guasto di rete da mostrare, l'annullamento
+un `AbortError` che nessuno mostra. Una sorgente nuova deve passare
+`params.signal` a ogni richiesta, altrimenti le sue continuano a girare.
 
 **Il timer di spegnimento non e' persistito.** Un timer sopravvissuto al
 riavvio metterebbe in pausa la musica senza che nessuno capisca perche'.

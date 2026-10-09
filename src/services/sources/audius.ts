@@ -107,12 +107,12 @@ function mapUser(u: AudiusUser): ArtistInfo {
  */
 const playable = (t: AudiusTrack): boolean => !t.is_stream_gated && t.is_streamable !== false;
 
-function fetchJSON<T>(url: string): Promise<T> {
-  return httpJSON<T>('Audius', url);
+function fetchJSON<T>(url: string, signal?: AbortSignal): Promise<T> {
+  return httpJSON<T>('Audius', url, { signal });
 }
 
-async function fetchTracks(url: string): Promise<Track[]> {
-  const json = await fetchJSON<{ data?: AudiusTrack[] }>(url);
+async function fetchTracks(url: string, signal?: AbortSignal): Promise<Track[]> {
+  const json = await fetchJSON<{ data?: AudiusTrack[] }>(url, signal);
   return (json.data ?? []).filter(playable).map(mapTrack);
 }
 
@@ -121,17 +121,18 @@ export const audiusSource: MusicSource = {
   label: 'Audius',
 
   async search({ query, ...rest }: SearchParams): Promise<Track[]> {
-    return fetchTracks(withAppName('/tracks/search', { query, ...page(rest) }));
+    return fetchTracks(withAppName('/tracks/search', { query, ...page(rest) }), rest.signal);
   },
 
   async trending({ genre, ...rest }: TrendingParams = {}): Promise<Track[]> {
     return fetchTracks(
       withAppName('/tracks/trending', { ...page(rest), ...(genre ? { genre } : {}) }),
+      rest.signal,
     );
   },
 
   async artistTracks(artistId: string, params: ListParams = {}): Promise<Track[]> {
-    return fetchTracks(withAppName(`/users/${artistId}/tracks`, page(params)));
+    return fetchTracks(withAppName(`/users/${artistId}/tracks`, page(params)), params.signal);
   },
 
   async artistInfo(artistId: string): Promise<ArtistInfo> {
@@ -149,13 +150,17 @@ export const audiusSource: MusicSource = {
    */
   async spotlight(kind: SpotlightKind, params: ListParams = {}): Promise<Track[]> {
     return kind === 'rising'
-      ? fetchTracks(withAppName('/tracks/trending', { time: 'week', ...page(params) }))
-      : fetchTracks(withAppName('/tracks/trending/underground', page(params)));
+      ? fetchTracks(
+          withAppName('/tracks/trending', { time: 'week', ...page(params) }),
+          params.signal,
+        )
+      : fetchTracks(withAppName('/tracks/trending/underground', page(params)), params.signal);
   },
 
   async searchArtists({ query, ...rest }: SearchParams): Promise<ArtistInfo[]> {
     const json = await fetchJSON<{ data?: AudiusUser[] }>(
       withAppName('/users/search', { query, ...page(rest) }),
+      rest.signal,
     );
     return (json.data ?? []).filter((u) => Boolean(u.id)).map(mapUser);
   },

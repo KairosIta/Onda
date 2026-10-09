@@ -25,19 +25,50 @@ export function timeoutMessage(label: string, timeoutMs: number): string {
 }
 
 /**
+ * Una richiesta annullata da chi l'aveva fatta, non un guasto: nessuno
+ * aspetta piu' la risposta, quindi nessuno la mostra. Ha un nome suo
+ * perche' chi la riceve possa riconoscerla senza leggere il messaggio.
+ */
+export function cancelledError(label: string): Error {
+  const error = new Error(`${label}: richiesta annullata`);
+  error.name = 'AbortError';
+  return error;
+}
+
+export interface RequestOptions {
+  timeoutMs?: number;
+  /** Il segnale di chi aspetta la risposta (vedi `ListParams.signal`). */
+  signal?: AbortSignal;
+}
+
+/**
  * L'unico punto in cui Onda parla con un catalogo.
  *
  * Il timer copre anche la lettura del corpo, non solo l'attesa degli
  * header: una risposta che comincia ad arrivare e poi si interrompe a
  * meta' appenderebbe `res.json()` esattamente come si appendeva `fetch`.
+ *
+ * Due cose possono interrompere la richiesta, e vanno dette diverse: il
+ * tetto di tempo e' un guasto di rete da mostrare, l'annullamento di chi
+ * l'aveva chiesta no.
  */
 export async function fetchJSON<T>(
   label: string,
   url: string,
-  timeoutMs: number = REQUEST_TIMEOUT_MS,
+  { timeoutMs = REQUEST_TIMEOUT_MS, signal }: RequestOptions = {},
 ): Promise<T> {
+  // Gia' annullata (una ricerca superata fra un tentativo e l'altro): non
+  // si apre nemmeno la connessione.
+  if (signal?.aborted) throw cancelledError(label);
+
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  const cancel = (): void => controller.abort();
+  signal?.addEventListener('abort', cancel);
 
   try {
     const res = await fetch(url, { signal: controller.signal });
@@ -46,10 +77,12 @@ export async function fetchJSON<T>(
   } catch (error) {
     // L'abort arriva come errore generico e cambia forma fra Hermes e
     // Node: la domanda affidabile non e' come si chiama l'eccezione, ma
-    // se siamo stati noi a interromperla.
-    if (controller.signal.aborted) throw new Error(timeoutMessage(label, timeoutMs));
+    // chi l'ha interrotta.
+    if (timedOut) throw new Error(timeoutMessage(label, timeoutMs));
+    if (signal?.aborted) throw cancelledError(label);
     throw error;
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener('abort', cancel);
   }
 }

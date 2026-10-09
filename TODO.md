@@ -678,9 +678,27 @@ stati verificati successivamente.
 - [ ] Usare thumbnail nei mini-player e nella Coda invece dell'artwork grande
       destinato a lock screen e player.
 - [ ] Aggiungere timeout e `AbortSignal` fino agli adapter; le ricerche
-      superate continuano oggi a consumare rete e quota.
+      superate continuano oggi a consumare rete e quota. **Implementato il
+      9 ottobre 2026, da collaudare**: il timeout c'era gia' (15 s in
+      `sources/http.ts`); ora il segnale di React Query arriva da ogni
+      schermata fino a `fetch` (`ListParams.signal`), quindi una ricerca
+      superata o una schermata chiusa mentre carica annullano le richieste
+      in volo, i tentativi Jamendo ancora da fare e le pagine di un album
+      non ancora scaricate. Un annullamento non e' un guasto: ha un errore
+      suo (`AbortError`) e non diventa «rete non raggiungibile». Test con
+      `fetch` finto: richiesta appesa annullata, segnale gia' scattato che
+      non apre la connessione, ricerca annullata fra due tentativi Jamendo,
+      segnale che arriva a ogni sorgente. Su device: digitando in Cerca con
+      pause oltre i 400 ms del debounce, nel logcat di rete le ricerche
+      superate devono interrompersi.
 - [ ] Definire retry/backoff per 429 e 5xx. Jamendo ritenta tre volte ogni
       risposta vuota e React Query può moltiplicare ulteriormente le chiamate.
+      Dal 9 ottobre 2026 le vetrine di artisti e album della ricerca ne
+      fanno due (`NAME_SEARCH_ATTEMPTS`): li' la lista vuota e' il caso
+      normale e i tre tentativi costavano due chiamate e 600 ms a ogni
+      ricerca, tenendo fermi anche gli artisti Audius. Gli elenchi di brani
+      restano a tre, perche' una vuota per errore toglierebbe Jamendo
+      dall'elenco.
 - [ ] Collegare React Query ad AppState/stato rete e aggiungere
       pull-to-refresh con una policy esplicita per trending e cache. AppState è
       collegato dal 9 settembre 2026 (`focusManager` in `queryClient.ts`) e la

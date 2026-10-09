@@ -26,21 +26,23 @@ export default function SearchScreen() {
   // query nuova dal refetch di una gia' vista. Con isFetching la lista
   // spariva e ricompariva a ogni ricarica dalla cache.
   const { tracks, failed, loadMore, retry, isLoading, isFetching, isFetchingNextPage, error } =
-    useInfiniteTracks(['search', query], (cursor) => searchAll(query, { limit: PAGE, cursor }), {
-      enabled,
-    });
+    useInfiniteTracks(
+      ['search', query],
+      (cursor, signal) => searchAll(query, { limit: PAGE, cursor, signal }),
+      { enabled },
+    );
 
   // Artisti e album: una pagina sola per ciascuno, alternata fra le
   // sorgenti. Una sorgente senza quella ricerca (Audius per gli album)
   // viene saltata, non contata come caduta.
   const artists = useQuery({
     queryKey: ['search-artists', query],
-    queryFn: () => searchArtistsAll(query),
+    queryFn: ({ signal }) => searchArtistsAll(query, { signal }),
     enabled,
   });
   const albums = useQuery({
     queryKey: ['search-albums', query],
-    queryFn: () => searchAlbumsAll(query),
+    queryFn: ({ signal }) => searchAlbumsAll(query, { signal }),
     enabled,
   });
 
