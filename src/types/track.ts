@@ -38,6 +38,13 @@ export interface Track {
 export interface ListParams {
   limit?: number;
   offset?: number;
+  /**
+   * Annulla la richiesta quando nessuno aspetta piu' il risultato: React
+   * Query lo fa scattare per una ricerca superata o una schermata chiusa
+   * mentre carica. Senza, quelle richieste finivano comunque, consumando
+   * rete e quota Jamendo per una risposta che nessuno avrebbe letto.
+   */
+  signal?: AbortSignal;
 }
 
 export interface SearchParams extends ListParams {

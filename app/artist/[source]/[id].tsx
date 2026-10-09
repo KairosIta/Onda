@@ -31,7 +31,7 @@ export default function ArtistScreen() {
   const { tracks, loadMore, retry, isLoading, isFetching, isFetchingNextPage, error } =
     useInfiniteTracks(
       ['artist-tracks', source, id],
-      (cursor) => artistTracksPage(music!, id, { limit: PAGE, cursor }),
+      (cursor, signal) => artistTracksPage(music!, id, { limit: PAGE, cursor, signal }),
       { enabled: Boolean(music && id) },
     );
 

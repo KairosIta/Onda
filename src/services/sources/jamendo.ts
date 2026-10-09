@@ -225,11 +225,11 @@ function mapAlbum(a: JamendoAlbum): AlbumInfo {
  * Controllarlo qui evita che un errore di quota arrivi alle schermate
  * travestito da "nessun risultato".
  */
-async function once<T>(requestUrl: string): Promise<T[]> {
+async function once<T>(requestUrl: string, signal?: AbortSignal): Promise<T[]> {
   const json = await fetchJSON<{
     headers?: { status?: string; error_message?: string };
     results?: T[];
-  }>('Jamendo', requestUrl);
+  }>('Jamendo', requestUrl, { signal });
   if (json.headers?.status !== 'success') {
     throw new Error(json.headers?.error_message || 'Errore Jamendo');
   }
@@ -237,25 +237,54 @@ async function once<T>(requestUrl: string): Promise<T[]> {
 }
 
 /**
+ * Tentativi prima di credere a una lista vuota, per gli elenchi di brani e
+ * le ricerche per id: vedi `fetchResults`.
+ */
+export const LIST_ATTEMPTS = 3;
+
+/**
+ * Le vetrine di artisti e album della ricerca ne fanno due. Li' una lista
+ * vuota e' il caso normale — quasi nessuna ricerca coincide col nome di un
+ * artista o di un album — e con tre tentativi ogni ricerca pagava due
+ * chiamate e 600 ms in piu' per sapere che non c'era niente, tenendo fermi
+ * nel frattempo anche gli artisti Audius: la federazione li mostra solo
+ * quando ha tutte le risposte. Una lista vuota per errore, qui, costa una
+ * riga di vetrina e non un elenco che si chiude: con due tentativi capita
+ * circa il 9% delle volte invece del 3%.
+ */
+export const NAME_SEARCH_ATTEMPTS = 2;
+
+interface ResultsOptions {
+  attempts?: number;
+  signal?: AbortSignal;
+}
+
+/**
  * Jamendo risponde `success` con zero risultati anche quando i risultati
  * esistono: misurato circa 3 volte su 10, e non dipende dalla frequenza
  * delle chiamate (distanziarle di 1,5s non cambia nulla). Senza un secondo
- * tentativo l'app mostra schermate vuote a caso, e lo scroll infinito si
- * ferma per sempre: una pagina vuota per lui significa "fine elenco".
+ * tentativo l'app mostra schermate vuote a caso, e lo scroll infinito
+ * toglie Jamendo dall'elenco: una pagina vuota per lui significa "questa
+ * sorgente ha finito".
  *
  * Costo: un elenco davvero finito paga 3 chiamate invece di 1. Preferibile
  * a un catalogo che sparisce a intermittenza.
  */
-async function fetchResults<T>(requestUrl: string): Promise<T[]> {
-  for (let attempt = 0; ; attempt++) {
-    const results = await once<T>(requestUrl);
-    if (results.length > 0 || attempt === 2) return results;
-    await new Promise((r) => setTimeout(r, 200 * (attempt + 1)));
+async function fetchResults<T>(
+  requestUrl: string,
+  { attempts = LIST_ATTEMPTS, signal }: ResultsOptions = {},
+): Promise<T[]> {
+  for (let attempt = 1; ; attempt++) {
+    const results = await once<T>(requestUrl, signal);
+    if (results.length > 0 || attempt >= attempts) return results;
+    // Annullata durante l'attesa: il tentativo dopo non parte nemmeno,
+    // perche' `fetchJSON` rifiuta un segnale gia' scattato.
+    await new Promise((r) => setTimeout(r, 200 * attempt));
   }
 }
 
-async function fetchTracks(requestUrl: string): Promise<Track[]> {
-  const results = await fetchResults<JamendoTrack>(requestUrl);
+async function fetchTracks(requestUrl: string, signal?: AbortSignal): Promise<Track[]> {
+  const results = await fetchResults<JamendoTrack>(requestUrl, { signal });
   return results.filter((t) => Boolean(t.audio)).map(mapTrack);
 }
 
@@ -264,7 +293,7 @@ export const jamendoSource: MusicSource = {
   label: 'Jamendo',
 
   async search({ query, ...rest }: SearchParams): Promise<Track[]> {
-    return fetchTracks(url('/tracks/', { search: query, ...page(rest) }));
+    return fetchTracks(url('/tracks/', { search: query, ...page(rest) }), rest.signal);
   },
 
   async trending({ genre, ...rest }: TrendingParams = {}): Promise<Track[]> {
@@ -274,6 +303,7 @@ export const jamendoSource: MusicSource = {
         ...page(rest),
         ...(genre ? { tags: genre } : {}),
       }),
+      rest.signal,
     );
   },
 
@@ -282,6 +312,7 @@ export const jamendoSource: MusicSource = {
     // stesso parser e stessa gestione degli errori di tutto il resto.
     return fetchTracks(
       url('/tracks/', { artist_id: artistId, order: 'popularity_total', ...page(params) }),
+      params.signal,
     );
   },
 
@@ -302,12 +333,14 @@ export const jamendoSource: MusicSource = {
         order: kind === 'rising' ? 'popularity_week' : 'releasedate_desc',
         ...page(params),
       }),
+      params.signal,
     );
   },
 
   async searchArtists({ query, ...rest }: SearchParams): Promise<ArtistInfo[]> {
     const results = await fetchResults<JamendoArtist>(
       url('/artists/', { namesearch: query, ...page(rest) }),
+      { attempts: NAME_SEARCH_ATTEMPTS, signal: rest.signal },
     );
     return results.filter((a) => Boolean(a.id)).map(mapArtist);
   },
@@ -315,6 +348,7 @@ export const jamendoSource: MusicSource = {
   async searchAlbums({ query, ...rest }: SearchParams): Promise<AlbumInfo[]> {
     const results = await fetchResults<JamendoAlbum>(
       url('/albums/', { namesearch: query, ...page(rest) }),
+      { attempts: NAME_SEARCH_ATTEMPTS, signal: rest.signal },
     );
     return results.filter((a) => Boolean(a.id)).map(mapAlbum);
   },
@@ -339,6 +373,7 @@ export const jamendoSource: MusicSource = {
       // parser). La posizione arriva comunque nel campo `position`.
       const got = await fetchResults<JamendoTrack>(
         url('/tracks/', { album_id: albumId, ...page({ limit: size, offset }) }),
+        { signal: params.signal },
       );
       pages.push(got);
       // Pagina corta: e' la fine. Una pagina vuota per un guasto Jamendo

@@ -20,17 +20,21 @@ export interface TrackPage {
  * cosi' com'e' (alla prima pagina `null`). Il cursore e' per sorgente:
  * una sorgente caduta richiede la stessa pagina alla volta dopo senza
  * fermare le altre, quindi l'elenco cresce anche con una sorgente giu'.
+ *
+ * `fetchPage` riceve anche il segnale di React Query e deve passarlo alle
+ * richieste: una ricerca superata o una schermata chiusa mentre carica
+ * vengono annullate invece di finire per nessuno.
  */
 export function useInfiniteTracks(
   key: unknown[],
-  fetchPage: (cursor: unknown) => Promise<TrackPage>,
+  fetchPage: (cursor: unknown, signal: AbortSignal) => Promise<TrackPage>,
   { enabled = true }: { enabled?: boolean } = {},
 ) {
   const query = useInfiniteQuery({
     queryKey: key,
     enabled,
     initialPageParam: null as unknown,
-    queryFn: ({ pageParam }) => fetchPage(pageParam),
+    queryFn: ({ pageParam, signal }) => fetchPage(pageParam, signal),
     /**
      * Senza `next` l'elenco e' finito: tutte le sorgenti hanno dato una
      * pagina vuota senza errori. Una sorgente caduta non chiude niente,
