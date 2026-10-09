@@ -9,7 +9,7 @@ import { Empty, ErrorNotice } from '@/components/StateViews';
 import { TrackList } from '@/components/TrackList';
 import { useInfiniteTracks } from '@/hooks/useInfiniteTracks';
 import { useQueue } from '@/hooks/useQueue';
-import { sourceById } from '@/services/sources';
+import { artistTracksPage, sourceById } from '@/services/sources';
 import { colors, radius, spacing, type } from '@/theme';
 import { parseEntityId } from '@/utils/routes';
 import { shuffled } from '@/utils/shuffle';
@@ -31,8 +31,8 @@ export default function ArtistScreen() {
   const { tracks, loadMore, retry, isLoading, isFetching, isFetchingNextPage, error } =
     useInfiniteTracks(
       ['artist-tracks', source, id],
-      (offset) => music!.artistTracks(id, { limit: PAGE, offset }).then((t) => ({ tracks: t })),
-      { pageSize: PAGE, enabled: Boolean(music && id) },
+      (cursor) => artistTracksPage(music!, id, { limit: PAGE, cursor }),
+      { enabled: Boolean(music && id) },
     );
 
   if (!id) {

@@ -478,9 +478,20 @@ stati verificati successivamente.
       **Done:** retry/backoff per rete, skip solo per stream definitivamente morto
       e test device togliendo la rete a metà brano.
 
-- [ ] **Completare il collaudo della paginazione dopo un guasto parziale.** Il
-      worktree locale riprova lo stesso offset, deduplica le tracce e mostra
-      soltanto gli errori dell'ultimo tentativo; il cursore ha un test unitario.
+- [ ] **Completare il collaudo della paginazione dopo un guasto parziale.**
+      **Implementato il 9 ottobre 2026, da collaudare**: il cursore e' per
+      sorgente (`SourceCursor` in `services/sources/federation.ts`). Prima
+      l'offset era uno solo e una sorgente caduta lo fermava per tutte: con
+      Jamendo giu' a lungo ogni scroll richiedeva ad Audius la stessa pagina e
+      l'elenco restava ai primi venti brani. Ora chi risponde avanza, chi cade
+      richiede la sua stessa pagina alla volta dopo e, quando torna, riparte da
+      dove era. Test deterministici con sorgenti finte: Jamendo giu' per sempre
+      (Audius arriva in fondo), Jamendo giu' e poi di nuovo su (75 brani su 75,
+      nessun doppione, ordine del catalogo), artista con una richiesta caduta.
+      La migrazione 2 → 3 toglie dalla cache su disco gli elenchi salvati con
+      l'offset unico. Manca la prova su device, per esempio con un Client ID
+      Jamendo volutamente sbagliato: lo scroll di Scopri deve andare oltre i
+      primi venti brani con l'avviso «jamendo non risponde» sempre visibile.
       **Done:** cursore per sorgente o retry reale dello stesso offset, nessun buco
       o duplicato, stato corrente del banner e test deterministico caduta/rientro.
 

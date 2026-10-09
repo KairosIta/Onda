@@ -132,7 +132,7 @@ src/
   hooks/useUpNext.ts        cosa viene dopo il brano corrente; la regola in utils/upNext.ts
   utils/reorder.ts          geometria del riordino a trascinamento della coda (worklet)
   utils/routes.ts           validazione dei parametri di route (raccolta, id) da deep link
-  hooks/useInfiniteTracks.ts  scroll infinito su qualunque elenco, federato o no
+  hooks/useInfiniteTracks.ts  scroll infinito su qualunque elenco; il cursore per sorgente sta in services/sources
   services/playbackService.ts registra i cambi di traccia, anche in background
   components/               TrackList, TrackRow, MiniPlayer, menu contestuale, ...
   components/Artwork.tsx    ogni copertina passa da qui: expo-image, dissolvenza, cache, segnaposto
@@ -175,6 +175,9 @@ lancia si ripristina tutto e la versione non avanza. Una versione piu' nuova
 della nostra non si tocca. Un valore che non si riesce nemmeno a parsare non
 si cancella: finisce in `quarantine.*`. Una migrazione nuova e' una voce in
 `MIGRATIONS` con la sua versione di arrivo e un test da versione vecchia.
+Oggi sono due: 1 → 2 porta il repeat numerico a `off/one/all`, 2 → 3 toglie
+dalla cache di React Query gli elenchi a scorrimento salvati con l'offset
+unico, che non sapevano dire da dove riprendere.
 
 La coda invece non e' in uno store nostro: vive dentro RNTP, che resta l'unica
 fonte di verita' anche quando i comandi arrivano dalla notifica. `store/session`
@@ -284,8 +287,14 @@ npm run format:check
 ```
 
 Coprono la validazione della libreria e delle preferenze playback persistite,
-le migrazioni dei vecchi valori repeat e il cursore della paginazione
-federata, compreso il recupero dopo una risposta parziale.
+le migrazioni dello storage e il cursore della paginazione federata, con
+sorgenti finte che scorrono un catalogo vero: una sorgente giu' per sempre,
+una che cade e torna, un artista con una richiesta fallita.
+
+`npm run check:audit` e' il controllo delle dipendenze che gira in CI:
+`npm audit` alla soglia alta, con le sole eccezioni dichiarate in
+`scripts/audit-policy.ts` per gli avvisi che non hanno ancora una versione
+corretta. Ogni eccezione ha un motivo e una data di revisione.
 
 `npm run typecheck` rigenera prima `.expo/types/router.d.ts` con
 `expo customize tsconfig.json` e solo dopo lancia `tsc`. Con
@@ -779,11 +788,17 @@ nativa in piu' e funziona con TalkBack. Se preferisci il trascinamento:
 `react-native-draggable-flatlist`, sostituendo il ramo `editing` in
 `app/playlist/[id].tsx`.
 
-**L'offset della paginazione e' per sorgente, non globale.** Chiedendo la
-pagina 2 a entrambe si ottengono risultati nuovi da entrambe; `useInfiniteTracks`
-salva l'offset realmente usato in ogni pagina. Dopo un risultato completo lo
-incrementa di `pageSize`; se una sorgente fallisce mantiene lo stesso offset,
-ritenta senza creare buchi e deduplica i risultati gia' mostrati.
+**L'offset della paginazione e' per sorgente, non globale.** Ogni pagina
+porta il cursore della successiva, `{ audius: 40, jamendo: 20 }`
+(`SourceCursor` in `services/sources/federation.ts`, puro e testato), e
+`useInfiniteTracks` lo passa alla richiesta dopo senza leggerlo. Una sorgente
+che risponde avanza di una pagina; una caduta richiede la stessa pagina alla
+volta dopo, senza fermare le altre; una che torna vuota senza errori ha finito
+e non si interroga piu'. Cosi' con Jamendo giu' per ore lo scroll continua su
+Audius, e quando Jamendo torna riparte da dove era: niente buchi, niente
+doppioni, e il dedup per uid resta solo come difesa per il trending che cambia
+ordine. I brani di un artista (`artistTracksPage`) usano lo stesso cursore con
+una sorgente sola.
 
 **Il timer di spegnimento non e' persistito.** Un timer sopravvissuto al
 riavvio metterebbe in pausa la musica senza che nessuno capisca perche'.

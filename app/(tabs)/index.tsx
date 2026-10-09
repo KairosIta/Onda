@@ -43,9 +43,7 @@ export default function DiscoverScreen() {
   const fresh = useSpotlight('fresh');
 
   const { tracks, failed, loadMore, retry, isLoading, isFetching, isFetchingNextPage, error } =
-    useInfiniteTracks(['trending', 'all'], (offset) => trendingAll({ limit: PAGE, offset }), {
-      pageSize: PAGE,
-    });
+    useInfiniteTracks(['trending', 'all'], (cursor) => trendingAll({ limit: PAGE, cursor }));
 
   const recent = useMemo(() => tracksOf(history.slice(0, 12)), [history]);
 

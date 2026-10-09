@@ -5,13 +5,21 @@ import type {
   MusicSource,
   SourceId,
   SpotlightKind,
+  Track,
 } from '@/types/track';
 import { genreFor } from '../genres';
 import { audiusSource } from './audius';
-import { combine, type FederatedResult } from './federation';
+import {
+  advanceCursor,
+  combine,
+  type FederatedPage,
+  type FederatedResult,
+  resolveCursor,
+  type SourceOutcome,
+} from './federation';
 import { jamendoSource } from './jamendo';
 
-export type { FederatedResult } from './federation';
+export type { FederatedPage, FederatedResult } from './federation';
 
 /**
  * Registro delle sorgenti. Metti a false una voce per spegnerla senza
@@ -45,29 +53,70 @@ const active = (): MusicSource[] =>
  * sapere se ritorna `null` fa gia' partire la richiesta di rete, e quella
  * scartata resterebbe una promise senza gestore.
  */
-async function federate<T>(
+async function settle<T>(
+  sources: readonly MusicSource[],
   call: (s: MusicSource) => Promise<T[]> | null,
-): Promise<FederatedResult<T>> {
-  const started = active()
+): Promise<SourceOutcome<T>[]> {
+  const started = sources
     .map((source) => ({ source, promise: call(source) }))
     .filter((c): c is { source: MusicSource; promise: Promise<T[]> } => c.promise !== null);
   const settled = await Promise.allSettled(started.map((c) => c.promise));
-  return combine(started.map(({ source }, i) => ({ source: source.id, result: settled[i] })));
+  return started.map(({ source }, i) => ({ source: source.id, result: settled[i] }));
+}
+
+async function federate<T>(
+  call: (s: MusicSource) => Promise<T[]> | null,
+): Promise<FederatedResult<T>> {
+  return combine(await settle(active(), call));
+}
+
+export interface PageParams {
+  limit?: number;
+  /** Il `next` della pagina precedente; assente per la prima. */
+  cursor?: unknown;
 }
 
 /**
- * L'offset e' per sorgente, non globale: chiedendo la pagina 2 a
- * entrambe si ottengono comunque risultati nuovi da entrambe.
+ * Una pagina di un elenco a scorrimento: ogni sorgente parte dal proprio
+ * offset (vedi `SourceCursor`) e la pagina porta con se' il cursore della
+ * successiva.
  */
-export const searchAll = (query: string, params: ListParams = {}): Promise<FederatedResult> =>
-  federate((s) => s.search({ query, limit: 20, ...params }));
+async function paginate(
+  sources: readonly MusicSource[],
+  { limit = 20, cursor }: PageParams,
+  call: (s: MusicSource, page: ListParams) => Promise<Track[]>,
+): Promise<FederatedPage> {
+  const from = resolveCursor(
+    cursor,
+    sources.map((s) => s.id),
+  );
+  const outcomes = await settle(
+    sources.filter((s) => from[s.id] !== undefined),
+    (s) => call(s, { limit, offset: from[s.id] }),
+  );
+  // `combine` lancia se sono cadute tutte: la pagina fallisce intera e la
+  // richiesta successiva riparte dallo stesso cursore.
+  return { ...combine(outcomes), next: advanceCursor(from, outcomes, limit) };
+}
 
-export const trendingAll = (
-  params: ListParams & { genreKey?: string } = {},
-): Promise<FederatedResult> => {
-  const { genreKey, ...list } = params;
-  return federate((s) => s.trending({ limit: 20, ...list, genre: genreFor(genreKey, s.id) }));
-};
+export const searchAll = (query: string, page: PageParams = {}): Promise<FederatedPage> =>
+  paginate(active(), page, (s, list) => s.search({ query, ...list }));
+
+export const trendingAll = ({
+  genreKey,
+  ...page
+}: PageParams & { genreKey?: string } = {}): Promise<FederatedPage> =>
+  paginate(active(), page, (s, list) => s.trending({ ...list, genre: genreFor(genreKey, s.id) }));
+
+/**
+ * I brani di un artista, a pagine. La sorgente e' una sola, ma il cursore
+ * e' lo stesso degli elenchi federati: lo scroll infinito ha una regola sola.
+ */
+export const artistTracksPage = (
+  source: MusicSource,
+  artistId: string,
+  page: PageParams = {},
+): Promise<FederatedPage> => paginate([source], page, (s, list) => s.artistTracks(artistId, list));
 
 /** Vetrine di Scopri: poche voci per sorgente, alternate come il resto. */
 export const spotlightAll = (

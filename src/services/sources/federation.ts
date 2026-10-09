@@ -90,3 +90,78 @@ export function combine<T>(outcomes: SourceOutcome<T>[]): FederatedResult<T> {
 
   return { tracks: interleave(lists), failed };
 }
+
+// --- paginazione ------------------------------------------------------
+
+/**
+ * Da dove riprende ogni sorgente di un elenco a scorrimento. Una sorgente
+ * che non compare ha finito i suoi brani e non si interroga piu'.
+ *
+ * Prima l'offset era uno solo per tutte, e una pagina con una sorgente
+ * caduta lo teneva fermo per tutte. Per un guasto di un secondo andava
+ * bene; con Jamendo giu' per ore — quota finita, Client ID sbagliato —
+ * ogni scroll richiedeva ad Audius la stessa pagina, il dedup la scartava
+ * e l'elenco restava fermo ai primi venti brani per sempre.
+ *
+ * Con un offset per sorgente chi risponde va avanti, chi e' caduta
+ * richiede la stessa pagina alla volta dopo e, quando torna, riparte da
+ * dove era rimasta: niente buchi e niente doppioni.
+ */
+export type SourceCursor = Partial<Record<SourceId, number>>;
+
+/** Una pagina federata e il cursore della successiva; senza, l'elenco e' finito. */
+export interface FederatedPage<T = Track> extends FederatedResult<T> {
+  next?: SourceCursor;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isOffset = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0;
+
+/**
+ * Il cursore da cui parte una pagina. La prima pagina non ne ha uno, e
+ * qualunque cosa non sia un cursore vale come prima pagina: tutte le
+ * sorgenti da zero. Una sorgente spenta nel frattempo non si interroga.
+ */
+export function resolveCursor(param: unknown, sources: readonly SourceId[]): SourceCursor {
+  if (!isRecord(param)) return Object.fromEntries(sources.map((s) => [s, 0]));
+
+  const cursor: SourceCursor = {};
+  for (const source of sources) {
+    const offset = param[source];
+    if (isOffset(offset)) cursor[source] = offset;
+  }
+  return cursor;
+}
+
+/**
+ * Il cursore della pagina dopo, dagli esiti di questa:
+ *
+ * - brani arrivati: la sorgente avanza di una pagina;
+ * - sorgente caduta: resta dov'era e riprova alla prossima;
+ * - zero brani senza errore: la sorgente ha finito e si toglie.
+ *
+ * Quando non resta nessuna sorgente l'elenco e' finito (`undefined`).
+ *
+ * Zero brani vale come fine anche se la sorgente ha scartato una pagina
+ * intera di brani non riproducibili: e' la regola che il cursore unico
+ * applicava a tutte insieme, ora presa sorgente per sorgente. Le risposte
+ * vuote per errore di Jamendo le esclude gia' l'adapter, che ritenta
+ * prima di arrendersi.
+ */
+export function advanceCursor<T>(
+  cursor: SourceCursor,
+  outcomes: readonly SourceOutcome<T>[],
+  pageSize: number,
+): SourceCursor | undefined {
+  const next: SourceCursor = {};
+  for (const { source, result } of outcomes) {
+    const offset = cursor[source];
+    if (offset === undefined) continue;
+    if (result.status === 'rejected') next[source] = offset;
+    else if (result.value.length > 0) next[source] = offset + pageSize;
+  }
+  return Object.keys(next).length > 0 ? next : undefined;
+}

@@ -1,57 +1,44 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import type { SourceId, Track } from '@/types/track';
-import { nextTracksOffset } from './infiniteTracksCursor';
 
 export interface TrackPage {
   tracks: Track[];
   failed?: { source: SourceId; message: string }[];
-}
-
-interface LoadedTrackPage extends TrackPage {
-  /** Offset realmente usato per caricare questa pagina. */
-  offset: number;
+  /**
+   * Da dove riprende la pagina dopo; assente quando l'elenco e' finito.
+   * Il hook non lo legge, lo passa e basta: lo decide chi conosce le
+   * sorgenti (`SourceCursor` in services/sources/federation).
+   */
+  next?: unknown;
 }
 
 /**
  * Scroll infinito su qualunque elenco di tracce, federato o no.
  *
- * Ogni pagina conserva l'offset richiesto: dopo un successo completo avanza
- * di pageSize, mentre una risposta parziale ritenta lo stesso offset. Il
- * numero di tracce non puo' guidare il cursore perche' una pagina federata ne
- * contiene fino al doppio, una quota per sorgente.
+ * Ogni pagina porta il cursore della successiva, e `fetchPage` lo riceve
+ * cosi' com'e' (alla prima pagina `null`). Il cursore e' per sorgente:
+ * una sorgente caduta richiede la stessa pagina alla volta dopo senza
+ * fermare le altre, quindi l'elenco cresce anche con una sorgente giu'.
  */
 export function useInfiniteTracks(
   key: unknown[],
-  fetchPage: (offset: number) => Promise<TrackPage>,
-  { pageSize = 20, enabled = true }: { pageSize?: number; enabled?: boolean } = {},
+  fetchPage: (cursor: unknown) => Promise<TrackPage>,
+  { enabled = true }: { enabled?: boolean } = {},
 ) {
   const query = useInfiniteQuery({
     queryKey: key,
     enabled,
-    initialPageParam: 0,
-    queryFn: async ({ pageParam }): Promise<LoadedTrackPage> => {
-      const offset = pageParam as number;
-      return { ...(await fetchPage(offset)), offset };
-    },
+    initialPageParam: null as unknown,
+    queryFn: ({ pageParam }) => fetchPage(pageParam),
     /**
-     * Pagina vuota: il catalogo e' finito, si smette di chiedere.
-     *
-     * Ma solo se nessuna sorgente e' caduta. Una pagina vuota perche' meta'
-     * federazione ha fallito non e' una fine elenco, e chiudere qui la
-     * paginazione la chiuderebbe per sempre: la query resta in cache e
-     * l'elenco non riparte piu' da solo. Se una sorgente e' caduta teniamo
-     * vivo il cursore, cosi' lo scroll successivo riprova la stessa pagina.
+     * Senza `next` l'elenco e' finito: tutte le sorgenti hanno dato una
+     * pagina vuota senza errori. Una sorgente caduta non chiude niente,
+     * resta nel cursore e si richiede allo scroll successivo: chiudere qui
+     * la paginazione la chiuderebbe per sempre, perche' la query resta in
+     * cache e l'elenco non riparte piu' da solo.
      */
-    getNextPageParam: (lastPage) =>
-      nextTracksOffset(
-        {
-          offset: lastPage.offset,
-          trackCount: lastPage.tracks.length,
-          failedCount: lastPage.failed?.length ?? 0,
-        },
-        pageSize,
-      ),
+    getNextPageParam: (lastPage) => lastPage.next,
   });
 
   // Dedup difensivo: i "trending" cambiano ordine tra una chiamata e
@@ -71,9 +58,9 @@ export function useInfiniteTracks(
   }, [query.data]);
 
   /**
-   * Mostra lo stato dell'ultimo tentativo. Una pagina parziale resta sullo
-   * stesso offset finche' tutte le sorgenti rispondono; quando il recupero
-   * riesce, il vecchio avviso non deve rimanere a schermo.
+   * Mostra lo stato dell'ultimo tentativo. Finche' una sorgente resta giu'
+   * ogni pagina nuova lo ripete; quando torna, il vecchio avviso non deve
+   * rimanere a schermo.
    */
   const failed = query.data?.pages.at(-1)?.failed ?? [];
 
