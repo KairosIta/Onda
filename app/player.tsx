@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -101,6 +101,59 @@ function SleepCountdown({ endsAt }: { endsAt: number }) {
   return <Text style={styles.sleepNote}>Pausa tra {minutes} min</Text>;
 }
 
+/**
+ * Slider, porzione scaricata e tempi: l'unica parte del player che cambia
+ * col progresso. Sta in un figlio memoizzato, come `MiniProgress` nel
+ * mini-player: con `useProgress` in cima alla schermata ogni tick — due al
+ * secondo in riproduzione — ridisegnava tutto il player, copertina,
+ * controlli, attribuzione e foglio del timer compresi. Cosi' il tick
+ * ridisegna questa riga e basta.
+ */
+const SeekBar = memo(function SeekBar({ pending }: { pending: boolean }) {
+  const { position, duration, buffered } = useProgress();
+  // Mentre si trascina, il pallino segue il dito e non il player:
+  // altrimenti a ogni tick di useProgress tornerebbe indietro.
+  const [seekTo, setSeekTo] = useState<number | null>(null);
+
+  const shown = seekTo ?? position;
+  const bufferedPct = duration > 0 ? Math.min(1, Math.max(0, buffered / duration)) : 0;
+
+  return (
+    <>
+      {/* La porzione gia' scaricata sta dietro lo slider, che disegna
+        solo la parte suonata e il pallino: la traccia di sfondo e' la
+        nostra, cosi' ci si puo' disegnare sopra il buffer. */}
+      <View style={styles.sliderWrap}>
+        <View style={styles.sliderTrack} pointerEvents="none">
+          <View style={[styles.sliderBuffered, { transform: [{ scaleX: bufferedPct }] }]} />
+        </View>
+        <Slider
+          minimumValue={0}
+          maximumValue={Math.max(1, duration)}
+          value={shown}
+          minimumTrackTintColor={colors.accent}
+          maximumTrackTintColor="transparent"
+          thumbTintColor={colors.accent}
+          onValueChange={setSeekTo}
+          onSlidingComplete={(v) => {
+            // Prima del primo play il brano non e' nel player: si
+            // ricorda solo da dove ripartira'.
+            if (pending) seekPending(v);
+            else TrackPlayer.seekTo(v);
+            setSeekTo(null);
+          }}
+          accessibilityLabel="Posizione nel brano"
+        />
+      </View>
+
+      <View style={styles.times}>
+        <Text style={styles.time}>{formatTime(shown)}</Text>
+        <Text style={styles.time}>{formatTime(duration)}</Text>
+      </View>
+    </>
+  );
+});
+
 export default function PlayerScreen() {
   const router = useRouter();
   // Android 16 impone l'edge-to-edge: il contenuto disegna sotto la barra
@@ -123,14 +176,10 @@ export default function PlayerScreen() {
   const { item: active, pending } = useNowPlaying();
   const status = usePlaybackStatus();
   const notificationFix = notificationRemedy(useNotificationPermission());
-  const { position, duration, buffered } = useProgress();
   const { shuffle, repeat } = usePlaybackPrefs();
   const sleepEndsAt = useSleepTimer();
   const upNext = useUpNext();
 
-  // Mentre si trascina, il pallino segue il dito e non il player:
-  // altrimenti a ogni tick di useProgress tornerebbe indietro.
-  const [seekTo, setSeekTo] = useState<number | null>(null);
   const [sleepOpen, setSleepOpen] = useState(false);
 
   /**
@@ -237,8 +286,6 @@ export default function PlayerScreen() {
 
   if (!active || !track) return null;
 
-  const shown = seekTo ?? position;
-  const bufferedPct = duration > 0 ? Math.min(1, Math.max(0, buffered / duration)) : 0;
   const playButton = describePlayButton(status);
   const nextLabel = upNextLabel(upNext);
 
@@ -339,36 +386,7 @@ export default function PlayerScreen() {
             </View>
           </GestureDetector>
 
-          {/* La porzione gia' scaricata sta dietro lo slider, che disegna
-            solo la parte suonata e il pallino: la traccia di sfondo e' la
-            nostra, cosi' ci si puo' disegnare sopra il buffer. */}
-          <View style={styles.sliderWrap}>
-            <View style={styles.sliderTrack} pointerEvents="none">
-              <View style={[styles.sliderBuffered, { transform: [{ scaleX: bufferedPct }] }]} />
-            </View>
-            <Slider
-              minimumValue={0}
-              maximumValue={Math.max(1, duration)}
-              value={shown}
-              minimumTrackTintColor={colors.accent}
-              maximumTrackTintColor="transparent"
-              thumbTintColor={colors.accent}
-              onValueChange={setSeekTo}
-              onSlidingComplete={(v) => {
-                // Prima del primo play il brano non e' nel player: si
-                // ricorda solo da dove ripartira'.
-                if (pending) seekPending(v);
-                else TrackPlayer.seekTo(v);
-                setSeekTo(null);
-              }}
-              accessibilityLabel="Posizione nel brano"
-            />
-          </View>
-
-          <View style={styles.times}>
-            <Text style={styles.time}>{formatTime(shown)}</Text>
-            <Text style={styles.time}>{formatTime(duration)}</Text>
-          </View>
+          <SeekBar pending={pending} />
 
           <View style={styles.controls}>
             <PressableScale
