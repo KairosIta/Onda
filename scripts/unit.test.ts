@@ -63,6 +63,7 @@ import { LISTEN_THRESHOLD_SEC, listenThreshold, reachedListen } from '@/services
 import { ARTWORK_MIN, artworkLayout } from '@/services/playerLayout';
 import {
   BACKUP_PREFIX,
+  CACHE_KEYS,
   type KeyValue,
   QUARANTINE_PREFIX,
   STORAGE_VERSION,
@@ -85,10 +86,12 @@ import {
   progressPollInterval,
 } from '@/services/progressPolicy';
 import {
+  type PersistedQuery,
   QUERY_CACHE_MAX_AGE_MS,
   isPersistableKey,
   loadQueryCache,
   pruneQueryCache,
+  withoutSessionOnly,
 } from '@/services/queryPersistenceSchema';
 import {
   RESUME_TAIL_SEC,
@@ -1032,6 +1035,83 @@ test('il file della cache si rilegge solo se ha la forma giusta e qualcosa dentr
   assert.deepEqual(letto?.mutations, []);
 });
 
+const inCache = (source: string, id: string) => ({ uid: `${source}:${id}`, source, id });
+const scoped = (root: string, source: string) => ({
+  queryKey: [root, source, '1'],
+  queryHash: `["${root}","${source}","1"]`,
+  state: { status: 'success', dataUpdatedAt: NOW, data: { id: '1', name: 'Disco' } },
+});
+
+test('su disco niente dati Audius: profili e album restano fuori interi', () => {
+  for (const root of ['artist', 'artist-tracks', 'album', 'album-tracks']) {
+    assert.equal(withoutSessionOnly(scoped(root, 'audius')), null, root);
+    const jamendo = scoped(root, 'jamendo');
+    assert.equal(withoutSessionOnly(jamendo), jamendo, `${root} di Jamendo passa intatto`);
+  }
+  const out = pruneQueryCache(
+    { queries: [scoped('album', 'audius'), scoped('album', 'jamendo')], mutations: [] },
+    { now: NOW },
+  );
+  assert.deepEqual(
+    out.queries.map((q) => q.queryKey[1]),
+    ['jamendo'],
+  );
+});
+
+test('su disco niente dati Audius: gli elenchi federati perdono i loro brani e si rinfrescano', () => {
+  const failed = [{ source: 'audius', message: 'Audius non risponde' }];
+  const dati = {
+    pages: [
+      {
+        tracks: [inCache('audius', '1'), inCache('jamendo', '2')],
+        next: { audius: 1, jamendo: 1 },
+      },
+      { tracks: [inCache('jamendo', '3')], failed, next: { audius: 1, jamendo: 2 } },
+    ],
+    pageParams: [null, { audius: 1, jamendo: 1 }],
+  };
+  const elenco = query('trending', 0, { data: dati });
+  const potato = withoutSessionOnly<PersistedQuery>(elenco);
+  assert.deepEqual(potato?.state.data, {
+    pages: [
+      { tracks: [inCache('jamendo', '2')], next: { audius: 1, jamendo: 1 } },
+      // Una pagina senza brani Audius resta com'era, cursore e avvisi compresi.
+      { tracks: [inCache('jamendo', '3')], failed, next: { audius: 1, jamendo: 2 } },
+    ],
+    pageParams: [null, { audius: 1, jamendo: 1 }],
+  });
+  // Mancano dei brani: alla riapertura l'elenco si ricarica anche se non e' scaduto.
+  assert.equal(potato?.state.isInvalidated, true);
+  assert.equal(potato?.state.dataUpdatedAt, NOW, 'la data dei dati resta quella vera');
+  assert.equal(dati.pages[0]?.tracks.length, 2, "l'originale non si tocca");
+
+  const vetrina = query('spotlight', 0, {
+    data: { tracks: [inCache('jamendo', '4'), inCache('audius', '5')], failed: [] },
+  });
+  assert.deepEqual(withoutSessionOnly(vetrina)?.state.data, {
+    tracks: [inCache('jamendo', '4')],
+    failed: [],
+  });
+
+  // Senza brani Audius la query passa intatta e non va rinfrescata.
+  const soloJamendo = query('spotlight', 0, { data: { tracks: [inCache('jamendo', '6')] } });
+  assert.equal(withoutSessionOnly(soloJamendo), soloJamendo);
+});
+
+test('anche il file scritto prima della regola si rilegge senza dati Audius', () => {
+  const vecchio = {
+    queries: [
+      scoped('artist', 'audius'),
+      query('spotlight', 10, {
+        data: { tracks: [inCache('audius', '1'), inCache('jamendo', '2')] },
+      }),
+    ],
+  };
+  const letto = loadQueryCache(vecchio, NOW);
+  assert.equal(letto?.queries.length, 1);
+  assert.deepEqual(letto?.queries[0]?.state.data, { tracks: [inCache('jamendo', '2')] });
+});
+
 // --- ricerche recenti ------------------------------------------------
 
 test('le ricerche recenti salgono in testa senza doppioni', () => {
@@ -1311,13 +1391,13 @@ test('storage: da 2 a 3 si tolgono dalla cache solo gli elenchi a scorrimento', 
   const report = migrateStorage(kv);
   assert.equal(report.outcome, 'upgraded');
   assert.equal(report.from, 2);
-  assert.equal(report.applied.length, 1);
+  assert.equal(report.applied.length, STORAGE_VERSION - 2);
   assert.deepEqual(
     JSON.parse(kv.get('query-cache.v1')!).queries.map((q: { queryHash: string }) => q.queryHash),
     ['artist'],
   );
-  // Il backup conserva le pagine di prima.
-  assert.equal(kv.get(BACKUP_PREFIX + 'query-cache.v1'), cache([list, artist]));
+  // La cache si rifa' dalla rete: niente backup.
+  assert.equal(kv.get(BACKUP_PREFIX + 'query-cache.v1'), undefined);
 
   // Una cache senza elenchi, o illeggibile, resta com'e'.
   const clean = memoryKV({ [VERSION_KEY]: '2', 'query-cache.v1': cache([artist]) });
@@ -1326,6 +1406,53 @@ test('storage: da 2 a 3 si tolgono dalla cache solo gli elenchi a scorrimento', 
   const broken = memoryKV({ [VERSION_KEY]: '2', 'query-cache.v1': '{"queries":[' });
   assert.equal(migrateStorage(broken).outcome, 'upgraded');
   assert.equal(broken.get('query-cache.v1'), '{"queries":[');
+});
+
+test('storage: da 3 a 4 la cache perde i dati Audius, anche dal backup', () => {
+  const at = (key: unknown[], data: unknown) => ({
+    queryKey: key,
+    queryHash: JSON.stringify(key),
+    state: { status: 'success', dataUpdatedAt: 1, data },
+  });
+  const album = at(['album', 'audius', '1'], { id: '1' });
+  const jamendo = at(['album', 'jamendo', '2'], { id: '2' });
+  const vetrina = at(['spotlight', 'rising'], {
+    tracks: [inCache('audius', '1'), inCache('jamendo', '2')],
+    failed: [],
+  });
+  const cache = (queries: unknown[]) => JSON.stringify({ queries, mutations: [] });
+  const playback = '{"shuffle":false,"repeat":"off"}';
+
+  const kv = memoryKV({
+    [VERSION_KEY]: '3',
+    'playback.v1': playback,
+    'query-cache.v1': cache([album, jamendo, vetrina, { rotta: true }]),
+    // La copia lasciata da una migrazione precedente, quando la cache aveva il backup.
+    [BACKUP_PREFIX + 'query-cache.v1']: cache([album]),
+  });
+  const report = migrateStorage(kv);
+  assert.equal(report.outcome, 'upgraded');
+  assert.equal(report.applied.length, 1);
+  assert.match(report.applied[0], /Audius/);
+
+  const queries = JSON.parse(kv.get('query-cache.v1')!).queries;
+  assert.deepEqual(
+    queries.map((q: { queryHash?: string }) => q.queryHash ?? 'rotta'),
+    [jamendo.queryHash, vetrina.queryHash, 'rotta'],
+  );
+  assert.deepEqual(queries[1].state.data.tracks, [inCache('jamendo', '2')]);
+  assert.equal(queries[1].state.isInvalidated, true);
+  for (const key of CACHE_KEYS) assert.equal(kv.get(BACKUP_PREFIX + key), undefined, key);
+  // I dati dell'utente hanno il loro backup e restano com'erano.
+  assert.equal(kv.get(BACKUP_PREFIX + 'playback.v1'), playback);
+  assert.equal(kv.get('playback.v1'), playback);
+
+  // Una cache senza dati Audius non si riscrive.
+  const clean = memoryKV({ [VERSION_KEY]: '3', 'query-cache.v1': cache([jamendo]) });
+  migrateStorage(clean);
+  assert.equal(clean.get('query-cache.v1'), cache([jamendo]));
+  // Solo la cache presente basta a dire che il telefono ha dei dati.
+  assert.equal(readStorageVersion(memoryKV({ 'query-cache.v1': cache([]) })), 1);
 });
 
 test("player: la copertina si adatta all'altezza e sotto il minimo il pannello scorre", () => {

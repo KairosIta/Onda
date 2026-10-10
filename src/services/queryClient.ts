@@ -23,6 +23,8 @@ import { readJSON, writeJSON } from './storage';
  * prima del primo render — MMKV e' sincrono, quindi la reidratazione
  * avviene qui, al caricamento del modulo, e nessuna query fa in tempo a
  * partire vuota — mentre `staleTime` le manda comunque a rinfrescarsi.
+ * I dati Audius restano solo in memoria: i loro termini ammettono una
+ * cache di sessione e basta (`SESSION_ONLY_SOURCES`).
  *
  * Fatto a mano con `dehydrate`/`hydrate` invece del pacchetto persister
  * ufficiale: quello e' pensato per storage asincroni e porta un provider

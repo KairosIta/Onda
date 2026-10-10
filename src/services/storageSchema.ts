@@ -7,13 +7,16 @@
  * - la versione sta in una chiave sua; senza chiave, dati presenti valgono
  *   come versione 1 (le installazioni di prima del versionamento) e un
  *   telefono vuoto parte già alla versione corrente;
- * - prima di migrare ogni chiave nota viene copiata in `backup.*`, un solo
- *   slot sovrascritto a ogni migrazione: se una migrazione lancia, i dati
- *   tornano com'erano e la versione non avanza;
+ * - prima di migrare ogni chiave dei dati viene copiata in `backup.*`, un
+ *   solo slot sovrascritto a ogni migrazione: se una migrazione lancia, i
+ *   dati tornano com'erano e la versione non avanza. La cache no: si rifa'
+ *   dalla rete, e se una migrazione fallisce si butta;
  * - una versione più nuova della nostra (app tornata indietro) non si tocca:
  *   i loader sono tolleranti e il dato resta intatto per la versione giusta;
  * - un valore illeggibile non si cancella: finisce in `quarantine.*`.
  */
+
+import { isPersistedQuery, withoutSessionOnly } from './queryPersistenceSchema';
 
 export interface KeyValue {
   get(key: string): string | undefined;
@@ -22,7 +25,7 @@ export interface KeyValue {
   keys(): string[];
 }
 
-export const STORAGE_VERSION = 3;
+export const STORAGE_VERSION = 4;
 export const VERSION_KEY = 'schema.version';
 export const BACKUP_PREFIX = 'backup.';
 export const QUARANTINE_PREFIX = 'quarantine.';
@@ -34,8 +37,14 @@ export const DATA_KEYS: readonly string[] = [
   'search.recent.v1',
   'session.queue.v1',
   'session.position.v1',
-  'query-cache.v1',
 ];
+
+/**
+ * La cache di React Query. Si rifa' dalla rete, quindi non ha backup; e non
+ * deve averne, perche' i dati Audius vi sono ammessi solo per la sessione
+ * e una copia in `backup.*` le sopravvivrebbe.
+ */
+export const CACHE_KEYS: readonly string[] = ['query-cache.v1'];
 
 interface Migration {
   /** Versione raggiunta dopo la migrazione. */
@@ -91,6 +100,28 @@ const MIGRATIONS: readonly Migration[] = [
       kv.set('query-cache.v1', JSON.stringify({ ...saved, queries }));
     },
   },
+  {
+    to: 4,
+    describe: 'query-cache.v1: via i dati Audius, ammessi solo in una cache di sessione',
+    /**
+     * Da qui la cache non li scrive piu' (`withoutSessionOnly`): la
+     * migrazione toglie quelli scritti prima, con la stessa regola. La
+     * copia in `backup.*` la toglie `backup()`, che non salva piu' la cache.
+     */
+    run(kv) {
+      const saved = readValue(kv, 'query-cache.v1');
+      if (!isRecord(saved) || !Array.isArray(saved.queries)) return;
+      let changed = false;
+      const queries = saved.queries.flatMap((q: unknown) => {
+        // Una voce rotta resta: la scarta la lettura, come sempre.
+        if (!isPersistedQuery(q)) return [q];
+        const kept = withoutSessionOnly(q);
+        if (kept !== q) changed = true;
+        return kept ? [kept] : [];
+      });
+      if (changed) kv.set('query-cache.v1', JSON.stringify({ ...saved, queries }));
+    },
+  },
 ];
 
 export function readStorageVersion(kv: KeyValue): number {
@@ -99,7 +130,9 @@ export function readStorageVersion(kv: KeyValue): number {
     const n = Number(raw);
     if (Number.isInteger(n) && n >= 1) return n;
   }
-  return DATA_KEYS.some((key) => kv.get(key) !== undefined) ? 1 : STORAGE_VERSION;
+  return [...DATA_KEYS, ...CACHE_KEYS].some((key) => kv.get(key) !== undefined)
+    ? 1
+    : STORAGE_VERSION;
 }
 
 export type MigrationOutcome = 'current' | 'upgraded' | 'newer' | 'failed';
@@ -118,6 +151,8 @@ function backup(kv: KeyValue, version: number): void {
     if (raw === undefined) kv.delete(BACKUP_PREFIX + key);
     else kv.set(BACKUP_PREFIX + key, raw);
   }
+  // Fino alla versione 3 la cache finiva nel backup: quella copia va via.
+  for (const key of CACHE_KEYS) kv.delete(BACKUP_PREFIX + key);
   kv.set(BACKUP_PREFIX + 'version', String(version));
 }
 
@@ -127,6 +162,8 @@ function restore(kv: KeyValue): void {
     if (raw === undefined) kv.delete(key);
     else kv.set(key, raw);
   }
+  // Una cache migrata a meta' non si ripristina: si butta e si rifa'.
+  for (const key of CACHE_KEYS) kv.delete(key);
 }
 
 /** Porta lo storage alla versione corrente. Idempotente: la seconda volta non fa niente. */
