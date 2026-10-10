@@ -256,6 +256,32 @@ passa nel registro dei collaudi con la sua prova.
       quota Jamendo confermati; decisione documentata su Client ID/proxy per una
       distribuzione pubblica.
 
+- [ ] **Sostituire il player RNTP.** `@rntp/player` è gratuito solo per uso
+      personale non professionale e non consente di distribuire un APK che lo
+      incorpora: finché resta, Onda può pubblicare soltanto il sorgente. Serve
+      un player open source con una licenza compatibile con la distribuzione,
+      oppure un modulo nativo proprio su AndroidX Media3. I candidati vanno
+      confrontati con ciò che Onda usa oggi: coda nativa con riordino, controlli
+      in notifica e lock screen anche con JS sospeso, servizio in foreground,
+      salvataggio periodico della posizione, sleep timer, shuffle e repeat,
+      stati di buffering ed errore, Android Auto. Fino alla sostituzione il
+      player resta alla 5.8.0 e Dependabot non ne propone aggiornamenti.
+      **Done:** player scelto con le ragioni scritte; nessuna dipendenza con
+      licenza che vieti la distribuzione; riproduzione in background, notifica,
+      coda, ripresa della sessione, sleep timer e Android Auto collaudati su
+      device; `THIRD_PARTY_CONTENT.md` e `docs/RELEASE_COMPLIANCE.md` aggiornati.
+
+- [ ] **Credenziali inserite dall'utente.** Un APK pubblico non deve contenere
+      credenziali: Onda parte senza Client ID incorporati e in Impostazioni
+      ciascuno inserisce il proprio Client ID Jamendo e i dati Audius, e attiva
+      le sorgenti che vuole usare. È l'architettura alternativa al Client ID
+      incorporato richiesta dal gate legale qui sopra, da verificare sui termini
+      vigenti di Jamendo e Audius.
+      **Done:** un APK costruito senza valori `EXPO_PUBLIC_*` funziona con le
+      credenziali inserite in app; le credenziali restano sul telefono, fuori da
+      log e backup; ogni sorgente si attiva e si disattiva; build, privacy e
+      nota di conformità documentano il nuovo flusso.
+
 - [ ] **Definire privacy e backup Android.** La libreria è locale, ma una
       release Android può includere MMKV nel backup di sistema. Backup disabilitato
       nel manifest, esclusioni complete cloud/D2D, policy v1.0 e schermata in-app
@@ -384,7 +410,7 @@ passa nel registro dei collaudi con la sua prova.
 ### Test e toolchain
 
 - [ ] Estendere i test unitari a mutazioni degli store, `formatTime`, shuffle e
-      migrazioni complete. Coperti oggi (128 test): validazione, repeat,
+      migrazioni complete. Coperti oggi (132 test): validazione, repeat,
       cursore per sorgente e paginazione federata con sorgenti finte,
       composizione della federazione (anche di artisti e album), annullamento
       delle richieste e tentativi Jamendo, entità HTML Jamendo, budget di
@@ -392,7 +418,8 @@ passa nel registro dei collaudi con la sua prova.
       del player, politica di lettura del progresso, potatura della cache,
       migrazioni dello storage fino alla 3, ricerche recenti, geometria del
       riordino, prossimo brano, albero per Android Auto, regola dell'audit
-      delle dipendenze ed elenco delle sorgenti con descrizione e attribuzione.
+      delle dipendenze, elenco delle sorgenti con descrizione e attribuzione e
+      versione della cache di Metro.
 
 - [ ] Portare nel repository test deterministici della federazione con fetch
       mockato; la composizione e la propagazione degli errori sono già coperte da
@@ -406,6 +433,20 @@ passa nel registro dei collaudi con la sua prova.
       corretta al 9 ottobre 2026): dopo quella data `npm run check:audit` torna
       rosso. Se nel frattempo è uscita una correzione, la strada è un override;
       altrimenti motivo e data si riscrivono.
+
+- [ ] **Valutare il passaggio a `react-native-mmkv` 4.** La 3.x è ferma alla
+      3.3.3 del 18 settembre 2025 e le release successive sono tutte della 4
+      (4.3.2 a giugno 2026), riscritta su Nitro Modules: richiede la dipendenza
+      nativa `react-native-nitro-modules` e cambia l'API (`createMMKV()` al
+      posto di `new MMKV()`, `remove()` al posto di `delete()`), per questo
+      l'aggiornamento proposto da Dependabot non passava il typecheck. Il codice
+      da toccare sta in `src/services/storage.ts`; il rischio è sui dati già
+      salvati sul telefono, che devono sopravvivere all'aggiornamento. A favore
+      pesa la manutenzione: una 3.x senza release resta indietro rispetto alle
+      prossime versioni di React Native ed Expo.
+      **Done:** decisione motivata; se si migra, libreria, preferiti, playlist,
+      sessione e cache delle query rilette su device dopo l'aggiornamento da una
+      build con la 3.x.
 
 - [ ] Rimuovere l'esclusione Android Lint per Worklets/Reanimated quando la
       combinazione Expo/AGP correggerà il crash interno KaModule/VirtualFile;
