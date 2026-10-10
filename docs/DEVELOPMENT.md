@@ -357,6 +357,9 @@ ha risultati. Un `FAIL` si', ed e' quasi sempre l'API che e' cambiata.
 ## Verifica dopo il primo avvio
 
 Nell'ordine. Se salti un passaggio, il bug lo trovi tre settimane dopo.
+Le prove gia' fatte, con data e dispositivo, stanno nel
+[registro dei collaudi](VERIFICATION_LOG.md); quelle che mancano nella
+checklist device di [TODO.md](../TODO.md).
 
 1. La schermata **Scopri** mostra tracce di entrambe le sorgenti (la sigla
    `AUD` / `JAM` a destra di ogni riga).
@@ -827,14 +830,19 @@ riavvio metterebbe in pausa la musica senza che nessuno capisca perche'.
   "continua ad ascoltare" vero quando la coda finisce.
 - **Playlist Audius** — `/v1/playlists/{id}/tracks` per navigare anche le
   raccolte pubbliche, non solo i brani singoli.
-- **Terza sorgente** — implementa `MusicSource` e registrala. Il resto dell'app
-  non cambia di una riga.
-- **Comportamento senza rete** — coperto solo il lato catalogo: caduta totale,
-  caduta parziale e ripristino sono collaudati a livello di adapter (fetch
-  sostituita, contro le API vere), ma **non ancora su device**. Restano da
-  provare la riproduzione che perde la rete a meta' brano e il rientro dalla
-  modalita' aereo. Per un player musicale l'aereo e la metropolitana sono
-  normalita', non casi limite.
+- **Terza sorgente** — implementa `MusicSource` e registrala. Prima pero'
+  va generalizzato `SourceId`: oggi e' un'unione fissa `'audius' | 'jamendo'`
+  ripetuta in piu' punti (registro delle sorgenti, schema della libreria,
+  media item, sigle a schermo), e una sorgente nuova non passerebbe la
+  validazione dei dati salvati.
+- **Comportamento senza rete** — il catalogo e' coperto a livello di
+  adapter (caduta totale e parziale, ripresa con il cursore per sorgente,
+  annullamento), la riproduzione su device: la modalita' aereo a meta' brano
+  mostra l'avviso con Riprova e la rete che torna riparte da sola entro i
+  tre tentativi automatici (registro dei collaudi, 9 e 10 settembre 2026).
+  Restano rete lenta, captive portal e cambio Wi-Fi/5G, nella checklist
+  device. Per un player musicale l'aereo e la metropolitana sono normalita',
+  non casi limite.
 - **Test sugli store** — lo smoke copre le API, non `library`/`playback`. Sono
   i bug che l'utente paga di piu', perche' perde dati.
 

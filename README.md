@@ -107,15 +107,18 @@ PowerShell, debug USB ed errori comuni, è in
 - Gli album sono disponibili solo per i brani Jamendo.
 - Nessun ascolto offline.
 - Le novità di settembre 2026 (home a sezioni, ricerca di artisti e album,
-  ripresa dell'ascolto, riordino della coda, Android Auto) sono implementate
-  ma non ancora collaudate su un dispositivo: lo stato è in
-  [TODO.md](TODO.md).
+  ripresa dell'ascolto, riordino della coda) sono collaudate nel loro
+  funzionamento principale su un Motorola Edge 50 Neo con Android 16. Android
+  Auto è dichiarato nell'APK ma non ancora provato con un'unità o con il
+  Desktop Head Unit. Le prove che mancano sono in [TODO.md](TODO.md), quelle
+  fatte nel [registro dei collaudi](docs/VERIFICATION_LOG.md).
 - Il player nativo `@rntp/player` ha una licenza separata: è gratuito solo per
   uso personale privato o didattico/ricerca accademica qualificata. Ogni altro
   uso richiede una licenza commerciale del fornitore.
 
-La roadmap è in [TODO.md](TODO.md); architettura e collaudi sono descritti
-nella [guida per sviluppatori](docs/DEVELOPMENT.md).
+La roadmap è in [TODO.md](TODO.md) e le prove già fatte nel
+[registro dei collaudi](docs/VERIFICATION_LOG.md); architettura e procedure di
+collaudo sono nella [guida per sviluppatori](docs/DEVELOPMENT.md).
 
 ## Licenze e responsabilità
 
