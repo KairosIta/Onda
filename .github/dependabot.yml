@@ -5,11 +5,11 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
-    # Expo, React Native e i moduli nativi di cui l'SDK fissa la versione
-    # (expo/bundledNativeModules.json) si aggiornano tutti insieme con
-    # `npx expo install --fix` o con il passaggio di SDK: un aggiornamento
-    # isolato fa fallire expo-doctor o `npm ci`.
     ignore:
+      # Expo, React Native e i moduli nativi di cui l'SDK fissa la versione
+      # (expo/bundledNativeModules.json) si aggiornano tutti insieme con
+      # `npx expo install --fix` o con il passaggio di SDK: un aggiornamento
+      # isolato fa fallire expo-doctor o `npm ci`.
       - dependency-name: expo
       - dependency-name: expo-*
       - dependency-name: '@expo/*'
@@ -23,6 +23,14 @@ updates:
       - dependency-name: react-native-screens
       - dependency-name: react-native-worklets
       - dependency-name: '@react-native-community/slider'
+      # eslint-plugin-react, che eslint-config-expo usa, supporta ESLint fino
+      # alla 9: con la 10 il lint va in crash. Le major di eslint aspettano
+      # che il plugin la supporti; minor e patch della 9 passano.
+      - dependency-name: eslint
+        update-types: ['version-update:semver-major']
+      # @rntp/player resta alla 5.8.0 finché non viene sostituito da un
+      # player con una licenza che ne consenta la distribuzione (TODO.md, P0).
+      - dependency-name: '@rntp/player'
   - package-ecosystem: github-actions
     directory: /
     schedule:
