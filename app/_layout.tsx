@@ -8,6 +8,9 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { createQueryClient } from '@/services/queryClient';
 import { setupPlayer } from '@/services/setupPlayer';
 import { startNotificationPermissionWatch } from '@/store/notificationPermission';
+// Collega le sorgenti a interruttori e credenziali prima di qualunque
+// richiesta di catalogo: vedi store/sources.
+import '@/store/sources';
 import { colors, radius, spacing, type } from '@/theme';
 
 // Reidratato da MMKV prima del primo render: vedi services/queryClient.
@@ -176,6 +179,13 @@ export default function RootLayout() {
                   options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
                 />
                 <Stack.Screen name="about" options={{ animation: 'slide_from_right' }} />
+                <Stack.Screen name="sources" options={{ animation: 'slide_from_right' }} />
+                {/* Il benvenuto si chiude con un bottone, non tornando indietro:
+                    dietro c'e' Scopri, che rimanderebbe qui. */}
+                <Stack.Screen
+                  name="welcome"
+                  options={{ animation: 'fade', gestureEnabled: false }}
+                />
               </Stack>
             ) : null}
           </SafeAreaView>

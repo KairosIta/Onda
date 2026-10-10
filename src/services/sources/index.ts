@@ -9,6 +9,7 @@ import {
   type Track,
 } from '@/types/track';
 import { genreFor } from '../genres';
+import { isSourceAvailable } from './access';
 import { audiusSource } from './audius';
 import {
   advanceCursor,
@@ -24,12 +25,12 @@ import { joinLabels } from './meta';
 export type { FederatedPage, FederatedResult } from './federation';
 
 /**
- * Registro delle sorgenti. Metti a false una voce per spegnerla senza
- * toccare il resto dell'app.
+ * Registro delle sorgenti. Quali lavorano lo decide la persona in
+ * Impostazioni (interruttori e credenziali): vedi `access`.
  */
-export const SOURCES: Record<SourceId, { source: MusicSource; enabled: boolean }> = {
-  audius: { source: audiusSource, enabled: true },
-  jamendo: { source: jamendoSource, enabled: true },
+export const SOURCES: Record<SourceId, MusicSource> = {
+  audius: audiusSource,
+  jamendo: jamendoSource,
 };
 
 /**
@@ -39,12 +40,10 @@ export const SOURCES: Record<SourceId, { source: MusicSource; enabled: boolean }
  * catalogo. Le schermate trattano gia' `undefined` come sorgente ignota.
  */
 export const sourceById = (id: string): MusicSource | undefined =>
-  isSourceId(id) && SOURCES[id].enabled ? SOURCES[id].source : undefined;
+  isSourceId(id) && isSourceAvailable(id) ? SOURCES[id] : undefined;
 
 const active = (): MusicSource[] =>
-  Object.values(SOURCES)
-    .filter((s) => s.enabled)
-    .map((s) => s.source);
+  (Object.keys(SOURCES) as SourceId[]).filter(isSourceAvailable).map((id) => SOURCES[id]);
 
 /**
  * Le sorgenti accese, per nome: «Audius e Jamendo». Per i testi che le

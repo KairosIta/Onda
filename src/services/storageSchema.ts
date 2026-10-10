@@ -37,6 +37,7 @@ export const DATA_KEYS: readonly string[] = [
   'search.recent.v1',
   'session.queue.v1',
   'session.position.v1',
+  'sources.v1',
 ];
 
 /**

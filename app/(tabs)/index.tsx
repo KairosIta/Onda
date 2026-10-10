@@ -1,18 +1,21 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useMemo } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { GenreGrid } from '@/components/GenreGrid';
+import { PressableScale } from '@/components/PressableScale';
 import { TrackListSkeleton } from '@/components/Skeleton';
 import { Empty, ErrorNotice } from '@/components/StateViews';
 import { TrackList } from '@/components/TrackList';
 import { TrackStrip } from '@/components/TrackStrip';
-import { assertEnv } from '@/config/env';
 import { useInfiniteTracks } from '@/hooks/useInfiniteTracks';
 import { activeSourceLabels, spotlightAll, trendingAll } from '@/services/sources';
+import { showJamendoInvite } from '@/services/sourceSettings';
 import { failureNotice } from '@/services/sources/meta';
 import { tracksOf, useLibrary } from '@/store/library';
-import { colors, spacing, type } from '@/theme';
+import { dismissJamendoInvite, useSources } from '@/store/sources';
+import { colors, radius, spacing, touch, type } from '@/theme';
 import type { SpotlightKind } from '@/types/track';
 
 const PAGE = 20;
@@ -36,9 +39,55 @@ function useSpotlight(kind: SpotlightKind) {
  * poi il trending federato con lo scroll infinito. Le vetrine stanno
  * nell'header della lista, cosi' tutta la schermata scorre insieme.
  */
-export default function DiscoverScreen() {
-  const envError = assertEnv();
+/**
+ * Al primo avvio passa dal benvenuto, che spiega le sorgenti e chiede il
+ * Client ID Jamendo. Qui e non nel layout: le altre rotte (un deep link al
+ * player) restano raggiungibili.
+ */
+export default function DiscoverRoute() {
+  const { settings } = useSources();
+  return settings.welcomeDone ? <DiscoverScreen /> : <Redirect href="/welcome" />;
+}
+
+/**
+ * Per chi ha saltato il benvenuto senza Jamendo: un promemoria, finche' non
+ * lo configura o non lo chiude.
+ */
+function JamendoInvite({ onOpen, onClose }: { onOpen: () => void; onClose: () => void }) {
+  return (
+    <View style={styles.invite}>
+      <Ionicons name="musical-notes-outline" size={22} color={colors.accent} />
+      <View style={styles.inviteText}>
+        <Text style={styles.inviteTitle}>Aggiungi Jamendo</Text>
+        <Text style={styles.inviteBody}>
+          Inserisci il tuo Client ID per ascoltare anche il catalogo Jamendo.
+        </Text>
+        <PressableScale
+          onPress={onOpen}
+          haptic="tap"
+          containerStyle={styles.inviteActionSlot}
+          style={styles.inviteAction}
+          accessibilityRole="button"
+        >
+          <Text style={styles.inviteActionText}>Configura</Text>
+        </PressableScale>
+      </View>
+      <Pressable
+        onPress={onClose}
+        style={touch.target}
+        accessibilityRole="button"
+        accessibilityLabel="Chiudi l'invito ad aggiungere Jamendo"
+      >
+        <Ionicons name="close" size={20} color={colors.textMuted} />
+      </Pressable>
+    </View>
+  );
+}
+
+function DiscoverScreen() {
   const router = useRouter();
+  const { settings, credentials, active } = useSources();
+  const anyActive = Object.values(active).some(Boolean);
   const { history } = useLibrary();
   const rising = useSpotlight('rising');
   const fresh = useSpotlight('fresh');
@@ -84,10 +133,17 @@ export default function DiscoverScreen() {
           <View>
             <View style={styles.header}>
               <Text style={styles.title}>Scopri</Text>
-              <Text style={styles.subtitle}>Dal catalogo {activeSourceLabels()}</Text>
+              <Text style={styles.subtitle}>
+                {anyActive ? `Dal catalogo ${activeSourceLabels()}` : 'Nessuna sorgente attiva'}
+              </Text>
             </View>
 
-            {envError ? <ErrorNotice message={envError} /> : null}
+            {showJamendoInvite(settings, credentials) ? (
+              <JamendoInvite
+                onOpen={() => router.push('/sources')}
+                onClose={dismissJamendoInvite}
+              />
+            ) : null}
             {failed.map((f) => (
               <ErrorNotice key={f.source} message={failureNotice(f)} />
             ))}
@@ -133,7 +189,18 @@ export default function DiscoverScreen() {
             <ActivityIndicator style={styles.more} color={colors.textMuted} />
           ) : null
         }
-        empty={errorState ?? (isLoading ? null : <Empty title="Nessuna traccia disponibile" />)}
+        empty={
+          errorState ??
+          (!anyActive ? (
+            <Empty
+              title="Nessuna sorgente attiva"
+              hint="Accendi Audius o aggiungi il tuo Client ID Jamendo."
+              action={{ label: 'Apri Sorgenti', onPress: () => router.push('/sources') }}
+            />
+          ) : isLoading ? null : (
+            <Empty title="Nessuna traccia disponibile" />
+          ))
+        }
       />
     </View>
   );
@@ -157,4 +224,29 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   more: { paddingVertical: spacing.lg },
+  invite: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.md,
+    paddingLeft: spacing.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  inviteText: { flex: 1, gap: spacing.xs },
+  inviteTitle: { ...type.label, color: colors.text },
+  inviteBody: { ...type.caption, color: colors.textMuted, lineHeight: 18 },
+  inviteActionSlot: { alignSelf: 'flex-start', marginTop: spacing.sm },
+  inviteAction: {
+    minHeight: touch.target.minHeight - spacing.sm,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
+  },
+  inviteActionText: { ...type.label, color: colors.bg },
 });

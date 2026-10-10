@@ -1,4 +1,8 @@
-import { JAMENDO_CLIENT_ID } from '@/config/env';
+import {
+  JAMENDO_FAILURE_MESSAGES,
+  type JamendoCheck,
+  jamendoCheckFromResponse,
+} from '@/services/sourceSettings';
 import {
   type AlbumInfo,
   type ArtistInfo,
@@ -10,6 +14,7 @@ import {
   type Track,
   type TrendingParams,
 } from '@/types/track';
+import { currentCredentials } from './access';
 import { fetchJSON } from './http';
 import { SOURCE_META } from './meta';
 
@@ -47,9 +52,17 @@ interface JamendoAlbum {
   releasedate?: string;
 }
 
-function url(path: string, params: Record<string, string>): string {
+/**
+ * Il Client ID e' quello inserito dall'utente, letto a ogni richiesta: uno
+ * cambiato in Impostazioni vale dalla richiesta dopo.
+ */
+function url(
+  path: string,
+  params: Record<string, string>,
+  clientId = currentCredentials().jamendoClientId,
+): string {
   const qs = new URLSearchParams({
-    client_id: JAMENDO_CLIENT_ID,
+    client_id: clientId,
     format: 'json',
     // Default e' mp31 (~96 kbps): in cuffia la differenza si sente.
     audioformat: 'mp32',
@@ -228,13 +241,35 @@ function mapAlbum(a: JamendoAlbum): AlbumInfo {
  */
 async function once<T>(requestUrl: string, signal?: AbortSignal): Promise<T[]> {
   const json = await fetchJSON<{
-    headers?: { status?: string; error_message?: string };
+    headers?: { status?: string; code?: number; error_message?: string };
     results?: T[];
   }>('Jamendo', requestUrl, { signal });
   if (json.headers?.status !== 'success') {
-    throw new Error(json.headers?.error_message || 'Errore Jamendo');
+    // Client ID rifiutato, sospeso o oltre la quota: il messaggio dice
+    // dove intervenire, invece dell'inglese tecnico di Jamendo.
+    const known = JAMENDO_FAILURE_MESSAGES[jamendoCheckFromResponse(json)];
+    throw new Error(known ?? (json.headers?.error_message || 'Errore Jamendo'));
   }
   return json.results ?? [];
+}
+
+/**
+ * Verifica un Client ID con una sola richiesta leggera, senza i tentativi
+ * degli elenchi: ogni chiamata consuma la quota della persona.
+ */
+export async function checkJamendoClientId(
+  clientId: string,
+  signal?: AbortSignal,
+): Promise<JamendoCheck> {
+  try {
+    const json = await fetchJSON<unknown>('Jamendo', url('/tracks/', { limit: '1' }, clientId), {
+      signal,
+    });
+    return jamendoCheckFromResponse(json);
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') throw error;
+    return 'unreachable';
+  }
 }
 
 /**

@@ -2,7 +2,12 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { audiusRightsLabel, audiusTrackUrl } from '@/services/sources/audius';
+import {
+  AUDIUS_APP_NAME,
+  audiusRightsLabel,
+  audiusSource,
+  audiusTrackUrl,
+} from '@/services/sources/audius';
 import {
   MAX_SOURCE_SKIPS,
   budgetAfterPlayingChange,
@@ -30,6 +35,7 @@ import { shuffled } from '@/utils/shuffle';
 import {
   SOURCES,
   activeSourceLabels,
+  sourceById,
   artistTracksPage,
   searchAll,
   searchArtistsAll,
@@ -39,6 +45,7 @@ import {
 import {
   LIST_ATTEMPTS,
   NAME_SEARCH_ATTEMPTS,
+  checkJamendoClientId,
   creativeCommonsLabel,
   decodeEntities,
   jamendoSource,
@@ -118,7 +125,31 @@ import {
   joinLabels,
 } from '@/services/sources/meta';
 import type { FederatedPage } from '@/services/sources';
+import { NO_ACCESS, type SourceAccess, setSourceAccess } from '@/services/sources/access';
+import {
+  DEFAULT_SOURCE_SETTINGS,
+  JAMENDO_FAILURE_MESSAGES,
+  afterJamendoCheck,
+  audiusApiKeyProblem,
+  isSourceActive,
+  jamendoCheckFromResponse,
+  jamendoClientIdProblem,
+  loadSourceSettings,
+  maskCredential,
+  normalizeCredential,
+  showJamendoInvite,
+} from '@/services/sourceSettings';
 import { describeQueue } from '@/utils/queueSummary';
+
+/**
+ * Nell'app le sorgenti le collega `store/sources` a interruttori e
+ * credenziali; qui lavorano tutte, con un Client ID finto.
+ */
+const TEST_ACCESS: SourceAccess = {
+  credentials: () => ({ jamendoClientId: 'id-di-prova', audiusApiKey: '' }),
+  isActive: () => true,
+};
+setSourceAccess(TEST_ACCESS);
 
 const track = (id: string): Track => ({
   uid: `audius:${id}`,
@@ -1514,8 +1545,8 @@ test('federazione: ogni sorgente viene interrogata una volta sola', async () => 
         : {}),
     }) as MusicSource;
 
-  SOURCES.audius = { source: fake('audius', () => audiusCalls++, true), enabled: true };
-  SOURCES.jamendo = { source: fake('jamendo', () => jamendoCalls++, false), enabled: true };
+  SOURCES.audius = fake('audius', () => audiusCalls++, true);
+  SOURCES.jamendo = fake('jamendo', () => jamendoCalls++, false);
   try {
     await searchAll('onda');
     // Una richiesta di rete per sorgente. Prima erano due: la stessa
@@ -1580,8 +1611,8 @@ const uids = (pages: FederatedPage[]): string[] => pages.flatMap((p) => p.tracks
 
 test('paginazione: con Jamendo giu, Audius arriva comunque in fondo', async () => {
   const original = { ...SOURCES };
-  SOURCES.audius = { source: pagedSource('audius', 50), enabled: true };
-  SOURCES.jamendo = { source: pagedSource('jamendo', 30, () => true), enabled: true };
+  SOURCES.audius = pagedSource('audius', 50);
+  SOURCES.jamendo = pagedSource('jamendo', 30, () => true);
   try {
     const seen: string[] = [];
     let cursor: unknown = null;
@@ -1609,9 +1640,9 @@ test('paginazione: con Jamendo giu, Audius arriva comunque in fondo', async () =
 
 test('paginazione: una sorgente che torna riparte da dove era, senza buchi ne doppioni', async () => {
   const original = { ...SOURCES };
-  SOURCES.audius = { source: pagedSource('audius', 30), enabled: true };
+  SOURCES.audius = pagedSource('audius', 30);
   // Giu' per le prime due richieste, poi torna.
-  SOURCES.jamendo = { source: pagedSource('jamendo', 45, (n) => n < 2), enabled: true };
+  SOURCES.jamendo = pagedSource('jamendo', 45, (n) => n < 2);
   try {
     const pages = await scrollToEnd((cursor) => searchAll('onda', { limit: 20, cursor }));
     const all = uids(pages);
@@ -1672,8 +1703,8 @@ test('sorgenti: ognuna ha registro, descrizione e un nome per ogni genere', () =
   assert.deepEqual(Object.keys(SOURCE_META).sort(), [...SOURCE_IDS].sort());
   const badges = new Set<string>();
   for (const id of SOURCE_IDS) {
-    assert.equal(SOURCES[id].source.id, id, `id dell'adapter ${id}`);
-    assert.equal(SOURCES[id].source.label, SOURCE_META[id].label, `nome dell'adapter ${id}`);
+    assert.equal(SOURCES[id].id, id, `id dell'adapter ${id}`);
+    assert.equal(SOURCES[id].label, SOURCE_META[id].label, `nome dell'adapter ${id}`);
     assert.match(SOURCE_META[id].badge, /^[A-Z]{3}$/u);
     badges.add(SOURCE_META[id].badge);
     for (const genre of GENRES) {
@@ -1739,14 +1770,17 @@ test('testi: le sorgenti si nominano in italiano, anche negli avvisi', () => {
     'Jamendo non risponde: rete non raggiungibile',
   );
 
-  const original = { ...SOURCES };
+  assert.equal(activeSourceLabels(), 'Audius e Jamendo');
   try {
-    assert.equal(activeSourceLabels(), 'Audius e Jamendo');
-    // Spenta nel registro, sparisce anche dai testi che la nominavano.
-    SOURCES.jamendo = { ...SOURCES.jamendo, enabled: false };
+    // Spenta in Impostazioni, sparisce anche dai testi che la nominavano.
+    setSourceAccess({ ...TEST_ACCESS, isActive: (id) => id !== 'jamendo' });
     assert.equal(activeSourceLabels(), 'Audius');
+    assert.equal(sourceById('jamendo'), undefined, 'e dalle pagine artista e album');
+    assert.equal(sourceById('audius')?.id, 'audius');
+    setSourceAccess(NO_ACCESS);
+    assert.equal(activeSourceLabels(), '', 'senza collegamento non lavora nessuna sorgente');
   } finally {
-    Object.assign(SOURCES, original);
+    setSourceAccess(TEST_ACCESS);
   }
 });
 
@@ -1939,8 +1973,8 @@ test('federazione: il segnale di chi aspetta arriva a ogni sorgente', async () =
       return [];
     },
   });
-  SOURCES.audius = { source: spy('audius'), enabled: true };
-  SOURCES.jamendo = { source: spy('jamendo'), enabled: true };
+  SOURCES.audius = spy('audius');
+  SOURCES.jamendo = spy('jamendo');
   try {
     const controller = new AbortController();
     await searchAll('onda', { limit: 20, signal: controller.signal });
@@ -2084,5 +2118,147 @@ test('mescolata: ogni posizione puo finire ovunque', () => {
   }
   for (const [position, valori] of visto.entries()) {
     assert.equal(valori.size, items.length, `la posizione ${position} non vede tutti i valori`);
+  }
+});
+
+// --- sorgenti e credenziali inserite dall'utente -----------------------
+
+const nessuna = { jamendoClientId: '', audiusApiKey: '' };
+const conJamendo = { jamendoClientId: 'abcd1234', audiusApiKey: '' };
+
+test('sorgenti: Jamendo lavora solo con il Client ID, Audius anche senza credenziali', () => {
+  const tutte = DEFAULT_SOURCE_SETTINGS;
+  assert.equal(isSourceActive('audius', tutte, nessuna), true);
+  assert.equal(isSourceActive('jamendo', tutte, nessuna), false, 'senza Client ID');
+  assert.equal(isSourceActive('jamendo', tutte, conJamendo), true);
+  const spenta = { ...tutte, enabled: { ...tutte.enabled, jamendo: false } };
+  assert.equal(isSourceActive('jamendo', spenta, conJamendo), false, "spenta dall'interruttore");
+});
+
+test('sorgenti: le scelte salvate si rileggono con tolleranza', () => {
+  assert.deepEqual(loadSourceSettings(undefined), DEFAULT_SOURCE_SETTINGS);
+  assert.deepEqual(loadSourceSettings('rotto'), DEFAULT_SOURCE_SETTINGS);
+  assert.deepEqual(
+    loadSourceSettings({ enabled: { audius: false, jamendo: 'si' }, welcomeDone: true }),
+    {
+      enabled: { audius: false, jamendo: true },
+      welcomeDone: true,
+      jamendoInviteDismissed: false,
+    },
+  );
+});
+
+test("sorgenti: l'invito in Scopri resta finché Jamendo non è configurato o non si chiude", () => {
+  const saltato = { ...DEFAULT_SOURCE_SETTINGS, welcomeDone: true };
+  assert.equal(showJamendoInvite(DEFAULT_SOURCE_SETTINGS, nessuna), false, 'prima del benvenuto');
+  assert.equal(showJamendoInvite(saltato, nessuna), true);
+  assert.equal(showJamendoInvite(saltato, conJamendo), false, 'Jamendo configurato');
+  assert.equal(showJamendoInvite({ ...saltato, jamendoInviteDismissed: true }, nessuna), false);
+});
+
+test('credenziali: il Client ID si pulisce, si controlla e a schermo si maschera', () => {
+  assert.equal(normalizeCredential('  ab cd\n12 '), 'abcd12');
+  assert.equal(jamendoClientIdProblem('abcd1234'), null);
+  assert.equal(jamendoClientIdProblem(' abcd1234\n'), null, 'incollato con spazi');
+  assert.match(jamendoClientIdProblem('') ?? '', /Inserisci/u);
+  assert.match(jamendoClientIdProblem('inserisci_il_tuo_client_id') ?? '', /esempio/u);
+  assert.match(jamendoClientIdProblem('abc!1234') ?? '', /lettere e numeri/u);
+  assert.equal(maskCredential('abcd1234'), '••••1234');
+  assert.equal(maskCredential('abc'), '••••', 'troppo corto per mostrarne un pezzo');
+  assert.equal(maskCredential('abcd1234').includes('abcd'), false);
+
+  assert.equal(audiusApiKeyProblem('0123456789abcdef'), null);
+  assert.match(audiusApiKeyProblem('Bearer abcdefgh123') ?? '', /Bearer/u);
+  assert.match(audiusApiKeyProblem('corta') ?? '', /lettere e numeri/u);
+});
+
+test('credenziali: la verifica legge il codice di Jamendo e decide se salvare', () => {
+  // Le risposte vere di Jamendo, a parte i messaggi.
+  const failed = (code: number) => ({ headers: { status: 'failed', code }, results: [] });
+  assert.equal(jamendoCheckFromResponse({ headers: { status: 'success', code: 0 } }), 'ok');
+  assert.equal(jamendoCheckFromResponse(failed(5)), 'invalid');
+  assert.equal(jamendoCheckFromResponse(failed(6)), 'rate-limited');
+  assert.equal(jamendoCheckFromResponse(failed(11)), 'suspended');
+  assert.equal(jamendoCheckFromResponse(failed(2)), 'error');
+  assert.equal(jamendoCheckFromResponse('html di un portale captive'), 'error');
+
+  assert.equal(afterJamendoCheck('ok'), 'save');
+  assert.equal(afterJamendoCheck('rate-limited'), 'save', 'valido, la quota passa da sola');
+  assert.equal(afterJamendoCheck('invalid'), 'refuse');
+  assert.equal(afterJamendoCheck('suspended'), 'refuse');
+  assert.equal(afterJamendoCheck('unreachable'), 'ask');
+  assert.equal(afterJamendoCheck('error'), 'ask');
+});
+
+test('jamendo: la verifica fa una sola richiesta, con il Client ID da provare', async () => {
+  const urls: string[] = [];
+  const recording =
+    (payload: unknown): typeof globalThis.fetch =>
+    async (url) => {
+      urls.push(String(url));
+      return { ok: true, status: 200, json: async () => payload } as Response;
+    };
+  // Successo con zero risultati: gli elenchi ritenterebbero, la verifica no.
+  await withFetch(recording({ headers: { status: 'success' }, results: [] }), async () => {
+    assert.equal(await checkJamendoClientId('nuovo-id'), 'ok');
+  });
+  assert.equal(urls.length, 1);
+  assert.equal(new URL(urls[0] ?? '').searchParams.get('client_id'), 'nuovo-id');
+
+  await withFetch(
+    async () => {
+      throw new Error('Network request failed');
+    },
+    async () => {
+      assert.equal(await checkJamendoClientId('nuovo-id'), 'unreachable');
+    },
+  );
+});
+
+test('jamendo: le richieste usano il Client ID corrente e un rifiuto dice dove intervenire', async () => {
+  let seen = '';
+  await withFetch(
+    async (url) => {
+      seen = new URL(String(url)).searchParams.get('client_id') ?? '';
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ headers: { status: 'failed', code: 5 }, results: [] }),
+      } as Response;
+    },
+    async () => {
+      await assert.rejects(
+        () => jamendoSource.trending({ limit: 1 }),
+        (error: Error) => error.message === JAMENDO_FAILURE_MESSAGES.invalid,
+      );
+    },
+  );
+  assert.equal(seen, 'id-di-prova');
+});
+
+test("audius: la API key va nell'header, mai nell'URL", async () => {
+  const calls: { url: string; headers?: HeadersInit }[] = [];
+  const recording: typeof globalThis.fetch = async (url, init) => {
+    calls.push({ url: String(url), headers: init?.headers });
+    return { ok: true, status: 200, json: async () => ({ data: [] }) } as Response;
+  };
+  try {
+    await withFetch(recording, async () => {
+      await audiusSource.trending({ limit: 1 });
+      setSourceAccess({
+        ...TEST_ACCESS,
+        credentials: () => ({ jamendoClientId: '', audiusApiKey: 'chiave-di-prova' }),
+      });
+      await audiusSource.trending({ limit: 1 });
+    });
+  } finally {
+    setSourceAccess(TEST_ACCESS);
+  }
+  const [senza, con] = calls;
+  assert.equal(senza?.headers, undefined, 'senza chiave nessun header');
+  assert.deepEqual(con?.headers, { 'x-api-key': 'chiave-di-prova' });
+  for (const call of calls) {
+    assert.equal(call.url.includes('chiave-di-prova'), false);
+    assert.equal(new URL(call.url).searchParams.get('app_name'), AUDIUS_APP_NAME);
   }
 });

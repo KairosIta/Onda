@@ -31,7 +31,7 @@
     "format:check": "prettier --check .",
     "typecheck": "expo customize tsconfig.json && tsc --noEmit",
     "test": "node --test --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/node-hook.mjs scripts/*.test.ts",
-    "smoke": "node --env-file=.env --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/node-hook.mjs scripts/smoke.ts"
+    "smoke": "node --env-file-if-exists=.env --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/node-hook.mjs scripts/smoke.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
@@ -46,6 +46,7 @@
     "expo-image": "~57.0.5",
     "expo-linking": "~57.0.12",
     "expo-router": "~57.0.25",
+    "expo-secure-store": "~57.0.4",
     "expo-sharing": "~57.0.22",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
