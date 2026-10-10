@@ -5,7 +5,7 @@ import { type KeyValue, migrateStorage, quarantine } from './storageSchema';
  * Storage locale, sincrono. Niente account, niente rete: tutto quello
  * che l'utente salva resta sul telefono.
  *
- * MMKV 3.x gira sulla new architecture (Nitro Modules), che e' quella
+ * MMKV 3.x e' un TurboModule e richiede la new architecture, che e' quella
  * abilitata in app.json. Serve una dev build: non funziona in Expo Go.
  */
 export const storage = new MMKV({ id: 'onda' });
