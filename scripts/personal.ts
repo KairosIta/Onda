@@ -15,7 +15,7 @@ import {
   normalizeCertificateSha256,
   parseKeyValueFile,
   resolveReleaseEnvironment,
-  validateJamendoClientId,
+  embeddedCredentialErrors,
   type ReleaseIdentity,
 } from './release-policy.ts';
 import {
@@ -34,7 +34,6 @@ import { versionName } from './build-provenance.cjs';
 
 const root = resolve(import.meta.dirname, '..');
 const envPath = join(root, '.env');
-const envExamplePath = join(root, '.env.example');
 const apkPath = join(
   root,
   'android',
@@ -93,7 +92,7 @@ function findAndroidSdk(env: NodeJS.ProcessEnv): string | undefined {
   return androidSdkCandidates(env).find((candidate) => existsSync(candidate));
 }
 
-function collectChecks(env: NodeJS.ProcessEnv, requireConfiguration = true): Check[] {
+function collectChecks(env: NodeJS.ProcessEnv): Check[] {
   const checks: Check[] = [];
   const node = checkNodeVersion();
   checks.push({
@@ -142,20 +141,20 @@ function collectChecks(env: NodeJS.ProcessEnv, requireConfiguration = true): Che
     detail: existsSync(join(root, 'node_modules')) ? 'installate' : 'esegui npm ci',
   });
 
-  const jamendoErrors = validateJamendoClientId(env.EXPO_PUBLIC_JAMENDO_CLIENT_ID);
+  // Il Client ID Jamendo non si mette piu' qui: si inserisce nell'app.
+  const credentialErrors = embeddedCredentialErrors(env);
   checks.push({
-    label: 'Jamendo Client ID',
-    ok: jamendoErrors.length === 0,
-    detail: jamendoErrors[0] ?? 'configurato',
-    required: requireConfiguration,
+    label: 'Credenziali nel bundle',
+    ok: credentialErrors.length === 0,
+    detail: credentialErrors[0] ?? "nessuna: le credenziali si inseriscono nell'app",
   });
 
   return checks;
 }
 
-function doctor(requireConfiguration = true): { checks: Check[]; sdk?: string } {
+function doctor(): { checks: Check[]; sdk?: string } {
   const env = loadPersonalEnvironment();
-  const checks = collectChecks(env, requireConfiguration);
+  const checks = collectChecks(env);
   console.log('\nDiagnosi ambiente Onda\n');
   for (const check of checks) {
     const optional = check.required === false ? ' (serve solo per installare)' : '';
@@ -171,14 +170,22 @@ function doctor(requireConfiguration = true): { checks: Check[]; sdk?: string } 
   return { checks, sdk: findAndroidSdk(env) };
 }
 
+/**
+ * Prima serviva a creare .env con il Client ID Jamendo. Ora non c'e' niente
+ * da preparare: il Client ID si inserisce nell'app. Resta per chi segue le
+ * istruzioni di prima, e per accorgersi di un Client ID rimasto in .env.
+ */
 function setup(): void {
-  if (existsSync(envPath)) {
-    console.log('.env esiste gia: non e stato modificato.');
+  const leftovers = embeddedCredentialErrors(loadPersonalEnvironment());
+  if (leftovers.length) {
+    console.log(`Da sistemare prima della build:\n- ${leftovers.join('\n- ')}`);
   } else {
-    copyFileSync(envExamplePath, envPath);
-    console.log('Creato .env da .env.example.');
+    console.log('Niente da configurare prima della build.');
   }
-  console.log('Inserisci il tuo EXPO_PUBLIC_JAMENDO_CLIENT_ID in .env, poi esegui npm run doctor.');
+  console.log(
+    "Il Client ID Jamendo si inserisce nell'app: al primo avvio o da Libreria > Sorgenti. " +
+      'Esegui npm run doctor.',
+  );
 }
 
 function gradleArgs(task: string): string[] {
@@ -258,7 +265,7 @@ function preparePersonalDebugKeystore(env: NodeJS.ProcessEnv): void {
 }
 
 function build(): string {
-  doctor(true);
+  doctor();
   const env = loadPersonalEnvironment();
   const npm = npmExecutable();
   const npx = npxExecutable();
@@ -383,7 +390,7 @@ switch (action) {
     setup();
     break;
   case 'doctor':
-    doctor(true);
+    doctor();
     break;
   case 'build':
     build();

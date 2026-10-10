@@ -14,8 +14,6 @@ export interface ReleaseIdentity {
   certificateSha256: string;
 }
 
-const PLACEHOLDER_PATTERN = /(inserisci|changeme|replace[_ -]?me|your[_ -]|example)/i;
-
 export function parseKeyValueFile(contents: string): Record<string, string> {
   const values: Record<string, string> = {};
 
@@ -49,12 +47,33 @@ export function resolveReleaseEnvironment(
   return { ...fileValues, ...processValues, NODE_ENV: 'production' };
 }
 
-export function validateJamendoClientId(value: string | undefined): string[] {
-  if (!value?.trim()) return ['EXPO_PUBLIC_JAMENDO_CLIENT_ID non configurato.'];
-  if (PLACEHOLDER_PATTERN.test(value)) {
-    return ['EXPO_PUBLIC_JAMENDO_CLIENT_ID contiene ancora un valore di esempio.'];
-  }
-  return [];
+const CREDENTIAL_NAME = /(CLIENT_ID|API_KEY|SECRET|TOKEN|PASSWORD)/u;
+
+/**
+ * Onda non incorpora credenziali: le inserisce ogni persona in app. Una
+ * variabile `EXPO_PUBLIC_*` con un nome da credenziale finirebbe in chiaro
+ * nel bundle di chi la definisce, quindi build e release si fermano se ne
+ * trovano una valorizzata. Restituisce i nomi, mai i valori.
+ */
+export function findEmbeddedCredentials(
+  env: Readonly<Record<string, string | undefined>>,
+): string[] {
+  return Object.keys(env)
+    .filter(
+      (key) =>
+        key.startsWith('EXPO_PUBLIC_') && CREDENTIAL_NAME.test(key) && Boolean(env[key]?.trim()),
+    )
+    .sort();
+}
+
+export function embeddedCredentialErrors(
+  env: Readonly<Record<string, string | undefined>>,
+): string[] {
+  return findEmbeddedCredentials(env).map(
+    (name) =>
+      `${name} e' definita: Onda non incorpora credenziali, le inserisce ogni persona in app. ` +
+      "Togli la variabile da .env e dall'ambiente.",
+  );
 }
 
 export function validateSigningProperties(
