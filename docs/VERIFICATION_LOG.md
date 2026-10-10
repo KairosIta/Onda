@@ -40,8 +40,12 @@ Build personale del branch della PR #30, all'ultimo commit di codice
       precedente. A cache intatta la build con il Client ID finto conteneva
       ancora quello vero; a cache svuotata il bundle aveva quello finto, e la
       build normale successiva, di nuovo a cache svuotata, quello vero.
-      Verificato contando le occorrenze nell'APK, senza esporre il valore. Voce
-      aperta in P2.
+      Verificato contando le occorrenze nell'APK, senza esporre il valore.
+      Corretto lo stesso giorno: voce chiusa in P2.
+- [x] Correzione della cache di Metro verificata sulla pipeline vera: due
+      `npm run build:personal` di fila senza svuotare la cache, la prima con
+      un Client ID finto e la seconda con quello di `.env`. Ogni APK contiene
+      solo il proprio valore.
 
 ### Verificato il 9 ottobre 2026, senza device
 
@@ -470,6 +474,23 @@ stati verificati successivamente.
 - [x] Advisory npm transitivi risolti con aggiornamenti Expo compatibili e
       override Metro 0.84.5 verificato da Expo Doctor e build, senza
       `audit fix --force`; `npm audit` riporta zero vulnerabilità.
+
+- [x] Svuotare la cache di Metro prima del bundle nella build personale e in
+      quella di release. La cache delle trasformazioni (`metro-cache` in
+      `os.tmpdir()`) conserva i valori `EXPO_PUBLIC_*` già scritti nel codice:
+      chi corregge il Client ID Jamendo in `.env` e ricompila può ritrovarsi
+      nell'APK quello vecchio, senza nessun avviso. Confermato il 10 ottobre
+      2026 su una build reale (registro dei collaudi).
+      **Done:** gli script svuotano la cache, o passano `--reset-cache`, prima
+      del bundle, e una build dopo un cambio di `.env` porta il valore nuovo.
+      **Chiusa il 10 ottobre 2026**, senza svuotare la cache:
+      `metro.config.js` estende la configurazione di Expo e mette in
+      `cacheVersion` un'impronta dei valori `EXPO_PUBLIC_*`
+      (`scripts/metro-cache-version.cjs`, quattro test). La cache si rinnova
+      solo quando quei valori cambiano e la cartella condivisa con gli altri
+      progetti resta intatta. Riprodotto prima con due `expo export` di fila,
+      il secondo con il valore del primo, e verificato dopo sulla pipeline
+      vera (baseline del 10 ottobre).
 
 #### Esperienza e identità
 

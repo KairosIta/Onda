@@ -87,6 +87,7 @@ nativo mantiene una sola coda, anche quando contiene brani di entrambe.
 
 ```
 index.js                    entry custom: expo-router + registrazione del playback service
+metro.config.js             configurazione di Expo, con la cache che segue i valori EXPO_PUBLIC_*
 app/
   _layout.tsx               provider, Stack, registrazione della cronologia
   (tabs)/_layout.tsx        tab bar custom: disegna il MiniPlayer sopra i tab
@@ -149,6 +150,7 @@ assets/fonts/               Manrope (SIL OFL 1.1), incorporata dal plugin expo-f
 scripts/
   release.ts                pipeline fail-closed per APK di distribuzione
   release-policy.ts         validazione pura di ambiente e credenziali
+  metro-cache-version.cjs   versione della cache di Metro dai valori EXPO_PUBLIC_* (puro)
   smoke.ts                  collaudo degli adapter contro le API vere (npm run smoke)
   node-hook.mjs             risolve l'alias '@/' quando gli adapter girano in Node
 plugins/
@@ -815,6 +817,14 @@ richieste in volo e i tentativi ancora da fare. `fetchJSON` distingue chi ha
 interrotto: il tetto di tempo e' un guasto di rete da mostrare, l'annullamento
 un `AbortError` che nessuno mostra. Una sorgente nuova deve passare
 `params.signal` a ogni richiesta, altrimenti le sue continuano a girare.
+
+**La cache di Metro segue i valori `EXPO_PUBLIC_*`.** babel-preset-expo li
+scrive dentro il codice trasformato, ma la chiave della cache di Metro non li
+considerava: dopo un cambio del Client ID in `.env` il bundle successivo
+poteva portare quello vecchio. `metro.config.js` estende la configurazione di
+Expo e mette in `cacheVersion` un'impronta di quei valori
+(`scripts/metro-cache-version.cjs`): la cache si rinnova quando cambiano,
+resta valida quando sono uguali e non serve svuotarla a mano.
 
 **Il timer di spegnimento non e' persistito.** Un timer sopravvissuto al
 riavvio metterebbe in pausa la musica senza che nessuno capisca perche'.

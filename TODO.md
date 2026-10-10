@@ -401,14 +401,6 @@ passa nel registro dei collaudi con la sua prova.
       di Jamendo hanno test con `fetch` finto; manca ancora il parsing completo
       delle risposte Audius e Jamendo.
 
-- [ ] Svuotare la cache di Metro prima del bundle nella build personale e in
-      quella di release. La cache delle trasformazioni (`metro-cache` in
-      `os.tmpdir()`) conserva i valori `EXPO_PUBLIC_*` già scritti nel codice:
-      chi corregge il Client ID Jamendo in `.env` e ricompila può ritrovarsi
-      nell'APK quello vecchio, senza nessun avviso. Confermato il 10 ottobre
-      2026 su una build reale (registro dei collaudi).
-      **Done:** gli script svuotano la cache, o passano `--reset-cache`, prima
-      del bundle, e una build dopo un cambio di `.env` porta il valore nuovo.
 - [ ] Rivedere entro il 15 gennaio 2027 le eccezioni dichiarate in
       `scripts/audit-policy.ts` (`braces` e `node-forge`, senza versione
       corretta al 9 ottobre 2026): dopo quella data `npm run check:audit` torna
