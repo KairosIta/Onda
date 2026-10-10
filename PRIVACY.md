@@ -1,6 +1,6 @@
 # Informativa privacy di Onda
 
-**Versione:** 1.3 — **in vigore dal 10 ottobre 2026**
+**Versione:** 1.4 — **in vigore dal 10 ottobre 2026**
 
 Questa informativa descrive il funzionamento delle copie personali dell'app
 Android Onda compilate dal progetto
@@ -22,7 +22,14 @@ Onda salva nello spazio privato dell'app:
   pagine artista e album), per aprire l'app senza attendere la rete. I
   cataloghi Audius restano solo in memoria finché l'app è aperta, come
   richiedono i termini API di Audius;
-- le ultime ricerche digitate, per rifarle con un tocco.
+- le ultime ricerche digitate, per rifarle con un tocco;
+- le scelte sulle sorgenti (quali sono accese) e le credenziali che inserisci:
+  il tuo Client ID Jamendo e, se la aggiungi, la tua API key Audius.
+
+Le credenziali sono cifrate con una chiave del Keystore Android, restano sul
+dispositivo e non sono mai inviate al progetto Onda: vanno soltanto al
+rispettivo servizio, a ogni richiesta di catalogo. Non entrano negli export
+della libreria e si cancellano da Libreria › Sorgenti o disinstallando l'app.
 
 Questi dati servono unicamente a offrire le funzioni richieste nell'app. Onda
 non include SDK di analytics, pubblicità o crash reporting e il progetto non
@@ -32,8 +39,8 @@ riceve automaticamente una copia di questi dati.
 
 Onda disabilita il backup Android dell'app e definisce esclusioni esplicite per
 tutti i domini di archiviazione, sia nel backup cloud sia nel trasferimento
-diretto tra dispositivi. Questa scelta evita che libreria e preferenze vengano
-copiate automaticamente fuori dal dispositivo tramite le funzioni di backup
+diretto tra dispositivi. Questa scelta evita che libreria, preferenze e credenziali
+vengano copiate automaticamente fuori dal dispositivo tramite le funzioni di backup
 supportate da Android.
 
 ## Dati trasmessi ai servizi musicali
@@ -48,7 +55,9 @@ Onda deve connettersi a servizi esterni per mostrare e riprodurre i cataloghi:
 
 Come in ogni comunicazione Internet, questi fornitori possono ricevere dati
 tecnici quali indirizzo IP, data e ora, contenuto della richiesta, identificativi
-tecnici del client e informazioni di rete. Jamendo dichiara inoltre di poter
+tecnici del client e informazioni di rete. Il Client ID Jamendo e l'eventuale
+API key Audius collegano le richieste all'account sviluppatore che hai creato
+presso il rispettivo fornitore, secondo i suoi termini. Jamendo dichiara inoltre di poter
 registrare i brani ascoltati. Il progetto Onda non usa tali dati per identificare
 l'utente e non li riceve dai fornitori.
 

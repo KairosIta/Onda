@@ -2,6 +2,8 @@ import { useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 import TrackPlayer, { Event, type MediaItem } from '@rntp/player';
 import { toMediaItem, trackFromMediaItem } from '@/services/mediaItems';
+import { type IsSourceActive, playableQueue } from '@/services/playableTracks';
+import { isSourceAvailable } from '@/services/sources/access';
 import { readJSON, writeJSON } from '@/services/storage';
 import type { Track } from '@/types/track';
 import { remember } from './library';
@@ -157,8 +159,13 @@ export function savePosition(uid: string, position: number): void {
 export function restoreSession(): void {
   if (active) return;
 
-  const queue = loadSavedQueue(readJSON(QUEUE_KEY), Date.now());
-  if (!queue) return;
+  const saved = loadSavedQueue(readJSON(QUEUE_KEY), Date.now());
+  if (!saved) return;
+  // Una sorgente spenta dopo il salvataggio resta fuori anche da qui; se il
+  // brano attivo era suo, si riparte dal successivo e da capo.
+  const playable = playableQueue(saved.tracks, saved.index, isSourceAvailable);
+  if (!playable) return;
+  const queue = { ...saved, ...playable };
   const track = queue.tracks[queue.index];
   if (!track) return;
 
@@ -171,6 +178,30 @@ export function restoreSession(): void {
     position: resumePosition(queue, loadSavedPosition(readJSON(POSITION_KEY))),
     item: toMediaItem(track),
     loading: false,
+  });
+}
+
+/**
+ * Una sorgente spenta esce anche dalla coda in attesa (vedi `sourceGuard`).
+ * Gia' consegnata al player non e' piu' affare di questo store: la ripulisce
+ * il guardiano direttamente nel player.
+ */
+export function prunePending(isActive: IsSourceActive): void {
+  if (!pending || pending.loading) return;
+  const next = playableQueue(pending.tracks, pending.index, isActive);
+  if (!next) {
+    setPending(null);
+    return;
+  }
+  if (next.tracks.length === pending.tracks.length) return;
+  const track = next.tracks[next.index];
+  const same = track.uid === pending.tracks[pending.index]?.uid;
+  setPending({
+    ...pending,
+    tracks: next.tracks,
+    index: next.index,
+    position: same ? pending.position : 0,
+    item: same ? pending.item : toMediaItem(track),
   });
 }
 

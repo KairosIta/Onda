@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { PressableScale } from '@/components/PressableScale';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ExternalLink } from '@/components/ExternalLink';
 import {
   AUDIUS_API_TERMS_URL,
   AUDIUS_OPEN_MUSIC_LICENSE_URL,
@@ -17,28 +17,6 @@ import { describeBuild, readBuildInfo } from '@/services/buildInfo';
 import { colors, radius, spacing, touch, type } from '@/theme';
 
 const build = readBuildInfo();
-
-/**
- * Riga larga quanto la scheda: si ritrae appena, perche' su una
- * superficie cosi' estesa la scala da bottone sembrerebbe un salto. Il 2%
- * da solo pero' non si vede, e con "Rimuovi animazioni" nemmeno si muove:
- * resta anche l'opacita' da premuto.
- */
-function ExternalLink({ label, url }: { label: string; url: string }) {
-  return (
-    <PressableScale
-      onPress={() => Linking.openURL(url)}
-      style={styles.link}
-      pressedStyle={styles.pressed}
-      scaleTo={0.98}
-      accessibilityRole="link"
-      accessibilityLabel={`${label}, apre il browser`}
-    >
-      <Text style={styles.linkText}>{label}</Text>
-      <Ionicons name="open-outline" size={18} color={colors.textMuted} />
-    </PressableScale>
-  );
-}
 
 export default function AboutScreen() {
   const router = useRouter();
@@ -75,6 +53,7 @@ export default function AboutScreen() {
           Preferiti, cronologia, playlist, preferenze di riproduzione, l’ultima coda con la
           posizione raggiunta e una copia temporanea dei cataloghi Jamendo consultati restano nello
           spazio privato dell’app; i cataloghi Audius restano solo in memoria finché l’app è aperta.
+          Le credenziali delle sorgenti sono cifrate e vanno solo al servizio a cui appartengono.
           Onda non integra pubblicità, analytics o segnalazioni automatiche dei crash.
         </Text>
         <Text style={styles.body}>
@@ -146,16 +125,4 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { ...type.title, color: colors.text },
   body: { ...type.body, color: colors.textMuted, lineHeight: 22 },
-  link: {
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceHigh,
-  },
-  pressed: { opacity: 0.65 },
-  linkText: { ...type.body, flex: 1, color: colors.text },
 });

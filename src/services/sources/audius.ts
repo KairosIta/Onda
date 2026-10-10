@@ -1,4 +1,3 @@
-import { AUDIUS_APP_NAME } from '@/config/env';
 import {
   type ArtistInfo,
   type ListParams,
@@ -9,6 +8,7 @@ import {
   type Track,
   type TrendingParams,
 } from '@/types/track';
+import { currentCredentials } from './access';
 import { fetchJSON as httpJSON } from './http';
 import { SOURCE_META } from './meta';
 
@@ -36,6 +36,13 @@ interface AudiusUser {
   track_count?: number;
   profile_picture?: Record<string, string> | null;
 }
+
+/**
+ * Il nome con cui Onda si presenta ad Audius. Non e' una credenziale: per
+ * leggere il catalogo Audius non ne chiede, e una API key facoltativa
+ * dell'utente viaggia a parte, nell'header (vedi `fetchJSON` qui sotto).
+ */
+export const AUDIUS_APP_NAME = 'Onda';
 
 function withAppName(path: string, params: Record<string, string> = {}): string {
   const qs = new URLSearchParams({ app_name: AUDIUS_APP_NAME, ...params });
@@ -108,8 +115,17 @@ function mapUser(u: AudiusUser): ArtistInfo {
  */
 const playable = (t: AudiusTrack): boolean => !t.is_stream_gated && t.is_streamable !== false;
 
+/**
+ * La API key dell'utente, se c'e', va nell'header `x-api-key` e mai
+ * nell'URL: gli URL degli stream finiscono nella libreria salvata e
+ * nell'export, e la chiave e' personale.
+ */
 function fetchJSON<T>(url: string, signal?: AbortSignal): Promise<T> {
-  return httpJSON<T>('Audius', url, { signal });
+  const apiKey = currentCredentials().audiusApiKey;
+  return httpJSON<T>('Audius', url, {
+    signal,
+    headers: apiKey ? { 'x-api-key': apiKey } : undefined,
+  });
 }
 
 async function fetchTracks(url: string, signal?: AbortSignal): Promise<Track[]> {

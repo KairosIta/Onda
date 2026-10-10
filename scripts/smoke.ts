@@ -7,10 +7,27 @@
  * senza React Native dentro, quindi girano in Node cosi' come sono. Questo
  * script ha gia' trovato tre bug che il typecheck non poteva vedere — le
  * API si collaudano solo interrogandole.
+ *
+ * Il Client ID Jamendo arriva da `JAMENDO_CLIENT_ID`, nell'ambiente o in
+ * `.env`: senza prefisso `EXPO_PUBLIC_` non finisce in nessun bundle.
+ * Senza, Jamendo si salta e lo si dice. `AUDIUS_API_KEY` e' facoltativa.
  */
 import { GENRES, genreFor } from '@/services/genres';
 import { SOURCES, searchAll } from '@/services/sources';
+import { setSourceAccess } from '@/services/sources/access';
 import type { Track } from '@/types/track';
+
+const credentials = {
+  jamendoClientId: process.env.JAMENDO_CLIENT_ID?.trim() ?? '',
+  audiusApiKey: process.env.AUDIUS_API_KEY?.trim() ?? '',
+};
+const available = Object.values(SOURCES).filter(
+  (s) => s.id !== 'jamendo' || credentials.jamendoClientId !== '',
+);
+setSourceAccess({
+  credentials: () => credentials,
+  isActive: (id) => available.some((s) => s.id === id),
+});
 
 let failures = 0;
 
@@ -83,7 +100,11 @@ async function probeStreams(tracks: Track[]) {
   else ok(label, `${alive}/${sample.length} vivi, tutti con Range`);
 }
 
-for (const { source } of Object.values(SOURCES)) {
+if (available.length < Object.keys(SOURCES).length) {
+  console.log("\n  SKIP  Jamendo: manca JAMENDO_CLIENT_ID nell'ambiente o in .env");
+}
+
+for (const source of available) {
   console.log(`\n=== ${source.label} (${source.id}) ===`);
 
   const trending = await step('trending', () => source.trending({ limit: 5 }));
@@ -166,21 +187,22 @@ const fed = await step('searchAll "jazz"', () => searchAll('jazz', { limit: 6 })
 if (fed) {
   fed.failed.forEach((f) => bad(`sorgente ${f.source}`, f.message));
   const seen = new Set(fed.tracks.map((t) => t.source));
-  if (seen.size === 2)
+  if (seen.size === available.length)
     ok('searchAll "jazz"', `${fed.tracks.length} tracce da ${[...seen].join(' + ')}`);
   else bad('searchAll "jazz"', `solo ${[...seen].join(',') || 'nessuna sorgente'}`);
 
   // Se le prime righe vengono tutte dalla stessa sorgente, interleave non
   // sta facendo il suo lavoro e Jamendo sparisce sotto la piega.
   const firstTwo = new Set(fed.tracks.slice(0, 2).map((t) => t.source));
-  if (firstTwo.size === 2) ok('alternanza', 'le prime due righe sono di sorgenti diverse');
+  if (available.length < 2) console.log("  ----  alternanza: serve piu' di una sorgente");
+  else if (firstTwo.size === 2) ok('alternanza', 'le prime due righe sono di sorgenti diverse');
   else bad('alternanza', 'le prime due righe vengono dalla stessa sorgente');
 }
 
 console.log('\n=== generi ===');
 for (const g of GENRES) {
   const per = await Promise.all(
-    Object.values(SOURCES).map(async ({ source }) => {
+    available.map(async (source) => {
       try {
         const t = await source.trending({ limit: 3, genre: genreFor(g.key, source.id) });
         return `${source.id}:${t.length}`;

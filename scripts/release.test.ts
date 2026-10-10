@@ -1,13 +1,16 @@
 /// <reference types="node" />
 
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { join } from 'node:path';
 import test from 'node:test';
 import {
+  embeddedCredentialErrors,
+  findEmbeddedCredentials,
   normalizeCertificateSha256,
   parseKeyValueFile,
   resolveReleaseEnvironment,
-  validateJamendoClientId,
   validateReleaseIdentity,
   validateSigningProperties,
 } from './release-policy.ts';
@@ -56,10 +59,39 @@ test('l ambiente esplicito prevale sul file e forza production', () => {
   assert.equal(resolved.NODE_ENV, 'production');
 });
 
-test('il Client ID Jamendo e obbligatorio e non puo essere un placeholder', () => {
-  assert.equal(validateJamendoClientId(undefined).length, 1);
-  assert.equal(validateJamendoClientId('inserisci_il_tuo_client_id').length, 1);
-  assert.deepEqual(validateJamendoClientId('client-id-reale'), []);
+test('una credenziale EXPO_PUBLIC_ valorizzata ferma build e release, senza stamparne il valore', () => {
+  assert.deepEqual(findEmbeddedCredentials({}), []);
+  assert.deepEqual(
+    findEmbeddedCredentials({
+      EXPO_PUBLIC_JAMENDO_CLIENT_ID: ' ',
+      EXPO_PUBLIC_AUDIUS_APP_NAME: 'Onda',
+      JAMENDO_CLIENT_ID: 'non finisce nel bundle',
+    }),
+    [],
+    'vuota, senza nome da credenziale o non pubblica',
+  );
+  assert.deepEqual(
+    findEmbeddedCredentials({
+      EXPO_PUBLIC_JAMENDO_CLIENT_ID: 'abc',
+      EXPO_PUBLIC_AUDIUS_API_KEY: 'k',
+    }),
+    ['EXPO_PUBLIC_AUDIUS_API_KEY', 'EXPO_PUBLIC_JAMENDO_CLIENT_ID'],
+  );
+  const [error] = embeddedCredentialErrors({ EXPO_PUBLIC_JAMENDO_CLIENT_ID: 'valore-segreto' });
+  assert.match(error ?? '', /EXPO_PUBLIC_JAMENDO_CLIENT_ID/);
+  assert.equal(error?.includes('valore-segreto'), false);
+});
+
+test("il codice dell'app non legge variabili EXPO_PUBLIC_: nessuna credenziale nel bundle", () => {
+  const root = join(import.meta.dirname, '..');
+  const files = (dir: string): string[] =>
+    readdirSync(join(root, dir), { withFileTypes: true, recursive: true })
+      .filter((entry) => entry.isFile() && /\.(ts|tsx|js)$/u.test(entry.name))
+      .map((entry) => join(entry.parentPath, entry.name));
+  const readers = [...files('app'), ...files('src'), join(root, 'index.js')].filter((file) =>
+    readFileSync(file, 'utf8').includes('EXPO_PUBLIC_'),
+  );
+  assert.deepEqual(readers, []);
 });
 
 test('le credenziali richiedono tutte le proprieta e un percorso interno', () => {

@@ -77,7 +77,8 @@
         }
       ],
       "expo-sharing",
-      "expo-image"
+      "expo-image",
+      ["expo-secure-store", { "configureAndroidBackup": false }]
     ],
     "experiments": {
       "typedRoutes": true

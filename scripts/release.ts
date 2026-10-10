@@ -15,7 +15,7 @@ import {
   parseKeyValueFile,
   normalizeCertificateSha256,
   resolveReleaseEnvironment,
-  validateJamendoClientId,
+  embeddedCredentialErrors,
   validateReleaseIdentity,
   validateSigningProperties,
   type ReleaseIdentity,
@@ -52,7 +52,6 @@ function run(label: string, command: string, args: string[], env: NodeJS.Process
   if (result.status !== 0) fail(`${label} non riuscito (exit ${result.status ?? 'sconosciuto'}).`);
 }
 
-if (!existsSync(envPath)) fail('manca .env; copiare .env.example e configurarlo.');
 if (!existsSync(propertiesPath)) fail('manca credentials/keystore.properties.');
 if (!existsSync(releaseIdentityPath)) fail('manca release/identity.json.');
 
@@ -61,7 +60,8 @@ const appConfig = JSON.parse(readFileSync(appConfigPath, 'utf8')) as {
 };
 const releaseIdentity = JSON.parse(readFileSync(releaseIdentityPath, 'utf8')) as ReleaseIdentity;
 
-const fileEnvironment = parseKeyValueFile(readFileSync(envPath, 'utf8'));
+// .env non serve piu': se c'e' si legge, per accorgersi di credenziali rimaste.
+const fileEnvironment = existsSync(envPath) ? parseKeyValueFile(readFileSync(envPath, 'utf8')) : {};
 const releaseEnvironment = resolveReleaseEnvironment(fileEnvironment, process.env);
 delete releaseEnvironment.ONDA_ALLOW_DEBUG_RELEASE;
 delete releaseEnvironment.ONDA_FORCE_DEBUG_RELEASE;
@@ -69,7 +69,7 @@ releaseEnvironment.CI = '1';
 
 const signingProperties = parseKeyValueFile(readFileSync(propertiesPath, 'utf8'));
 const configErrors = [
-  ...validateJamendoClientId(releaseEnvironment.EXPO_PUBLIC_JAMENDO_CLIENT_ID),
+  ...embeddedCredentialErrors(releaseEnvironment),
   ...validateSigningProperties(signingProperties, credentialsDir),
   ...validateReleaseIdentity(releaseIdentity, appConfig.expo.android.package),
 ];

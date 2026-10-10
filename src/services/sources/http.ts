@@ -39,6 +39,11 @@ export interface RequestOptions {
   timeoutMs?: number;
   /** Il segnale di chi aspetta la risposta (vedi `ListParams.signal`). */
   signal?: AbortSignal;
+  /**
+   * Le credenziali che possono viaggiare in un header, come la API key
+   * Audius: fuori dall'URL non finiscono negli URL salvati ne' nei log.
+   */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -55,7 +60,7 @@ export interface RequestOptions {
 export async function fetchJSON<T>(
   label: string,
   url: string,
-  { timeoutMs = REQUEST_TIMEOUT_MS, signal }: RequestOptions = {},
+  { timeoutMs = REQUEST_TIMEOUT_MS, signal, headers }: RequestOptions = {},
 ): Promise<T> {
   // Gia' annullata (una ricerca superata fra un tentativo e l'altro): non
   // si apre nemmeno la connessione.
@@ -71,7 +76,7 @@ export async function fetchJSON<T>(
   signal?.addEventListener('abort', cancel);
 
   try {
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(url, { signal: controller.signal, headers });
     if (!res.ok) throw new Error(`${label} ha risposto ${res.status}`);
     return (await res.json()) as T;
   } catch (error) {

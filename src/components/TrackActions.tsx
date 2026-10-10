@@ -7,6 +7,7 @@ import { PressableScale } from '@/components/PressableScale';
 import type { Snack } from '@/components/Snackbar';
 import { useQueue } from '@/hooks/useQueue';
 import { haptics } from '@/services/haptics';
+import { SOURCE_META } from '@/services/sources/meta';
 import {
   addToPlaylist,
   createPlaylist,
@@ -14,6 +15,7 @@ import {
   toggleFavorite,
   useLibrary,
 } from '@/store/library';
+import { useSources } from '@/store/sources';
 import { colors, radius, spacing, type } from '@/theme';
 import type { Track } from '@/types/track';
 
@@ -60,6 +62,7 @@ function TrackActionsSheet({
   const [name, setName] = useState('');
   const { playNext, addLast } = useQueue();
   const { playlists, favorites } = useLibrary();
+  const { active } = useSources();
   const router = useRouter();
   // Senza, l'ultima voce del menu finisce sotto la barra di navigazione.
   const insets = useSafeAreaInsets();
@@ -84,6 +87,9 @@ function TrackActionsSheet({
   };
 
   const isFav = favorites.includes(track.uid);
+  // Sorgente spenta: niente coda ne' pagine del catalogo, che non si
+  // aprirebbero; preferiti e playlist restano, sono dati della persona.
+  const available = active[track.source];
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={close}>
@@ -103,26 +109,40 @@ function TrackActionsSheet({
 
         {pane === 'menu' ? (
           <View>
-            <Item
-              icon="play-forward-outline"
-              label="Riproduci dopo"
-              onPress={() =>
-                playNext(track).then(() => {
-                  haptics.success();
-                  done('Aggiunta dopo la traccia corrente', openQueue);
-                })
-              }
-            />
-            <Item
-              icon="list-outline"
-              label="Aggiungi in fondo alla coda"
-              onPress={() =>
-                addLast(track).then(() => {
-                  haptics.success();
-                  done('Accodata', openQueue);
-                })
-              }
-            />
+            {available ? (
+              <>
+                <Item
+                  icon="play-forward-outline"
+                  label="Riproduci dopo"
+                  onPress={() =>
+                    playNext(track).then(() => {
+                      haptics.success();
+                      done('Aggiunta dopo la traccia corrente', openQueue);
+                    })
+                  }
+                />
+                <Item
+                  icon="list-outline"
+                  label="Aggiungi in fondo alla coda"
+                  onPress={() =>
+                    addLast(track).then(() => {
+                      haptics.success();
+                      done('Accodata', openQueue);
+                    })
+                  }
+                />
+              </>
+            ) : (
+              <Item
+                icon="power-outline"
+                label={`${SOURCE_META[track.source].label} è spenta: apri Sorgenti`}
+                tint={colors.accent}
+                onPress={() => {
+                  onClose();
+                  router.push('/sources');
+                }}
+              />
+            )}
             <Item
               icon={isFav ? 'heart' : 'heart-outline'}
               label={isFav ? 'Togli dai preferiti' : 'Aggiungi ai preferiti'}
@@ -142,7 +162,7 @@ function TrackActionsSheet({
               chevron
               onPress={() => setPane('playlists')}
             />
-            {track.artistId ? (
+            {available && track.artistId ? (
               <Item
                 icon="person-outline"
                 label={`Vai a ${track.artist}`}
@@ -155,7 +175,7 @@ function TrackActionsSheet({
                 }}
               />
             ) : null}
-            {track.albumId ? (
+            {available && track.albumId ? (
               <Item
                 icon="disc-outline"
                 label={track.albumName ? `Album: ${track.albumName}` : "Vai all'album"}

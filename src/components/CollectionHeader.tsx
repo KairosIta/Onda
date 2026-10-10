@@ -8,7 +8,10 @@ import { colors, motion, radius, spacing, touch, type } from '@/theme';
 interface Props {
   title: string;
   subtitle?: string;
-  /** Disabilita i due bottoni quando la raccolta e' vuota. */
+  /**
+   * I brani che si possono suonare: a zero i due bottoni si spengono, che la
+   * raccolta sia vuota o tutta di sorgenti spente.
+   */
   count: number;
   onPlay: () => void;
   onShuffle: () => void;

@@ -10,6 +10,7 @@ import { TrackList } from '@/components/TrackList';
 import { useQueue } from '@/hooks/useQueue';
 import { haptics } from '@/services/haptics';
 import { clearHistory, tracksOf, useLibrary } from '@/store/library';
+import { useSources } from '@/store/sources';
 import { colors, motion, touch } from '@/theme';
 import { parseCollectionKind } from '@/utils/routes';
 import { shuffled } from '@/utils/shuffle';
@@ -35,6 +36,7 @@ export default function CollectionScreen() {
 
   const library = useLibrary();
   const { playList } = useQueue();
+  const { active } = useSources();
 
   // Gli uid che non si risolvono (catalogo ripulito, dato vecchio) vengono
   // scartati da tracksOf: meglio una lista piu' corta di una riga rotta.
@@ -42,6 +44,8 @@ export default function CollectionScreen() {
     () => tracksOf(isHistory ? library.history : library.favorites),
     [isHistory, library.history, library.favorites],
   );
+  // Riproduci e Casuale si spengono se nessun brano e' di una sorgente attiva.
+  const playable = tracks.filter((t) => active[t.source]).length;
 
   // Un deep link con una raccolta ignota: si dice, non si aprono i Preferiti.
   if (!kind) {
@@ -60,7 +64,7 @@ export default function CollectionScreen() {
           <CollectionHeader
             title={copy.title}
             subtitle={`${tracks.length} ${tracks.length === 1 ? 'brano' : 'brani'}`}
-            count={tracks.length}
+            count={playable}
             onPlay={() => playList(tracks, 0)}
             onShuffle={() => playList(shuffled(tracks), 0)}
             actions={

@@ -11,8 +11,9 @@ computer locale ed è destinato esclusivamente ai dispositivi di chi compila.
 - Android Studio con Android SDK Platform 36, Build-Tools 36.0.0 e
   Platform-Tools;
 - per un telefono fisico: opzioni sviluppatore e debug USB abilitati;
-- un Client ID personale creato su
-  [Jamendo Developer Portal](https://devportal.jamendo.com/).
+- per Jamendo, un Client ID personale creato su
+  [Jamendo Developer Portal](https://devportal.jamendo.com/). Non serve alla
+  build: si inserisce nell'app al primo avvio (vedi [Primo avvio](#primo-avvio)).
 
 La prima build può scaricare NDK e CMake e richiedere diversi gigabyte. Expo Go
 non è compatibile con i moduli nativi usati da Onda.
@@ -30,12 +31,6 @@ nella home o dal loro repository apt, e punta `JAVA_HOME` lì.
 git clone https://github.com/KairosIta/Onda.git
 cd Onda
 npm ci
-npm run setup:personal
-```
-
-Modifica `.env`, quindi:
-
-```bash
 npm run doctor
 npm run install:personal
 ```
@@ -49,8 +44,6 @@ Build-Tools 36.0.0 e Platform-Tools. In PowerShell:
 git clone https://github.com/KairosIta/Onda.git
 Set-Location Onda
 npm ci
-npm run setup:personal
-notepad .env
 npm run doctor
 npm run install:personal
 ```
@@ -69,13 +62,13 @@ compilare e installare Onda, PowerShell nativo ha meno punti di rottura.
 
 ## Comandi
 
-| Comando                    | Effetto                                                               |
-| -------------------------- | --------------------------------------------------------------------- |
-| `npm run setup:personal`   | Crea `.env` dal modello solo se manca.                                |
-| `npm run doctor`           | Controlla versioni, SDK, dipendenze e configurazione Jamendo.         |
-| `npm run build:personal`   | Esegue qualità, prebuild, Android Lint e crea l'APK standalone.       |
-| `npm run install:personal` | Ricompila e installa su un unico dispositivo/emulatore autorizzato.   |
-| `npm run check:installed`  | Dice se il telefono collegato ha gia' questo commit, senza compilare. |
+| Comando                    | Effetto                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------- |
+| `npm run setup:personal`   | Segnala credenziali rimaste in `.env`: non c'è altro da preparare.              |
+| `npm run doctor`           | Controlla versioni, SDK, dipendenze e che nessuna credenziale entri nel bundle. |
+| `npm run build:personal`   | Esegue qualità, prebuild, Android Lint e crea l'APK standalone.                 |
+| `npm run install:personal` | Ricompila e installa su un unico dispositivo/emulatore autorizzato.             |
+| `npm run check:installed`  | Dice se il telefono collegato ha gia' questo commit, senza compilare.           |
 
 Gli output sono `dist/personal/Onda-personal.apk` e il manifest con hash
 `dist/personal/Onda-personal.json`; entrambi sono ignorati da Git. La pipeline
@@ -94,11 +87,33 @@ dati. La directory è ignorata da Git: non condividerla. Se vuoi conservare la
 possibilità di aggiornare la stessa installazione, fanne un backup privato; se
 la perdi, dovrai disinstallare la vecchia copia prima di usare una nuova firma.
 
+## Primo avvio
+
+Onda non incorpora credenziali. Al primo avvio una schermata di benvenuto
+spiega le sorgenti:
+
+- **Audius** funziona subito, senza dati da inserire. Una API key Audius è
+  facoltativa: alza i limiti di richieste.
+- **Jamendo** parte quando inserisci il tuo Client ID. Onda lo verifica con una
+  sola richiesta prima di salvarlo; se Jamendo lo rifiuta non lo salva.
+
+Con «Salta per ora» parti con il solo Audius: in Scopri resta un invito ad
+aggiungere Jamendo finché non lo configuri o non lo chiudi. Credenziali e
+interruttori delle sorgenti si cambiano da Libreria › Sorgenti. Le credenziali
+restano cifrate sul telefono (Keystore Android), fuori da backup ed export, e
+si cancellano disinstallando l'app.
+
 ## Problemi comuni
 
-**`Jamendo Client ID` fallisce.** Apri `.env` e sostituisci completamente il
-valore `inserisci_il_tuo_client_id`. Le variabili `EXPO_PUBLIC_*` entrano
-nell'APK: usa solo il tuo identificativo personale e non considerarlo segreto.
+**`Credenziali nel bundle` fallisce.** `.env` contiene ancora una variabile come
+`EXPO_PUBLIC_JAMENDO_CLIENT_ID`, che le versioni precedenti usavano per la
+build. Inserisci il Client ID nell'app (Libreria › Sorgenti), poi togli la riga
+o l'intero `.env`: le variabili `EXPO_PUBLIC_*` finirebbero in chiaro nell'APK.
+
+**Jamendo rifiuta il Client ID.** Controlla sul
+[portale Jamendo](https://devportal.jamendo.com/) di aver copiato il Client ID
+dell'applicazione, non il secret. «Applicazione sospesa» va risolto con Jamendo;
+«limite di richieste superato» passa da solo.
 
 **Java non è 17.** Correggi `JAVA_HOME` o la priorità nel `PATH`. Versioni più
 nuove non sono considerate equivalenti dalla pipeline verificata.

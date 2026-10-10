@@ -184,6 +184,12 @@ export default function LibraryScreen() {
           disabled={busy}
         />
         <Shelf
+          icon="radio-outline"
+          label="Sorgenti"
+          detail="Audius e Jamendo: attivazione e credenziali"
+          onPress={() => router.push('/sources')}
+        />
+        <Shelf
           icon="information-circle-outline"
           label="Informazioni e privacy"
           detail="Dati, sorgenti, licenze e versione"
