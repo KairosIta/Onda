@@ -14,7 +14,7 @@ date, misure, conteggi di test e nomi di file si riferiscono a quel momento.
 
 ### Verificato il 10 ottobre 2026 su Motorola Edge 50 Neo, Android 16
 
-Build personale del branch della PR #29, all'ultimo commit di codice
+Build personale del branch della PR #30, all'ultimo commit di codice
 (`409bb56`).
 
 - [x] Ambiente preparato da zero con JDK 17 (Temurin 17.0.20.1) e Android
@@ -32,6 +32,9 @@ Build personale del branch della PR #29, all'ultimo commit di codice
       compare l'avviso «Jamendo non risponde» e lo scroll di «Di tendenza» va
       oltre i primi venti brani con le pagine di Audius. È la prova su device
       del cursore per sorgente.
+- [x] Prove manuali sulla stessa build, superate: navigazione fra tab,
+      pagine e modali dopo l'aggiornamento di expo-router alla 57.0.25,
+      attribuzione nel player per brani Audius e Jamendo, ricerca.
 - [x] Trovato durante la stessa prova: la cache delle trasformazioni di Metro
       (`/tmp/metro-cache`) conserva i valori `EXPO_PUBLIC_*` della build
       precedente. A cache intatta la build con il Client ID finto conteneva
@@ -42,7 +45,7 @@ Build personale del branch della PR #29, all'ultimo commit di codice
 
 ### Verificato il 9 ottobre 2026, senza device
 
-Controlli automatici della PR #29: cursore per sorgente, annullamento delle
+Controlli automatici sul lavoro della PR #30: cursore per sorgente, annullamento delle
 richieste, vetrine di nomi, player, audit e patch dell'SDK 57. Nessuna build
 installata su un telefono: le prove device di questi cambi stanno nelle voci
 aperte della roadmap.
@@ -308,7 +311,7 @@ stati verificati successivamente.
       nessun doppione, ordine del catalogo), artista con una richiesta caduta.
       La migrazione 2 → 3 toglie dalla cache su disco gli elenchi salvati con
       l'offset unico. **Verificato su device il 10 ottobre 2026** (Motorola
-      Edge 50 Neo, Android 16, build della PR #29 con un Client ID Jamendo
+      Edge 50 Neo, Android 16, build della PR #30 con un Client ID Jamendo
       volutamente sbagliato): l'avviso «Jamendo non risponde» compare e resta
       visibile, e lo scroll di «Di tendenza» va oltre i primi venti brani con
       le pagine di Audius. Il rientro di Jamendo dopo il guasto resta coperto
