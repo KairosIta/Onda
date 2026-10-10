@@ -311,7 +311,7 @@ passa nel registro dei collaudi con la sua prova.
       La migrazione 2 → 3 toglie dalla cache su disco gli elenchi salvati con
       l'offset unico. Manca la prova su device, per esempio con un Client ID
       Jamendo volutamente sbagliato: lo scroll di Scopri deve andare oltre i
-      primi venti brani con l'avviso «jamendo non risponde» sempre visibile.
+      primi venti brani con l'avviso «Jamendo non risponde» sempre visibile.
       **Done:** cursore per sorgente o retry reale dello stesso offset, nessun buco
       o duplicato, stato corrente del banner e test deterministico caduta/rientro.
 
@@ -596,7 +596,12 @@ passa nel registro dei collaudi con la sua prova.
       chiaro e senza coda infinita opaca.
 - [ ] **Playlist pubbliche Audius** con pagine autore e raccolta.
 - [ ] **Terza sorgente** dopo aver generalizzato `SourceId`, licenze, refresh
-      stream, cursori e fallback.
+      stream, cursori e fallback. Dal 10 ottobre 2026 `SourceId`, licenze e
+      cursori sono generalizzati: un solo elenco (`SOURCE_IDS`), la
+      descrizione con sigla e attribuzione in `services/sources/meta.ts`, il
+      cursore per sorgente; aggiungerne una fa segnalare a TypeScript le
+      tabelle da completare (procedura in `docs/DEVELOPMENT.md`, «Prossimi
+      passi»). Restano il refresh degli stream salvati e i testi legali.
 - [ ] **Ripresa della coda all'avvio** con posizione, repeat/shuffle e URL
       scaduti. Coda, posizione e preferenze sono implementate dal 9 settembre
       2026 e collaudate il 10 settembre (vedi «Ripresa dell'ascolto»); resta la

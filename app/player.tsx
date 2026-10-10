@@ -29,7 +29,6 @@ import TrackPlayer, { RepeatMode } from '@rntp/player';
 import { Artwork } from '@/components/Artwork';
 import { HeartButton } from '@/components/HeartButton';
 import { PressableScale } from '@/components/PressableScale';
-import { AUDIUS_OPEN_MUSIC_LICENSE_URL } from '@/config/legal';
 import { usePlaybackStatus } from '@/hooks/usePlaybackStatus';
 import { useUpNext } from '@/hooks/useUpNext';
 import { haptics } from '@/services/haptics';
@@ -37,6 +36,7 @@ import { trackFromMediaItem } from '@/services/mediaItems';
 import { notificationRemedy } from '@/services/notificationPolicy';
 import { describePlayButton } from '@/services/playbackStatus';
 import { artworkLayout } from '@/services/playerLayout';
+import { describeAttribution } from '@/services/sources/meta';
 import {
   retryPlayback,
   skipToNext,
@@ -288,6 +288,7 @@ export default function PlayerScreen() {
 
   const playButton = describePlayButton(status);
   const nextLabel = upNextLabel(upNext);
+  const attribution = describeAttribution(track);
 
   return (
     <View style={styles.root}>
@@ -526,46 +527,28 @@ export default function PlayerScreen() {
 
           {sleepEndsAt ? <SleepCountdown key={sleepEndsAt} endsAt={sleepEndsAt} /> : null}
 
-          {/* Provenienza e condizioni sono parte dell'attribuzione del contenuto. */}
+          {/* Provenienza e condizioni sono parte dell'attribuzione del
+            contenuto. Cosa mostrare per ogni sorgente lo decide
+            `describeAttribution` (services/sources/meta), non il player. */}
           <View style={styles.attribution}>
-            <Text style={styles.attributionSource}>
-              Brano fornito da {track.source === 'audius' ? 'Audius' : 'Jamendo'}
-            </Text>
+            <Text style={styles.attributionSource}>Brano fornito da {attribution.provider}</Text>
             <View style={styles.attributionLinks}>
-              {track.sourceUrl ? (
-                <Pressable
-                  onPress={() => Linking.openURL(track.sourceUrl!)}
-                  hitSlop={8}
-                  accessibilityRole="link"
-                >
-                  <Text style={styles.attributionLink}>Pagina del brano</Text>
-                </Pressable>
-              ) : null}
-              {track.licenseUrl ? (
-                <Pressable
-                  onPress={() => Linking.openURL(track.licenseUrl!)}
-                  hitSlop={8}
-                  accessibilityRole="link"
-                >
-                  <Text style={styles.attributionLink}>
-                    {track.rightsLabel ?? 'Creative Commons'}
-                  </Text>
-                </Pressable>
-              ) : null}
-              {track.source === 'audius' ? (
-                <>
-                  <Text style={styles.attributionText}>
-                    {track.rightsLabel ?? 'Regime di diritti non specificato'}
-                  </Text>
+              {attribution.parts.map((part, i) =>
+                part.kind === 'link' ? (
                   <Pressable
-                    onPress={() => Linking.openURL(AUDIUS_OPEN_MUSIC_LICENSE_URL)}
+                    key={`link-${i}`}
+                    onPress={() => Linking.openURL(part.url)}
                     hitSlop={8}
                     accessibilityRole="link"
                   >
-                    <Text style={styles.attributionLink}>Open Music License</Text>
+                    <Text style={styles.attributionLink}>{part.label}</Text>
                   </Pressable>
-                </>
-              ) : null}
+                ) : (
+                  <Text key={`text-${i}`} style={styles.attributionText}>
+                    {part.label}
+                  </Text>
+                ),
+              )}
             </View>
           </View>
         </ScrollView>

@@ -8,13 +8,12 @@ import type { SourceId } from '@/types/track';
  *
  * Un tag Jamendo sconosciuto non e' un errore, torna una lista vuota:
  * la sorgente che risponde continua a riempire la schermata.
+ *
+ * Un nome per ogni sorgente: con una sorgente nuova in `SOURCE_IDS`, ogni
+ * genere senza la sua traduzione smette di compilare. Senza, la sorgente
+ * riceverebbe il trending generale dentro la pagina di un genere.
  */
-export interface Genre {
-  key: string;
-  label: string;
-  audius: string;
-  jamendo: string;
-}
+export type Genre = { key: string; label: string } & Record<SourceId, string>;
 
 export const GENRES: Genre[] = [
   { key: 'electronic', label: 'Elettronica', audius: 'Electronic', jamendo: 'electronic' },

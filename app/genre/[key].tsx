@@ -8,7 +8,8 @@ import { TrackList } from '@/components/TrackList';
 import { useInfiniteTracks } from '@/hooks/useInfiniteTracks';
 import { useQueue } from '@/hooks/useQueue';
 import { GENRES } from '@/services/genres';
-import { trendingAll } from '@/services/sources';
+import { activeSourceLabels, trendingAll } from '@/services/sources';
+import { failureNotice } from '@/services/sources/meta';
 import { colors, spacing } from '@/theme';
 import { shuffled } from '@/utils/shuffle';
 
@@ -57,13 +58,13 @@ export default function GenreScreen() {
           <View>
             <CollectionHeader
               title={genre.label}
-              subtitle="Di tendenza su Audius e Jamendo"
+              subtitle={`Di tendenza su ${activeSourceLabels()}`}
               count={tracks.length}
               onPlay={() => playList(tracks, 0)}
               onShuffle={() => playList(shuffled(tracks), 0)}
             />
             {failed.map((f) => (
-              <ErrorNotice key={f.source} message={`${f.source} non risponde: ${f.message}`} />
+              <ErrorNotice key={f.source} message={failureNotice(f)} />
             ))}
           </View>
         }

@@ -1,4 +1,4 @@
-import type { Track } from '@/types/track';
+import { isSourceId, type Track } from '@/types/track';
 
 export interface Playlist {
   id: string;
@@ -27,7 +27,7 @@ const optionalString = (value: unknown): string | undefined =>
 
 export function parseTrack(value: unknown): Track | undefined {
   if (!isRecord(value)) return undefined;
-  if (value.source !== 'audius' && value.source !== 'jamendo') return undefined;
+  if (!isSourceId(value.source)) return undefined;
   if (typeof value.id !== 'string' || typeof value.uid !== 'string') return undefined;
   if (value.uid !== `${value.source}:${value.id}`) return undefined;
   if (typeof value.title !== 'string' || typeof value.artist !== 'string') return undefined;

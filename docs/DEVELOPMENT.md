@@ -102,8 +102,9 @@ app/
   album/[source]/[id].tsx   pagina album (solo Jamendo, vedi sotto)
   +not-found.tsx            URL che non corrisponde a niente: messaggio e ritorno a Scopri
 src/
-  types/track.ts            modello unificato + interfaccia MusicSource
+  types/track.ts            modello unificato, interfaccia MusicSource, SOURCE_IDS (l'elenco delle sorgenti)
   services/sources/         adapter Audius e Jamendo + registro federato (brani, vetrine, artisti, album)
+  services/sources/meta.ts  nome, sigla e attribuzione di ogni sorgente (puro)
   services/genres.ts        unica tabella di traduzione dei generi tra le due API
   services/storage.ts       istanza MMKV + lettura JSON sicura e scrittura
   services/storageSchema.ts versione dello schema, migrazioni con backup, quarantena (puro)
@@ -830,11 +831,18 @@ riavvio metterebbe in pausa la musica senza che nessuno capisca perche'.
   "continua ad ascoltare" vero quando la coda finisce.
 - **Playlist Audius** — `/v1/playlists/{id}/tracks` per navigare anche le
   raccolte pubbliche, non solo i brani singoli.
-- **Terza sorgente** — implementa `MusicSource` e registrala. Prima pero'
-  va generalizzato `SourceId`: oggi e' un'unione fissa `'audius' | 'jamendo'`
-  ripetuta in piu' punti (registro delle sorgenti, schema della libreria,
-  media item, sigle a schermo), e una sorgente nuova non passerebbe la
-  validazione dei dati salvati.
+- **Terza sorgente** — si comincia aggiungendone l'id a `SOURCE_IDS` in
+  `src/types/track.ts`: `SourceId`, la validazione della libreria e la
+  lettura degli uid ne derivano, e TypeScript segnala le tre tabelle da
+  completare, cioe' il registro in `services/sources/index.ts`, la
+  descrizione in `services/sources/meta.ts` (nome, sigla di tre lettere,
+  diritti di ripiego, eventuali condizioni da collegare a ogni brano) e un
+  nome per ogni genere in `services/genres.ts`. Poi l'adapter: implementa
+  `MusicSource`, passa `params.signal` a ogni richiesta e filtra i brani non
+  riproducibili prima di restituirli. Restano scritti a mano, perche' sono
+  testi legali o editoriali da rivedere comunque: i collegamenti a privacy
+  e termini in `app/about.tsx`, `THIRD_PARTY_CONTENT.md`, `PRIVACY.md` e il
+  suggerimento della ricerca vuota. Infine lo smoke (`scripts/smoke.ts`).
 - **Comportamento senza rete** — il catalogo e' coperto a livello di
   adapter (caduta totale e parziale, ripresa con il cursore per sorgente,
   annullamento), la riproduzione su device: la modalita' aereo a meta' brano

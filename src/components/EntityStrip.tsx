@@ -1,4 +1,5 @@
 import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { SOURCE_META } from '@/services/sources/meta';
 import { colors, motion, radius, spacing, type } from '@/theme';
 import type { SourceId } from '@/types/track';
 import { Artwork } from './Artwork';
@@ -56,7 +57,7 @@ export function EntityStrip({ title, items, shape, loading = false }: Props) {
               pressDelay={motion.scrollerPressDelay}
               onPress={item.onPress}
               accessibilityRole="button"
-              accessibilityLabel={`${item.title}, ${item.source === 'audius' ? 'Audius' : 'Jamendo'}`}
+              accessibilityLabel={`${item.title}, ${SOURCE_META[item.source].label}`}
             >
               <Artwork
                 uri={item.imageUrl}
@@ -76,7 +77,7 @@ export function EntityStrip({ title, items, shape, loading = false }: Props) {
                 style={[styles.cardSubtitle, shape === 'circle' && styles.textCentered]}
               >
                 {item.subtitle ? `${item.subtitle} · ` : ''}
-                {item.source === 'audius' ? 'AUD' : 'JAM'}
+                {SOURCE_META[item.source].badge}
               </Text>
             </PressableScale>
           )}

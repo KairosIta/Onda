@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { haptics } from '@/services/haptics';
+import { SOURCE_META } from '@/services/sources/meta';
 import { colors, formatTime, spacing, touch, type } from '@/theme';
 import type { Track } from '@/types/track';
 import { Artwork } from './Artwork';
@@ -66,7 +67,7 @@ export const TrackRow = memo(function TrackRow({
       </View>
 
       <View style={styles.right}>
-        <Text style={styles.source}>{track.source === 'audius' ? 'AUD' : 'JAM'}</Text>
+        <Text style={styles.source}>{SOURCE_META[track.source].badge}</Text>
         <View style={styles.rightBottom}>
           {isFavorite ? <Ionicons name="heart" size={11} color={colors.accent} /> : null}
           <Text style={styles.duration}>{formatTime(track.durationSec)}</Text>
