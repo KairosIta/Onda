@@ -6,8 +6,9 @@ import TrackPlayer from '@rntp/player';
  * riavvio dell'app metterebbe in pausa la musica senza che nessuno
  * capisca perche'.
  *
- * "Fine traccia" non e' un timer a tempo: si arma sull'evento di fine
- * coda ed e' gestito in player.tsx dove il progresso e' gia' a portata.
+ * Solo a minuti, e nativo (`sleepAfterTime`): un timer JS sotto Doze
+ * scatterebbe in ritardo. Un timer "a fine brano" non c'e'; e' in
+ * roadmap (TODO.md, P3).
  */
 
 let endsAt: number | null = null;
