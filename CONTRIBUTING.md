@@ -4,8 +4,10 @@ Issue e pull request mirate sono benvenute. Prima di iniziare una modifica
 importante, apri una issue per concordare comportamento e compatibilità.
 
 1. Leggi `AGENTS.md` e `THIRD_PARTY_CONTENT.md`.
-2. Installa con `npm ci` e configura una credenziale Jamendo personale in
-   `.env`; non inserirla mai in commit, log o screenshot.
+2. Installa con `npm ci`. Il Client ID Jamendo personale si inserisce
+   nell'app, non nel repository: non metterlo mai in commit, log o screenshot.
+   Per `npm run smoke` passalo come `JAMENDO_CLIENT_ID`, senza prefisso
+   `EXPO_PUBLIC_`.
 3. Mantieni Linux e Windows compatibili: preferisci script Node.js a comandi
    specifici di Bash o PowerShell.
 4. Esegui `npm test`, `npm run typecheck`, `npm run lint` e

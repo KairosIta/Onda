@@ -66,12 +66,17 @@ legittimamente dal rispettivo fornitore. Client ID, chiavi API e credenziali di
 firma non fanno parte del Software concesso in licenza e non devono essere
 pubblicati nel repository.
 
-Il Client ID Jamendo usato da un'app mobile è necessariamente presente nel
-pacchetto installabile. Ogni clone deve quindi usare un Client ID ottenuto dal
-proprio utilizzatore. Il progetto non pubblica un APK condiviso: una futura
-distribuzione binaria resta bloccata finché Jamendo non conferma l'architettura
-oppure viene adottato un servizio intermediario autorizzato. Anche piano, quota
-e uso commerciale devono essere compatibili con la distribuzione scelta.
+Onda non incorpora credenziali nel pacchetto installabile. Ogni persona
+inserisce nell'app il proprio Client ID Jamendo, ottenuto registrando
+un'applicazione sul portale Jamendo, e facoltativamente una propria API key
+Audius; per leggere il catalogo Audius non servono credenziali. Chi registra
+un'applicazione accetta in proprio i termini API del fornitore. Le credenziali
+restano cifrate sul dispositivo e vanno solo al servizio a cui appartengono.
+
+Il progetto non pubblica un APK condiviso: una futura distribuzione binaria
+resta bloccata finché Jamendo non conferma questa architettura (vedi la
+[nota di conformità](docs/RELEASE_COMPLIANCE.md)). Anche piano, quota e uso
+commerciale devono essere compatibili con la distribuzione scelta.
 
 ## Screenshot dimostrativi
 

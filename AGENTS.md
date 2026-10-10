@@ -16,16 +16,20 @@ credenziali e non cambiare la visibilità del repository.
 3. Verifica Node.js >= 22.15, JDK 17, Android SDK Platform 36 e Build-Tools
    36.0.0. Chiedi consenso prima di installare software di sistema o scaricare
    componenti pesanti.
-4. Esegui `npm ci`, poi `npm run setup:personal`. Non sovrascrivere un `.env`
-   esistente.
-5. Chiedi alla persona di inserire personalmente il proprio
-   `EXPO_PUBLIC_JAMENDO_CLIENT_ID` in `.env`. Non stampare, copiare, committare
-   o inviare il valore a servizi esterni.
-6. Esegui `npm run doctor`; risolvi gli errori rilevati senza aggirare i
-   controlli.
-7. Con un solo dispositivo/emulatore autorizzato esegui
+4. Esegui `npm ci`. Onda non incorpora credenziali: non creare `.env` e non
+   chiedere il Client ID Jamendo per la build.
+5. Esegui `npm run doctor`; risolvi gli errori rilevati senza aggirare i
+   controlli. Se segnala una credenziale rimasta in un `.env` esistente, chiedi
+   alla persona di togliere lei la riga, dopo averne inserito il valore
+   nell'app; non leggere, stampare o modificare il file al suo posto.
+6. Con un solo dispositivo/emulatore autorizzato esegui
    `npm run install:personal`. Senza dispositivo esegui
    `npm run build:personal` e comunica il percorso dell'APK.
+7. Spiega che al primo avvio l'app chiede il Client ID Jamendo, creato
+   gratuitamente dalla persona sul portale Jamendo, e che può saltare e
+   aggiungerlo dopo da Libreria › Sorgenti. Lo inserisce lei nell'app: non
+   chiederle il valore, non stamparlo, copiarlo, committarlo o inviarlo a
+   servizi esterni.
 8. Riferisci i controlli eseguiti e ricorda che l'APK personale, firmato con
    una chiave debug locale, non deve essere ridistribuito.
 

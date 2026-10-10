@@ -242,7 +242,7 @@ passa nel registro dei collaudi con la sua prova.
 ### Limiti dichiarati
 
 - solo Android e build nativa personale; Expo Go non è supportato;
-- Jamendo richiede un Client ID personale;
+- Jamendo richiede un Client ID personale, che ognuno inserisce nell'app;
 - nessun account utente, sincronizzazione cloud o backend Onda;
 - nessun ascolto offline;
 - attribuzione e provenienza sono visibili, ma la distribuzione federata resta
@@ -255,8 +255,8 @@ passa nel registro dei collaudi con la sua prova.
 - [ ] **Chiudere il gate legale e di attribuzione.** La MIT copre il codice,
       non i cataloghi. La nota di conformità versionata registra fonti,
       attribuzioni implementate, profilo non commerciale e richieste pronte per
-      i fornitori. La build federata resta bloccata: Jamendo deve autorizzare il
-      Client ID in un APK pubblico o un'architettura alternativa; per Audius va
+      i fornitori. La build federata resta bloccata: Jamendo deve confermare il
+      modello con il Client ID inserito da ogni utente (voce qui sotto); per Audius va
       archiviata la copia leggibile degli API Terms (il PDF del 2 luglio 2025,
       leggibile dal 10 ottobre 2026), confermata la rappresentazione dei valori
       di attribuzione mancanti e chiarito se la libreria locale rientra nella
@@ -287,7 +287,14 @@ passa nel registro dei collaudi con la sua prova.
       ciascuno inserisce il proprio Client ID Jamendo e i dati Audius, e attiva
       le sorgenti che vuole usare. È l'architettura alternativa al Client ID
       incorporato richiesta dal gate legale qui sopra, da verificare sui termini
-      vigenti di Jamendo e Audius.
+      vigenti di Jamendo e Audius. **Implementato il 10 ottobre 2026, da
+      collaudare:** benvenuto al primo avvio con «Salta» e invito in Scopri,
+      schermata Sorgenti da Libreria con interruttori, Client ID Jamendo
+      verificato con una richiesta prima del salvataggio e API key Audius
+      facoltativa nell'header; credenziali in expo-secure-store; niente più
+      `.env` per la build, e doctor e release si fermano su una credenziale
+      `EXPO_PUBLIC_*`. La lettura dei termini è nella nota di conformità; la
+      conferma scritta di Jamendo resta nel gate qui sopra.
       **Done:** un APK costruito senza valori `EXPO_PUBLIC_*` funziona con le
       credenziali inserite in app; le credenziali restano sul telefono, fuori da
       log e backup; ogni sorgente si attiva e si disattiva; build, privacy e
@@ -421,7 +428,7 @@ passa nel registro dei collaudi con la sua prova.
 ### Test e toolchain
 
 - [ ] Estendere i test unitari a mutazioni degli store, `formatTime`, shuffle e
-      migrazioni complete. Coperti oggi (136 test): validazione, repeat,
+      migrazioni complete. Coperti oggi (145 test): validazione, repeat,
       cursore per sorgente e paginazione federata con sorgenti finte,
       composizione della federazione (anche di artisti e album), annullamento
       delle richieste e tentativi Jamendo, entità HTML Jamendo, budget di
@@ -429,8 +436,10 @@ passa nel registro dei collaudi con la sua prova.
       del player, politica di lettura del progresso, potatura della cache,
       dati Audius esclusi dal disco, migrazioni dello storage fino alla 4, ricerche recenti, geometria del
       riordino, prossimo brano, albero per Android Auto, regola dell'audit
-      delle dipendenze, elenco delle sorgenti con descrizione e attribuzione e
-      versione della cache di Metro.
+      delle dipendenze, elenco delle sorgenti con descrizione e attribuzione,
+      versione della cache di Metro, sorgenti accese e credenziali, verifica
+      del Client ID Jamendo, API key Audius solo nell'header e nessuna
+      variabile `EXPO_PUBLIC_*` letta dal codice dell'app.
 
 - [ ] Portare nel repository test deterministici della federazione con fetch
       mockato; la composizione e la propagazione degli errori sono già coperte da

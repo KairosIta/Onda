@@ -17,9 +17,10 @@
 
 > [!IMPORTANT]
 > Questo repository pubblica il sorgente, non un APK ufficiale. Ogni persona
-> crea sul proprio computer una copia personale con il proprio Client ID
-> Jamendo. L'APK risultante usa una firma personale locale ed è destinato ai dispositivi
-> di chi lo compila, non alla ridistribuzione.
+> crea sul proprio computer una copia personale e inserisce nell'app il proprio
+> Client ID Jamendo: Onda non incorpora credenziali. L'APK risultante usa una
+> firma personale locale ed è destinato ai dispositivi di chi lo compila, non
+> alla ridistribuzione.
 
 ## Cosa fa Onda
 
@@ -62,9 +63,10 @@ non cambiare la visibilità del repository e non creare una release GitHub.
 ```
 
 L'agente può installare software di sistema solo dopo la tua autorizzazione.
-Quando richiesto, crea gratuitamente un'app nel
-[portale Jamendo](https://devportal.jamendo.com/) e inserisci personalmente il
-Client ID in `.env`.
+Al primo avvio Onda ti chiede il Client ID Jamendo: crea gratuitamente
+un'applicazione nel [portale Jamendo](https://devportal.jamendo.com/) e
+inserisci il Client ID nell'app. Puoi anche saltare e aggiungerlo dopo da
+Libreria › Sorgenti; Audius funziona da subito.
 
 ## Installazione manuale
 
@@ -79,16 +81,13 @@ Build-Tools 36.0.0 e un dispositivo/emulatore Android. Expo Go non basta.
 git clone https://github.com/KairosIta/Onda.git
 cd Onda
 npm ci
-npm run setup:personal
-```
-
-Apri `.env`, sostituisci il valore di esempio con il tuo Client ID Jamendo e
-poi esegui:
-
-```bash
 npm run doctor
 npm run install:personal
 ```
+
+Al primo avvio Onda chiede il tuo Client ID Jamendo, che crei gratuitamente nel
+[portale Jamendo](https://devportal.jamendo.com/). Resta cifrato sul telefono e
+si cambia da Libreria › Sorgenti.
 
 Senza dispositivo collegato puoi creare soltanto l'APK:
 
@@ -103,7 +102,8 @@ PowerShell, debug USB ed errori comuni, è in
 ## Stato e limiti
 
 - Solo Android; nessun APK o store ufficiale.
-- Jamendo richiede un Client ID personale, incorporato nella propria build.
+- Jamendo richiede un Client ID personale, inserito nell'app; Audius funziona
+  senza credenziali.
 - Gli album sono disponibili solo per i brani Jamendo.
 - Nessun ascolto offline.
 - Le novità di settembre 2026 (home a sezioni, ricerca di artisti e album,

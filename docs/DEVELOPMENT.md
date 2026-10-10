@@ -15,7 +15,6 @@ guida dedicata [BUILD_PERSONAL.md](BUILD_PERSONAL.md). I comandi canonici sono:
 
 ```bash
 npm ci
-npm run setup:personal
 npm run doctor
 npm run install:personal
 ```
@@ -28,7 +27,7 @@ Le sezioni sotto spiegano l'ambiente di sviluppo e la pipeline del maintainer.
 - **JDK 17** (non JDK 21)
 - **Android SDK 36** con build-tools 36.0.0
 - un dispositivo Android con debug USB, oppure un emulatore
-- un Client ID gratuito di Jamendo
+- un Client ID gratuito di Jamendo, da inserire nell'app al primo avvio
 
 > [!IMPORTANT]
 > Expo Go non è sufficiente: il player e lo storage usano moduli nativi.
@@ -38,18 +37,12 @@ Le sezioni sotto spiegano l'ambiente di sviluppo e la pipeline del maintainer.
 
 ```bash
 npm ci
-npm run setup:personal
-```
-
-Apri `.env` e inserisci il Client ID ottenuto dal
-[portale sviluppatori Jamendo](https://devportal.jamendo.com/), quindi:
-
-```bash
-npm run smoke
 npx expo run:android
 ```
 
-Al termine Onda verrà installata e avviata sul dispositivo collegato. Dagli
+Al termine Onda verrà installata e avviata sul dispositivo collegato: al primo
+avvio chiede il Client ID ottenuto dal
+[portale sviluppatori Jamendo](https://devportal.jamendo.com/). Dagli
 avvii successivi basta eseguire `npm start` e aprire l'app già installata.
 
 <details>
@@ -69,13 +62,22 @@ autorizzato.
 
 ### Credenziali
 
-- **Jamendo** — registrati sul portale sviluppatori, crea un'applicazione,
-  copia il Client ID in `.env`.
-- **Audius** — non serve una chiave per le operazioni di sola lettura usate da
-  Onda. `app_name` è soltanto un'etichetta identificativa, non un segreto.
+Onda non incorpora credenziali: le inserisce ogni persona nell'app, al primo
+avvio o da Libreria › Sorgenti.
 
-`.env` è in `.gitignore`. Le variabili `EXPO_PUBLIC_*` finiscono comunque nel
-bundle: non devono contenere segreti destinati a una distribuzione pubblica.
+- **Jamendo** — registrati sul portale sviluppatori, crea un'applicazione e
+  inserisci il Client ID nell'app, che lo verifica con una richiesta prima di
+  salvarlo. Senza, Jamendo resta spento.
+- **Audius** — non serve una chiave per le operazioni di sola lettura usate da
+  Onda. `app_name` (`Onda`, nel codice) è soltanto un'etichetta identificativa.
+  Una API key dell'utente è facoltativa e viaggia nell'header `x-api-key`, mai
+  nell'URL.
+
+Le credenziali stanno in expo-secure-store, cifrate con una chiave del Keystore
+(`services/credentials`). Non usare variabili `EXPO_PUBLIC_*` per credenziali:
+finirebbero in chiaro nel bundle, e doctor e release si fermano se ne trovano
+una. Per `npm run smoke` il Client ID si passa come `JAMENDO_CLIENT_ID`,
+nell'ambiente o in `.env`.
 
 ## Architettura
 
@@ -101,11 +103,16 @@ app/
   playlist/[id].tsx         playlist locale, con rinomina e riordino
   artist/[source]/[id].tsx  pagina artista (entrambe le sorgenti)
   album/[source]/[id].tsx   pagina album (solo Jamendo, vedi sotto)
+  welcome.tsx               primo avvio: le sorgenti e il Client ID Jamendo, con «Salta»
+  sources.tsx               Sorgenti (da Libreria): interruttori e credenziali
   +not-found.tsx            URL che non corrisponde a niente: messaggio e ritorno a Scopri
 src/
   types/track.ts            modello unificato, interfaccia MusicSource, SOURCE_IDS (l'elenco delle sorgenti)
   services/sources/         adapter Audius e Jamendo + registro federato (brani, vetrine, artisti, album)
   services/sources/meta.ts  nome, sigla e attribuzione di ogni sorgente (puro)
+  services/sources/access.ts  come le sorgenti leggono interruttori e credenziali, senza Keystore ne' MMKV
+  services/sourceSettings.ts  regole su sorgenti accese, credenziali e verifica Jamendo (puro)
+  services/credentials.ts   Client ID Jamendo e API key Audius in expo-secure-store (Keystore)
   services/genres.ts        unica tabella di traduzione dei generi tra le due API
   services/storage.ts       istanza MMKV + lettura JSON sicura e scrittura
   services/storageSchema.ts versione dello schema, migrazioni con backup, quarantena (puro)
@@ -129,6 +136,7 @@ src/
   store/notificationPermission.ts  stato del permesso notifiche, chiesto al primo play
   store/sleepTimer.ts       timer di spegnimento (volatile, di proposito)
   store/searchHistory.ts    le ultime ricerche (persistite); la regola in utils/recentQueries.ts
+  store/sources.ts          interruttori, benvenuto e invito (persistiti) + credenziali; collega le sorgenti
   hooks/useQueue.ts         sostituzione coda, riproduci dopo, accoda
   hooks/usePlaybackStatus.ts  lo stato del player come hook
   hooks/useUpNext.ts        cosa viene dopo il brano corrente; la regola in utils/upNext.ts
@@ -144,6 +152,7 @@ src/
   components/EntityStrip.tsx  vetrina di artisti o album nei risultati di ricerca
   components/GenreGrid.tsx  la griglia dei generi, ognuno con la sua pagina
   components/Snackbar.tsx   avviso in basso con un'azione (Annulla), al posto dei toast
+  components/SourceCredentials.tsx  moduli per Client ID Jamendo e API key Audius, condivisi da benvenuto e Sorgenti
   services/haptics.ts       feedback tattile di sistema: l'unico file che parla con expo-haptics
   theme.ts                  palette, spaziature, tipografia (Manrope), molla condivisa
 assets/fonts/               Manrope (SIL OFL 1.1), incorporata dal plugin expo-font come famiglia XML
@@ -351,7 +360,9 @@ Rimuovere l'eccezione non appena Metro/Expo pubblica una dipendenza corretta
 compatibile con SDK 57.
 
 Gli adapter sono TypeScript puro, senza React Native dentro: girano in Node
-cosi' come sono, contro le API vere e con il tuo `.env`. Lo script controlla
+cosi' come sono, contro le API vere. Il Client ID Jamendo arriva da
+`JAMENDO_CLIENT_ID`, nell'ambiente o in `.env`; senza, Jamendo si salta e lo
+script lo dice. Lo script controlla
 per ogni sorgente ricerca, trending, paginazione, pagine artista e album,
 la federazione, tutti i generi, e chiede agli stream un `Range` per verificare
 che il seek sia possibile.
@@ -448,7 +459,8 @@ npm run release:android
 ```
 
 La pipeline accetta soltanto un worktree pulito e usa sempre `NODE_ENV=production`.
-Prima di costruire controlla `.env`, Client ID Jamendo, JDK 17, Android SDK 36,
+Prima di costruire controlla che nessuna credenziale `EXPO_PUBLIC_*` sia
+definita, JDK 17, Android SDK 36,
 le quattro proprieta' di firma e il file del keystore. Poi esegue test,
 typecheck, ESLint, Prettier, prebuild Android pulito, Android Lint e Gradle.
 
@@ -698,10 +710,10 @@ Serve un `.aab`, non un APK:
 cd android && ./gradlew bundleRelease
 ```
 
-Alza `versionCode` in `app.json` a ogni caricamento. E ricordati che il
-`client_id` Jamendo e' inlinato nel bundle (`EXPO_PUBLIC_*`): prima di
-pubblicare va spostato dietro un proxy, e la API gratuita Jamendo e' comunque
-solo per uso non commerciale.
+Alza `versionCode` in `app.json` a ogni caricamento. Il Client ID Jamendo non
+e' nel bundle, lo inserisce ogni persona in app; la API gratuita Jamendo resta
+comunque solo per uso non commerciale, e una distribuzione richiede prima le
+conferme della [nota di conformità](RELEASE_COMPLIANCE.md).
 
 ---
 
@@ -829,11 +841,25 @@ un `AbortError` che nessuno mostra. Una sorgente nuova deve passare
 
 **La cache di Metro segue i valori `EXPO_PUBLIC_*`.** babel-preset-expo li
 scrive dentro il codice trasformato, ma la chiave della cache di Metro non li
-considerava: dopo un cambio del Client ID in `.env` il bundle successivo
-poteva portare quello vecchio. `metro.config.js` estende la configurazione di
+considerava: quando il Client ID Jamendo stava in `.env`, dopo un suo cambio
+il bundle successivo poteva portare quello vecchio. `metro.config.js` estende la configurazione di
 Expo e mette in `cacheVersion` un'impronta di quei valori
 (`scripts/metro-cache-version.cjs`): la cache si rinnova quando cambiano,
 resta valida quando sono uguali e non serve svuotarla a mano.
+
+**Le credenziali le inserisce la persona, in app.** L'APK non ne contiene:
+Client ID Jamendo e API key Audius stanno in expo-secure-store
+(`services/credentials`), con `configureAndroidBackup: false` perche' il backup
+di Onda e' gia' disabilitato e le sue regole non vanno toccate. Gli adapter non
+importano Keystore ne' MMKV: chiedono interruttori e credenziali a
+`services/sources/access`, che `store/sources` collega all'avvio (lo importa il
+layout radice) e che i test e `npm run smoke` collegano a valori finti. Senza
+collegamento non lavora nessuna sorgente. La credenziale si legge a ogni
+richiesta, quindi una cambiata vale subito; dopo ogni cambio di interruttori o
+credenziali le query si azzerano (`resetQueries`), cosi' gli elenchi non
+mostrano una sorgente appena spenta. Il primo avvio passa da `welcome.tsx`;
+chi salta trova in Scopri un invito finche' non configura Jamendo o non lo
+chiude (`showJamendoInvite`).
 
 **Il timer di spegnimento non e' persistito.** Un timer sopravvissuto al
 riavvio metterebbe in pausa la musica senza che nessuno capisca perche'.
