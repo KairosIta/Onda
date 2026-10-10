@@ -86,9 +86,10 @@ passa nel registro dei collaudi con la sua prova.
       termini API ammettono solo una cache di sessione. Profili e album Audius
       restano fuori; gli elenchi federati tornano con i soli brani Jamendo e si
       ricaricano subito (`SESSION_ONLY_SOURCES`, tre test), e la migrazione
-      3 → 4 toglie i dati salvati prima, anche dal backup. Da collaudare: alla
-      riapertura trending e vetrine mostrano i brani Jamendo e si completano
-      con quelli Audius appena risponde la rete.
+      3 → 4 toglie i dati salvati prima, anche dal backup. Collaudato il 10
+      ottobre 2026 su device (vedi il registro dei collaudi): migrazione
+      eseguita sui dati esistenti, vetrina riaperta a rete spenta con i soli
+      brani Jamendo e completa con la rete.
 
 ### Riproduzione
 

@@ -46,6 +46,14 @@ Build personale del branch della PR #30, all'ultimo commit di codice
       `npm run build:personal` di fila senza svuotare la cache, la prima con
       un Client ID finto e la seconda con quello di `.env`. Ogni APK contiene
       solo il proprio valore.
+- [x] Cache di sessione per Audius, con la build del branch della PR #41
+      (`d5d081f`) installata sopra la precedente, dati compresi. Al primo
+      avvio il log riporta la migrazione dello storage 3 → 4
+      (`query-cache.v1: via i dati Audius`). Riaperta a rete spenta, la
+      vetrina «In ascesa questa settimana» torna da disco con i soli brani
+      Jamendo, mentre «Ascoltati di recente» e il mini-player conservano il
+      brano Audius della libreria. Con la rete la vetrina torna con brani di
+      entrambe le sorgenti.
 
 ### Verificato il 9 ottobre 2026, senza device
 
