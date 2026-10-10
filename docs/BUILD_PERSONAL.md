@@ -22,6 +22,10 @@ non è compatibile con i moduli nativi usati da Onda.
 Configura `ANDROID_HOME` verso il tuo SDK; il percorso Android Studio più comune
 è `$HOME/Android/Sdk`.
 
+Su Debian 13 e derivate `apt` offre solo OpenJDK 21 e 25: installa Temurin 17
+da [Adoptium](https://adoptium.net/temurin/releases/?version=17), come archivio
+nella home o dal loro repository apt, e punta `JAVA_HOME` lì.
+
 ```bash
 git clone https://github.com/KairosIta/Onda.git
 cd Onda
@@ -98,6 +102,12 @@ nell'APK: usa solo il tuo identificativo personale e non considerarlo segreto.
 
 **Java non è 17.** Correggi `JAVA_HOME` o la priorità nel `PATH`. Versioni più
 nuove non sono considerate equivalenti dalla pipeline verificata.
+
+**`sdkmanager` segnala di essere deprecato.** Dalle command-line tools 23
+Google lo sostituisce con «Android CLI», nella stessa cartella:
+`android sdk install platform-tools "platforms;android-36" "build-tools;36.0.0"`.
+`sdkmanager` funziona ancora; il nuovo strumento non chiede di accettare la
+licenza a schermo, ma la registra in `licenses/` durante l'installazione.
 
 **SDK non trovato.** Imposta `ANDROID_HOME` alla directory dello SDK e riapri
 il terminale. Installa esattamente `platforms;android-36` e
