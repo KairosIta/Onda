@@ -298,23 +298,6 @@ passa nel registro dei collaudi con la sua prova.
       **Done:** azione Riprova, controlli disabilitati finché il player non è
       pronto e diagnostica tecnica copiabile.
 
-- [ ] **Completare il collaudo della paginazione dopo un guasto parziale.**
-      **Implementato il 9 ottobre 2026, da collaudare**: il cursore e' per
-      sorgente (`SourceCursor` in `services/sources/federation.ts`). Prima
-      l'offset era uno solo e una sorgente caduta lo fermava per tutte: con
-      Jamendo giu' a lungo ogni scroll richiedeva ad Audius la stessa pagina e
-      l'elenco restava ai primi venti brani. Ora chi risponde avanza, chi cade
-      richiede la sua stessa pagina alla volta dopo e, quando torna, riparte da
-      dove era. Test deterministici con sorgenti finte: Jamendo giu' per sempre
-      (Audius arriva in fondo), Jamendo giu' e poi di nuovo su (75 brani su 75,
-      nessun doppione, ordine del catalogo), artista con una richiesta caduta.
-      La migrazione 2 → 3 toglie dalla cache su disco gli elenchi salvati con
-      l'offset unico. Manca la prova su device, per esempio con un Client ID
-      Jamendo volutamente sbagliato: lo scroll di Scopri deve andare oltre i
-      primi venti brani con l'avviso «Jamendo non risponde» sempre visibile.
-      **Done:** cursore per sorgente o retry reale dello stesso offset, nessun buco
-      o duplicato, stato corrente del banner e test deterministico caduta/rientro.
-
 ### Dati locali
 
 - [ ] **Risoluzione fresca degli stream Jamendo salvati.** Preferiti e
@@ -401,15 +384,15 @@ passa nel registro dei collaudi con la sua prova.
 ### Test e toolchain
 
 - [ ] Estendere i test unitari a mutazioni degli store, `formatTime`, shuffle e
-      migrazioni complete. Coperti oggi (123 test): validazione, repeat,
+      migrazioni complete. Coperti oggi (128 test): validazione, repeat,
       cursore per sorgente e paginazione federata con sorgenti finte,
       composizione della federazione (anche di artisti e album), annullamento
       delle richieste e tentativi Jamendo, entità HTML Jamendo, budget di
       salti, export/import, riepilogo della coda, sessione di ascolto, stato
       del player, politica di lettura del progresso, potatura della cache,
       migrazioni dello storage fino alla 3, ricerche recenti, geometria del
-      riordino, prossimo brano, albero per Android Auto e regola dell'audit
-      delle dipendenze.
+      riordino, prossimo brano, albero per Android Auto, regola dell'audit
+      delle dipendenze ed elenco delle sorgenti con descrizione e attribuzione.
 
 - [ ] Portare nel repository test deterministici della federazione con fetch
       mockato; la composizione e la propagazione degli errori sono già coperte da
@@ -418,6 +401,14 @@ passa nel registro dei collaudi con la sua prova.
       di Jamendo hanno test con `fetch` finto; manca ancora il parsing completo
       delle risposte Audius e Jamendo.
 
+- [ ] Svuotare la cache di Metro prima del bundle nella build personale e in
+      quella di release. La cache delle trasformazioni (`metro-cache` in
+      `os.tmpdir()`) conserva i valori `EXPO_PUBLIC_*` già scritti nel codice:
+      chi corregge il Client ID Jamendo in `.env` e ricompila può ritrovarsi
+      nell'APK quello vecchio, senza nessun avviso. Confermato il 10 ottobre
+      2026 su una build reale (registro dei collaudi).
+      **Done:** gli script svuotano la cache, o passano `--reset-cache`, prima
+      del bundle, e una build dopo un cambio di `.env` porta il valore nuovo.
 - [ ] Rivedere entro il 15 gennaio 2027 le eccezioni dichiarate in
       `scripts/audit-policy.ts` (`braces` e `node-forge`, senza versione
       corretta al 9 ottobre 2026): dopo quella data `npm run check:audit` torna

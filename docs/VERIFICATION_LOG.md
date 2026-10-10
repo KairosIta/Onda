@@ -12,6 +12,34 @@ date, misure, conteggi di test e nomi di file si riferiscono a quel momento.
 
 ## Baseline verificata
 
+### Verificato il 10 ottobre 2026 su Motorola Edge 50 Neo, Android 16
+
+Build personale da un computer nuovo, dal branch della PR #29 al commit
+`c70c976`.
+
+- [x] Ambiente da zero su Debian 13: Temurin 17.0.20.1 e Android SDK
+      (command-line tools 23, platform-tools 37.0.1, Platform 36,
+      Build-Tools 36.0.0) installati nella home, senza sudo; `npm ci` e
+      `npm run doctor` verdi. Debian 13 non ha OpenJDK 17 in apt (solo 21 e 25) e le command-line tools 23 sostituiscono `sdkmanager` con «Android
+      CLI», che registra da solo la licenza dell'SDK in `licenses/`.
+- [x] `npm run install:personal` completo: test, typecheck, ESLint,
+      Prettier, prebuild, Android Lint, APK da 55.468.617 byte e
+      installazione; `npm run check:installed` conferma `0.2.0+c70c976` sul
+      telefono. La copia precedente, firmata con la chiave di un altro
+      computer, è stata disinstallata con i suoi dati locali per scelta: la
+      migrazione 2 → 3 non è stata esercitata su dati veri.
+- [x] Jamendo guasto, con un Client ID finto passato da terminale: in Scopri
+      compare l'avviso «Jamendo non risponde» e lo scroll di «Di tendenza» va
+      oltre i primi venti brani con le pagine di Audius. È la prova su device
+      del cursore per sorgente.
+- [x] Trovato durante la stessa prova: la cache delle trasformazioni di Metro
+      (`/tmp/metro-cache`) conserva i valori `EXPO_PUBLIC_*` della build
+      precedente. A cache intatta la build con il Client ID finto conteneva
+      ancora quello vero; a cache svuotata il bundle aveva quello finto, e la
+      build normale successiva, di nuovo a cache svuotata, quello vero.
+      Verificato contando le occorrenze nell'APK, senza stamparle. Voce
+      aperta in P2.
+
 ### Verificato il 9 ottobre 2026, senza device
 
 Controlli automatici della PR #29: cursore per sorgente, annullamento delle
@@ -267,6 +295,26 @@ stati verificati successivamente.
       blocca e il tasto diventa Impostazioni, che apre la pagina dell'app;
       concesso da lì e tornati indietro l'avviso sparisce e la notifica media
       compare.
+
+- [x] **Completare il collaudo della paginazione dopo un guasto parziale.**
+      **Chiusa il 10 ottobre 2026.** Implementata il 9: il cursore e' per
+      sorgente (`SourceCursor` in `services/sources/federation.ts`). Prima
+      l'offset era uno solo e una sorgente caduta lo fermava per tutte: con
+      Jamendo giu' a lungo ogni scroll richiedeva ad Audius la stessa pagina e
+      l'elenco restava ai primi venti brani. Ora chi risponde avanza, chi cade
+      richiede la sua stessa pagina alla volta dopo e, quando torna, riparte da
+      dove era. Test deterministici con sorgenti finte: Jamendo giu' per sempre
+      (Audius arriva in fondo), Jamendo giu' e poi di nuovo su (75 brani su 75,
+      nessun doppione, ordine del catalogo), artista con una richiesta caduta.
+      La migrazione 2 → 3 toglie dalla cache su disco gli elenchi salvati con
+      l'offset unico. **Verificato su device il 10 ottobre 2026** (Motorola
+      Edge 50 Neo, Android 16, build `0.2.0+c70c976` con un Client ID Jamendo
+      volutamente sbagliato): l'avviso «Jamendo non risponde» compare e resta
+      visibile, e lo scroll di «Di tendenza» va oltre i primi venti brani con
+      le pagine di Audius. Il rientro di Jamendo dopo il guasto resta coperto
+      dal test deterministico.
+      **Done:** cursore per sorgente o retry reale dello stesso offset, nessun buco
+      o duplicato, stato corrente del banner e test deterministico caduta/rientro.
 
 #### Dati locali
 
