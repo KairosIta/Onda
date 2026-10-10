@@ -5,6 +5,24 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Expo, React Native e i moduli nativi di cui l'SDK fissa la versione
+    # (expo/bundledNativeModules.json) si aggiornano tutti insieme con
+    # `npx expo install --fix` o con il passaggio di SDK: un aggiornamento
+    # isolato fa fallire expo-doctor o `npm ci`.
+    ignore:
+      - dependency-name: expo
+      - dependency-name: expo-*
+      - dependency-name: '@expo/*'
+      - dependency-name: eslint-config-expo
+      - dependency-name: react
+      - dependency-name: react-dom
+      - dependency-name: react-native
+      - dependency-name: react-native-gesture-handler
+      - dependency-name: react-native-reanimated
+      - dependency-name: react-native-safe-area-context
+      - dependency-name: react-native-screens
+      - dependency-name: react-native-worklets
+      - dependency-name: '@react-native-community/slider'
   - package-ecosystem: github-actions
     directory: /
     schedule:
