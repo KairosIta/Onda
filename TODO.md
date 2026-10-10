@@ -228,6 +228,13 @@ passa nel registro dei collaudi con la sua prova.
 - [x] Modello source-only: nessun APK/AAB pubblico e nessuna pubblicazione su
       store.
 - [x] Splash e privacy policy in-app sono implementati e verificati.
+- [x] Nessuna credenziale nell'APK: al primo avvio un benvenuto chiede il
+      Client ID Jamendo, che si può saltare e che un invito in Scopri ricorda;
+      la schermata Sorgenti, da Libreria, accende e spegne Audius e Jamendo, e
+      le credenziali stanno in expo-secure-store. Una sorgente spenta esce dal
+      catalogo e dalla riproduzione, mentre i suoi brani restano in Libreria.
+      **Collaudato il 10 ottobre 2026** su Motorola Edge 50 Neo, Android 16
+      (registro dei collaudi).
 - [x] Workflow CI Ubuntu/Windows e build personale manuale configurati ed
       eseguiti su GitHub: la build personale completa è passata su Ubuntu e
       Windows il 22 agosto 2026, la CI gira a ogni push su `main` e a ogni PR.
@@ -256,7 +263,8 @@ passa nel registro dei collaudi con la sua prova.
       non i cataloghi. La nota di conformità versionata registra fonti,
       attribuzioni implementate, profilo non commerciale e richieste pronte per
       i fornitori. La build federata resta bloccata: Jamendo deve confermare il
-      modello con il Client ID inserito da ogni utente (voce qui sotto); per Audius va
+      modello con il Client ID inserito da ogni utente (implementato e
+      collaudato il 10 ottobre 2026, vedi il registro dei collaudi); per Audius va
       archiviata la copia leggibile degli API Terms (il PDF del 2 luglio 2025,
       leggibile dal 10 ottobre 2026), confermata la rappresentazione dei valori
       di attribuzione mancanti e chiarito se la libreria locale rientra nella
@@ -281,24 +289,6 @@ passa nel registro dei collaudi con la sua prova.
       licenza che vieti la distribuzione; riproduzione in background, notifica,
       coda, ripresa della sessione, sleep timer e Android Auto collaudati su
       device; `THIRD_PARTY_CONTENT.md` e `docs/RELEASE_COMPLIANCE.md` aggiornati.
-
-- [ ] **Credenziali inserite dall'utente.** Un APK pubblico non deve contenere
-      credenziali: Onda parte senza Client ID incorporati e in Impostazioni
-      ciascuno inserisce il proprio Client ID Jamendo e i dati Audius, e attiva
-      le sorgenti che vuole usare. È l'architettura alternativa al Client ID
-      incorporato richiesta dal gate legale qui sopra, da verificare sui termini
-      vigenti di Jamendo e Audius. **Implementato il 10 ottobre 2026, da
-      collaudare:** benvenuto al primo avvio con «Salta» e invito in Scopri,
-      schermata Sorgenti da Libreria con interruttori, Client ID Jamendo
-      verificato con una richiesta prima del salvataggio e API key Audius
-      facoltativa nell'header; credenziali in expo-secure-store; niente più
-      `.env` per la build, e doctor e release si fermano su una credenziale
-      `EXPO_PUBLIC_*`. La lettura dei termini è nella nota di conformità; la
-      conferma scritta di Jamendo resta nel gate qui sopra.
-      **Done:** un APK costruito senza valori `EXPO_PUBLIC_*` funziona con le
-      credenziali inserite in app; le credenziali restano sul telefono, fuori da
-      log e backup; ogni sorgente si attiva e si disattiva; build, privacy e
-      nota di conformità documentano il nuovo flusso.
 
 - [ ] **Definire privacy e backup Android.** La libreria è locale, ma una
       release Android può includere MMKV nel backup di sistema. Backup disabilitato
@@ -428,7 +418,7 @@ passa nel registro dei collaudi con la sua prova.
 ### Test e toolchain
 
 - [ ] Estendere i test unitari a mutazioni degli store, `formatTime`, shuffle e
-      migrazioni complete. Coperti oggi (145 test): validazione, repeat,
+      migrazioni complete. Coperti oggi (149 test): validazione, repeat,
       cursore per sorgente e paginazione federata con sorgenti finte,
       composizione della federazione (anche di artisti e album), annullamento
       delle richieste e tentativi Jamendo, entità HTML Jamendo, budget di
@@ -438,8 +428,9 @@ passa nel registro dei collaudi con la sua prova.
       riordino, prossimo brano, albero per Android Auto, regola dell'audit
       delle dipendenze, elenco delle sorgenti con descrizione e attribuzione,
       versione della cache di Metro, sorgenti accese e credenziali, verifica
-      del Client ID Jamendo, API key Audius solo nell'header e nessuna
-      variabile `EXPO_PUBLIC_*` letta dal codice dell'app.
+      del Client ID Jamendo, API key Audius solo nell'header, brani di una
+      sorgente spenta fuori dalla coda e da Android Auto e nessuna variabile
+      `EXPO_PUBLIC_*` letta dal codice dell'app.
 
 - [ ] Portare nel repository test deterministici della federazione con fetch
       mockato; la composizione e la propagazione degli errori sono già coperte da

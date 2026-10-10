@@ -54,6 +54,31 @@ Build personale del branch della PR #30, all'ultimo commit di codice
       Jamendo, mentre «Ascoltati di recente» e il mini-player conservano il
       brano Audius della libreria. Con la rete la vetrina torna con brani di
       entrambe le sorgenti.
+- [x] Credenziali inserite dall'utente, con la build del branch della PR #42
+      (`7969cda`) installata sopra la precedente, dati compresi, e nessun
+      `.env` nel progetto: `npm run doctor` verde anche su «Credenziali nel
+      bundle». Al primo avvio compare il benvenuto e la Libreria resta intatta.
+      Un Client ID inventato viene rifiutato; quello vero si salva, compare
+      mascherato e porta Jamendo in Scopri. Superati anche gli interruttori di
+      Audius e Jamendo, l'invito in Scopri (compare togliendo il Client ID, si
+      chiude e non torna) e il riavvio dell'app.
+- [x] Nel bundle Hermes di quell'APK non resta nessuna variabile
+      `EXPO_PUBLIC_` di Onda: l'unica è `EXPO_PUBLIC_USE_RN_FETCH_PREVIEW_ENABLED`
+      di Expo, presente anche nella build precedente. Compaiono i nomi delle
+      chiavi del Keystore e l'header `x-api-key`, nessun valore. Il conteggio
+      del Client ID vero nei due APK non è stato eseguito: nel bytecode il
+      valore è una stringa senza contesto, riconoscibile solo da chi lo
+      conosce. Nel log di sistema dell'intera prova (dalle 21:06 alle 22:32,
+      557 righe di Onda) `client_id`, `api.jamendo.com`, `x-api-key` e le
+      chiavi del Keystore compaiono zero volte.
+- [x] Trovato durante la stessa prova: un preferito Jamendo suonava anche con
+      Jamendo spenta, perché il brano salvato porta il proprio stream.
+      Corretto in `55640e4` e riverificato su quella build, con Jamendo e con
+      Audius: i brani della sorgente spenta restano in Libreria attenuati, il
+      tocco mostra l'avviso con «Sorgenti», il menu non offre coda né pagine
+      del catalogo, «Riproduci» li salta, Scopri non li mostra e un brano in
+      riproduzione esce dalla coda allo spegnimento. Riaccesa la sorgente,
+      tornano suonabili.
 
 ### Verificato il 9 ottobre 2026, senza device
 
