@@ -97,7 +97,15 @@ function DiscoverScreen() {
       trendingAll({ limit: PAGE, cursor, signal }),
     );
 
-  const recent = useMemo(() => tracksOf(history.slice(0, 12)), [history]);
+  // Scopri mostra solo cio' che si puo' suonare: i brani di una sorgente
+  // spenta restano in Libreria, attenuati, ma qui sarebbero schede mute.
+  const recent = useMemo(
+    () =>
+      tracksOf(history)
+        .filter((t) => active[t.source])
+        .slice(0, 12),
+    [history, active],
+  );
 
   /**
    * Caduta totale: nessuna sorgente ha risposto.

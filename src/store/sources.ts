@@ -59,13 +59,20 @@ function commit(next: SourceSettings): void {
   publish();
 }
 
-const subscribe = (listener: () => void): (() => void) => {
+/** Per chi non e' un componente: il player e l'albero di Android Auto. */
+export function subscribeSources(listener: () => void): () => void {
   listeners.add(listener);
-  return () => listeners.delete(listener);
-};
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+export function getSources(): SourcesState {
+  return snapshot;
+}
 
 export function useSources(): SourcesState {
-  return useSyncExternalStore(subscribe, () => snapshot);
+  return useSyncExternalStore(subscribeSources, getSources);
 }
 
 export function setSourceEnabled(id: SourceId, enabled: boolean): void {

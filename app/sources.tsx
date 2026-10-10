@@ -51,7 +51,9 @@ export default function SourcesScreen() {
 
       <Text style={styles.lead}>
         Onda riproduce i cataloghi di Audius e Jamendo. Le credenziali che inserisci restano su
-        questo telefono, cifrate, e vanno solo al servizio a cui appartengono.
+        questo telefono, cifrate, e vanno solo al servizio a cui appartengono. Spegnere una sorgente
+        non cancella niente: i suoi brani restano in Libreria e tornano ascoltabili quando la
+        riaccendi.
       </Text>
 
       <View style={styles.section}>

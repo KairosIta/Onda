@@ -1,9 +1,12 @@
+import { useRouter } from 'expo-router';
 import { type ReactElement, useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet } from 'react-native';
 import { type Snack, Snackbar } from './Snackbar';
 import { useQueue } from '@/hooks/useQueue';
+import { SOURCE_META } from '@/services/sources/meta';
 import { remember, useLibrary } from '@/store/library';
 import { useNowPlaying } from '@/store/session';
+import { useSources } from '@/store/sources';
 import { spacing } from '@/theme';
 import type { Track } from '@/types/track';
 import { TrackActions } from './TrackActions';
@@ -35,9 +38,11 @@ export function TrackList({
   onPlay,
   onEndReached,
 }: Props) {
+  const router = useRouter();
   const { playList } = useQueue();
   const { item: active } = useNowPlaying();
   const { favorites } = useLibrary();
+  const { active: activeSources } = useSources();
   const [menuFor, setMenuFor] = useState<Track | null>(null);
   const [snack, setSnack] = useState<Snack | null>(null);
 
@@ -51,8 +56,20 @@ export function TrackList({
   }, [tracks]);
 
   const handlePlay = useCallback(
-    (_track: Track, index: number) => (onPlay ? onPlay(index) : playList(tracks, index)),
-    [onPlay, playList, tracks],
+    (track: Track, index: number) => {
+      // Un preferito o un brano in playlist di una sorgente spenta: si dice
+      // perche' non parte e dove riaccenderla.
+      if (!activeSources[track.source]) {
+        setSnack({
+          message: `${SOURCE_META[track.source].label} è spenta`,
+          action: { label: 'Sorgenti', onPress: () => router.push('/sources') },
+        });
+        return;
+      }
+      if (onPlay) onPlay(index);
+      else playList(tracks, index);
+    },
+    [activeSources, onPlay, playList, router, tracks],
   );
   const handleMore = useCallback((track: Track) => setMenuFor(track), []);
   const closeMenu = useCallback(() => setMenuFor(null), []);
@@ -65,11 +82,12 @@ export function TrackList({
         index={index}
         isActive={active?.mediaId === item.uid}
         isFavorite={favSet.has(item.uid)}
+        unavailable={!activeSources[item.source]}
         onPress={handlePlay}
         onMore={handleMore}
       />
     ),
-    [active?.mediaId, favSet, handleMore, handlePlay],
+    [active?.mediaId, activeSources, favSet, handleMore, handlePlay],
   );
 
   return (

@@ -1,6 +1,7 @@
 import type { BrowseCategory, BrowseItem } from '@rntp/player';
 import type { LibraryState } from '@/store/librarySchema';
 import type { Track } from '@/types/track';
+import type { IsSourceActive } from './playableTracks';
 
 /**
  * L'albero che Android Auto mostra al posto dell'app: preferiti, playlist
@@ -11,6 +12,9 @@ import type { Track } from '@/types/track';
  * Niente `extras`: i brani della libreria si risolvono dall'uid con
  * `resolve`, e un albero da trecento voci con il modello intero dentro
  * ognuna passerebbe il bridge a ogni salvataggio della libreria.
+ *
+ * I brani di una sorgente spenta non ci sono: in macchina partirebbero
+ * dallo stream salvato, senza passare dall'app (vedi `playableTracks`).
  */
 
 /** Tetto per categoria: uno schermo in auto non e' fatto per scorrere a lungo. */
@@ -28,11 +32,11 @@ function playable(t: Track): BrowseItem {
   };
 }
 
-export function buildBrowseTree(library: LibraryState): BrowseCategory[] {
+export function buildBrowseTree(library: LibraryState, isActive: IsSourceActive): BrowseCategory[] {
   const list = (uids: string[]): BrowseItem[] =>
     uids
       .map((uid) => library.tracks[uid])
-      .filter((t): t is Track => Boolean(t))
+      .filter((t): t is Track => Boolean(t) && isActive(t.source))
       .slice(0, BROWSE_MAX_ITEMS)
       .map(playable);
 

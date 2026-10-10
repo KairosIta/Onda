@@ -12,6 +12,11 @@ interface Props {
   index: number;
   isActive?: boolean;
   isFavorite?: boolean;
+  /**
+   * La sorgente del brano e' spenta: la riga resta, attenuata, e il tocco
+   * lo dice invece di suonare (lo decide `onPress` della lista).
+   */
+  unavailable?: boolean;
   onPress: (track: Track, index: number) => void;
   /** Apre il menu contestuale. Ci arriva anche il long press. */
   onMore?: (track: Track) => void;
@@ -33,9 +38,11 @@ export const TrackRow = memo(function TrackRow({
   index,
   isActive = false,
   isFavorite = false,
+  unavailable = false,
   onPress,
   onMore,
 }: Props) {
+  const label = SOURCE_META[track.source].label;
   return (
     <Pressable
       onPress={() => {
@@ -53,11 +60,17 @@ export const TrackRow = memo(function TrackRow({
       delayLongPress={300}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       accessibilityRole="button"
-      accessibilityLabel={`Riproduci ${track.title} di ${track.artist}`}
+      accessibilityLabel={
+        unavailable
+          ? `${track.title} di ${track.artist}, non disponibile: ${label} è spenta`
+          : `Riproduci ${track.title} di ${track.artist}`
+      }
     >
-      <Artwork uri={track.artworkUrl} size={48} recyclingKey={track.uid} fade={false} />
+      <View style={unavailable && styles.off}>
+        <Artwork uri={track.artworkUrl} size={48} recyclingKey={track.uid} fade={false} />
+      </View>
 
-      <View style={styles.meta}>
+      <View style={[styles.meta, unavailable && styles.off]}>
         <Text numberOfLines={1} style={[styles.title, isActive && styles.titleActive]}>
           {track.title}
         </Text>
@@ -100,6 +113,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   pressed: { backgroundColor: colors.surface },
+  off: { opacity: 0.4 },
   iconPressed: { opacity: 0.5 },
   meta: { flex: 1, gap: 2 },
   title: { ...type.body, color: colors.text },

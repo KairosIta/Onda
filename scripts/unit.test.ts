@@ -62,6 +62,7 @@ import { loadLibrary, parseTrack } from '@/store/librarySchema';
 import { loadPlaybackPrefs } from '@/store/playbackSchema';
 import { toMediaItem, trackFromMediaItem } from '@/services/mediaItems';
 import { BROWSE_MAX_ITEMS, buildBrowseTree } from '@/services/browseTree';
+import { inactiveRuns, playableQueue } from '@/services/playableTracks';
 import { RECENT_QUERIES_MAX, dropQuery, loadQueries, pushQuery } from '@/utils/recentQueries';
 import { dropIndex, rowShift } from '@/utils/reorder';
 import { parseCollectionKind, parseEntityId } from '@/utils/routes';
@@ -1235,6 +1236,9 @@ test('la riga Prossimo ha un testo per ogni caso e nessuno per niente', () => {
 
 // --- Android Auto ---------------------------------------------------------
 
+const tutteAttive = () => true;
+const senzaJamendo = (id: string) => id !== 'jamendo';
+
 test('l albero per Android Auto mostra solo cio che c e davvero', () => {
   const lib = conTracce(['a', 'b', 'c'], {
     favorites: ['audius:a', 'audius:zz'],
@@ -1244,7 +1248,7 @@ test('l albero per Android Auto mostra solo cio che c e davvero', () => {
     ],
     history: ['audius:c', 'audius:a'],
   });
-  const tree = buildBrowseTree(lib);
+  const tree = buildBrowseTree(lib, tutteAttive);
   assert.deepEqual(
     tree.map((c) => c.title),
     ['Preferiti', 'Playlist', 'Ascoltati di recente'],
@@ -1261,10 +1265,77 @@ test('l albero per Android Auto mostra solo cio che c e davvero', () => {
 });
 
 test('senza libreria l albero e vuoto e le cartelle hanno un tetto', () => {
-  assert.deepEqual(buildBrowseTree(libreria()), []);
+  assert.deepEqual(buildBrowseTree(libreria(), tutteAttive), []);
   const ids = Array.from({ length: BROWSE_MAX_ITEMS + 20 }, (_, i) => `t${i}`);
   const lib = conTracce(ids, { favorites: ids.map((i) => `audius:${i}`) });
-  assert.equal(buildBrowseTree(lib)[0]?.items.length, BROWSE_MAX_ITEMS);
+  assert.equal(buildBrowseTree(lib, tutteAttive)[0]?.items.length, BROWSE_MAX_ITEMS);
+});
+
+test('in Android Auto non compaiono i brani di una sorgente spenta', () => {
+  const lib = libreria({
+    tracks: {
+      'audius:a': traccia('a'),
+      'jamendo:j': { ...traccia('j'), uid: 'jamendo:j', source: 'jamendo' },
+    },
+    favorites: ['jamendo:j', 'audius:a'],
+    playlists: [{ id: 'p1', name: 'Solo Jamendo', createdAt: 1, trackUids: ['jamendo:j'] }],
+  });
+  const tree = buildBrowseTree(lib, senzaJamendo);
+  assert.deepEqual(
+    tree.map((c) => c.title),
+    ['Preferiti'],
+    'la playlist con soli brani spenti sparisce come una vuota',
+  );
+  assert.deepEqual(
+    tree[0]?.items.map((i) => i.mediaId),
+    ['audius:a'],
+  );
+  assert.equal(buildBrowseTree(lib, tutteAttive)[0]?.items.length, 2, 'riaccesa, torna');
+});
+
+// --- sorgenti spente ------------------------------------------------------
+
+test('una sorgente spenta resta fuori dalla coda e il brano scelto resta quello', () => {
+  const lista = [track('a1'), jamendoTrack('j1'), track('a2'), jamendoTrack('j2')];
+  const q = playableQueue(lista, 2, senzaJamendo);
+  assert.deepEqual(
+    q?.tracks.map((t) => t.uid),
+    ['audius:a1', 'audius:a2'],
+  );
+  assert.equal(q?.tracks[q.index]?.uid, 'audius:a2');
+  assert.deepEqual(playableQueue(lista, 1, tutteAttive), { tracks: lista, index: 1 });
+});
+
+test('partendo da un brano spento si va al primo suonabile dopo, o all ultimo prima', () => {
+  const lista = [track('a1'), jamendoTrack('j1'), track('a2'), jamendoTrack('j2')];
+  const dopo = playableQueue(lista, 1, senzaJamendo);
+  assert.equal(dopo?.tracks[dopo.index]?.uid, 'audius:a2');
+  const inFondo = playableQueue(lista, 3, senzaJamendo);
+  assert.equal(inFondo?.tracks[inFondo.index]?.uid, 'audius:a2');
+  const daCapo = playableQueue([jamendoTrack('j0'), ...lista], 0, senzaJamendo);
+  assert.equal(daCapo?.tracks[daCapo.index]?.uid, 'audius:a1', 'Riproduci parte comunque');
+  assert.equal(playableQueue([jamendoTrack('j1')], 0, senzaJamendo), null);
+  assert.equal(playableQueue([], 0, tutteAttive), null);
+});
+
+test('dal player si tolgono i tratti spenti dall ultimo al primo', () => {
+  assert.deepEqual(
+    inactiveRuns(['audius', 'jamendo', 'jamendo', 'audius', 'jamendo'], senzaJamendo),
+    [
+      [4, 5],
+      [1, 3],
+    ],
+  );
+  assert.deepEqual(
+    inactiveRuns(['jamendo', null, 'jamendo'], senzaJamendo),
+    [
+      [2, 3],
+      [0, 1],
+    ],
+    'un elemento senza sorgente riconoscibile non e nostro e resta',
+  );
+  assert.deepEqual(inactiveRuns(['audius', 'jamendo'], tutteAttive), []);
+  assert.deepEqual(inactiveRuns([], senzaJamendo), []);
 });
 
 // --- federazione generica ------------------------------------------------

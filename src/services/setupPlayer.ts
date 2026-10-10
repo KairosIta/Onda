@@ -1,6 +1,7 @@
 import TrackPlayer, { PlayerCommand } from '@rntp/player';
 import { applyRepeat } from '@/store/playback';
 import { startBrowseTreeSync } from './browseTreeSync';
+import { startSourceGuard } from './sourceGuard';
 import { startProgressObserver } from '@/store/progress';
 import { restoreSession, startSessionPersistence } from '@/store/session';
 import { startForegroundPlaybackListeners } from './playbackService';
@@ -47,6 +48,8 @@ export function setupPlayer(): Promise<void> {
       startSessionPersistence();
       // Per ultima: legge il player, e i listener sopra devono gia' esserci.
       restoreSession();
+      // Una sorgente spenta esce anche dalla riproduzione.
+      startSourceGuard();
       // L'albero per Android Auto: dopo, perche' non serve a nessuna schermata.
       startBrowseTreeSync();
     })

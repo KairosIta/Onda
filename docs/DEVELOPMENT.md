@@ -112,6 +112,8 @@ src/
   services/sources/meta.ts  nome, sigla e attribuzione di ogni sorgente (puro)
   services/sources/access.ts  come le sorgenti leggono interruttori e credenziali, senza Keystore ne' MMKV
   services/sourceSettings.ts  regole su sorgenti accese, credenziali e verifica Jamendo (puro)
+  services/playableTracks.ts  cosa puo' entrare nel player quando una sorgente e' spenta (puro)
+  services/sourceGuard.ts   toglie dalla riproduzione i brani di una sorgente appena spenta
   services/credentials.ts   Client ID Jamendo e API key Audius in expo-secure-store (Keystore)
   services/genres.ts        unica tabella di traduzione dei generi tra le due API
   services/storage.ts       istanza MMKV + lettura JSON sicura e scrittura
@@ -860,6 +862,17 @@ credenziali le query si azzerano (`resetQueries`), cosi' gli elenchi non
 mostrano una sorgente appena spenta. Il primo avvio passa da `welcome.tsx`;
 chi salta trova in Scopri un invito finche' non configura Jamendo o non lo
 chiude (`showJamendoInvite`).
+
+**Spegnere una sorgente non tocca la Libreria, ma la riproduzione si.** Un
+brano salvato porta con se' il suo stream, e prima bastava quello a farlo
+suonare: un preferito Jamendo partiva anche a Jamendo spenta. Ora preferiti,
+playlist e cronologia lo tengono, attenuato, e tornano a suonarlo quando la
+sorgente si riaccende; ma il player non lo riceve da nessuna strada.
+`useQueue` e la coda ripristinata passano da `playableQueue`, l'albero di
+Android Auto lo esclude, e `sourceGuard` toglie dalla coda del player e da
+quella in attesa i brani della sorgente appena spenta. Il tocco su una riga
+spenta mostra un avviso con il collegamento a Sorgenti, e il menu del brano
+offre solo preferiti, playlist e Sorgenti.
 
 **Il timer di spegnimento non e' persistito.** Un timer sopravvissuto al
 riavvio metterebbe in pausa la musica senza che nessuno capisca perche'.

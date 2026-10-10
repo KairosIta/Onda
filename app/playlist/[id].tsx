@@ -17,6 +17,7 @@ import {
   tracksOf,
   useLibrary,
 } from '@/store/library';
+import { useSources } from '@/store/sources';
 import { colors, motion, radius, spacing, touch, type } from '@/theme';
 import { shuffled } from '@/utils/shuffle';
 
@@ -25,6 +26,7 @@ export default function PlaylistScreen() {
   const router = useRouter();
   const { playlists } = useLibrary();
   const { playList } = useQueue();
+  const { active } = useSources();
 
   const [editing, setEditing] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -32,6 +34,8 @@ export default function PlaylistScreen() {
 
   const playlist = playlists.find((p) => p.id === id);
   const tracks = useMemo(() => tracksOf(playlist?.trackUids ?? []), [playlist?.trackUids]);
+  // Riproduci e Casuale si spengono se nessun brano e' di una sorgente attiva.
+  const playable = tracks.filter((t) => active[t.source]).length;
 
   if (!playlist) {
     return (
@@ -80,7 +84,7 @@ export default function PlaylistScreen() {
     <CollectionHeader
       title={playlist.name}
       subtitle={`${tracks.length} ${tracks.length === 1 ? 'brano' : 'brani'}`}
-      count={tracks.length}
+      count={playable}
       onPlay={() => playList(tracks, 0)}
       onShuffle={() => playList(shuffled(tracks), 0)}
       actions={
