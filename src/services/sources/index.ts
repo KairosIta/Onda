@@ -1,11 +1,12 @@
-import type {
-  AlbumInfo,
-  ArtistInfo,
-  ListParams,
-  MusicSource,
-  SourceId,
-  SpotlightKind,
-  Track,
+import {
+  type AlbumInfo,
+  type ArtistInfo,
+  isSourceId,
+  type ListParams,
+  type MusicSource,
+  type SourceId,
+  type SpotlightKind,
+  type Track,
 } from '@/types/track';
 import { genreFor } from '../genres';
 import { audiusSource } from './audius';
@@ -18,6 +19,7 @@ import {
   type SourceOutcome,
 } from './federation';
 import { jamendoSource } from './jamendo';
+import { joinLabels } from './meta';
 
 export type { FederatedPage, FederatedResult } from './federation';
 
@@ -37,12 +39,18 @@ export const SOURCES: Record<SourceId, { source: MusicSource; enabled: boolean }
  * catalogo. Le schermate trattano gia' `undefined` come sorgente ignota.
  */
 export const sourceById = (id: string): MusicSource | undefined =>
-  (id === 'audius' || id === 'jamendo') && SOURCES[id].enabled ? SOURCES[id].source : undefined;
+  isSourceId(id) && SOURCES[id].enabled ? SOURCES[id].source : undefined;
 
 const active = (): MusicSource[] =>
   Object.values(SOURCES)
     .filter((s) => s.enabled)
     .map((s) => s.source);
+
+/**
+ * Le sorgenti accese, per nome: «Audius e Jamendo». Per i testi che le
+ * nominano, che cosi' non mentono quando una si spegne nel registro.
+ */
+export const activeSourceLabels = (): string => joinLabels(active().map((s) => s.label));
 
 /**
  * `call` ritorna `null` per una sorgente che non offre quella funzione:

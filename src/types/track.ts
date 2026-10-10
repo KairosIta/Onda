@@ -3,7 +3,19 @@
  * tutto quello che entra nell'app passa prima da qui.
  */
 
-export type SourceId = 'audius' | 'jamendo';
+/**
+ * Le sorgenti conosciute: l'unico elenco scritto a mano. Il tipo
+ * `SourceId`, la validazione dei dati salvati e la lettura degli uid ne
+ * derivano. Una sorgente nuova comincia da qui, e da qui TypeScript indica
+ * ogni tabella a cui manca: il registro (`sources/index.ts`), la
+ * descrizione con sigla e attribuzione (`sources/meta.ts`) e i generi.
+ */
+export const SOURCE_IDS = ['audius', 'jamendo'] as const;
+
+export type SourceId = (typeof SOURCE_IDS)[number];
+
+export const isSourceId = (value: unknown): value is SourceId =>
+  typeof value === 'string' && (SOURCE_IDS as readonly string[]).includes(value);
 
 export interface Track {
   /** `${source}:${id}` — chiave univoca globale, evita collisioni tra sorgenti. */
@@ -107,3 +119,16 @@ export interface MusicSource {
 }
 
 export const makeUid = (source: SourceId, id: string): string => `${source}:${id}`;
+
+/**
+ * Il contrario di `makeUid`, o `null` per un uid che non e' di una sorgente
+ * conosciuta. Si divide al primo `:` e non a tutti: l'id della sorgente
+ * resta intero anche se un giorno ne contenesse uno.
+ */
+export function parseUid(uid: string): { source: SourceId; id: string } | null {
+  const sep = uid.indexOf(':');
+  if (sep <= 0) return null;
+  const source = uid.slice(0, sep);
+  const id = uid.slice(sep + 1);
+  return isSourceId(source) && id ? { source, id } : null;
+}

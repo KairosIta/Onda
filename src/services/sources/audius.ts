@@ -10,6 +10,7 @@ import {
   type TrendingParams,
 } from '@/types/track';
 import { fetchJSON as httpJSON } from './http';
+import { SOURCE_META } from './meta';
 
 const BASE = 'https://api.audius.co/v1';
 
@@ -118,7 +119,7 @@ async function fetchTracks(url: string, signal?: AbortSignal): Promise<Track[]> 
 
 export const audiusSource: MusicSource = {
   id: 'audius',
-  label: 'Audius',
+  label: SOURCE_META.audius.label,
 
   async search({ query, ...rest }: SearchParams): Promise<Track[]> {
     return fetchTracks(withAppName('/tracks/search', { query, ...page(rest) }), rest.signal);

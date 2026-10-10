@@ -10,6 +10,7 @@ import { TrackList } from '@/components/TrackList';
 import { useDebounced } from '@/hooks/useDebounced';
 import { useInfiniteTracks } from '@/hooks/useInfiniteTracks';
 import { searchAlbumsAll, searchAll, searchArtistsAll } from '@/services/sources';
+import { failureNotice } from '@/services/sources/meta';
 import { clearSearches, rememberSearch, useRecentSearches } from '@/store/searchHistory';
 import { colors, radius, spacing, touch, type } from '@/theme';
 
@@ -109,7 +110,7 @@ export default function SearchScreen() {
       </View>
 
       {failed.map((f) => (
-        <ErrorNotice key={f.source} message={`${f.source} non risponde: ${f.message}`} />
+        <ErrorNotice key={f.source} message={failureNotice(f)} />
       ))}
 
       <TrackList

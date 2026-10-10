@@ -9,7 +9,8 @@ import { TrackList } from '@/components/TrackList';
 import { TrackStrip } from '@/components/TrackStrip';
 import { assertEnv } from '@/config/env';
 import { useInfiniteTracks } from '@/hooks/useInfiniteTracks';
-import { spotlightAll, trendingAll } from '@/services/sources';
+import { activeSourceLabels, spotlightAll, trendingAll } from '@/services/sources';
+import { failureNotice } from '@/services/sources/meta';
 import { tracksOf, useLibrary } from '@/store/library';
 import { colors, spacing, type } from '@/theme';
 import type { SpotlightKind } from '@/types/track';
@@ -83,12 +84,12 @@ export default function DiscoverScreen() {
           <View>
             <View style={styles.header}>
               <Text style={styles.title}>Scopri</Text>
-              <Text style={styles.subtitle}>Dal catalogo Audius e Jamendo</Text>
+              <Text style={styles.subtitle}>Dal catalogo {activeSourceLabels()}</Text>
             </View>
 
             {envError ? <ErrorNotice message={envError} /> : null}
             {failed.map((f) => (
-              <ErrorNotice key={f.source} message={`${f.source} non risponde: ${f.message}`} />
+              <ErrorNotice key={f.source} message={failureNotice(f)} />
             ))}
 
             {recent.length > 0 ? (

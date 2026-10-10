@@ -29,6 +29,7 @@ import { GENRES, genreFor } from '@/services/genres';
 import { shuffled } from '@/utils/shuffle';
 import {
   SOURCES,
+  activeSourceLabels,
   artistTracksPage,
   searchAll,
   searchArtistsAll,
@@ -105,6 +106,14 @@ import {
 } from './build-provenance.cjs';
 import { formatTime } from '@/theme';
 import type { ListParams, MusicSource, SourceId, Track } from '@/types/track';
+import { SOURCE_IDS, isSourceId, makeUid, parseUid } from '@/types/track';
+import { AUDIUS_OPEN_MUSIC_LICENSE_URL } from '@/config/legal';
+import {
+  SOURCE_META,
+  describeAttribution,
+  failureNotice,
+  joinLabels,
+} from '@/services/sources/meta';
 import type { FederatedPage } from '@/services/sources';
 import { describeQueue } from '@/utils/queueSummary';
 
@@ -1510,6 +1519,108 @@ test('paginazione: i brani di un artista seguono lo stesso cursore, anche dopo u
     [...first.tracks.map((t) => t.uid), ...uids(rest)],
     Array.from({ length: 45 }, (_, i) => `audius:${i}`),
   );
+});
+
+// --- sorgenti ------------------------------------------------------------
+
+test('sorgenti: un solo elenco decide tipo, validazione e uid', () => {
+  assert.equal(isSourceId('audius'), true);
+  assert.equal(isSourceId('jamendo'), true);
+  assert.equal(isSourceId('soundcloud'), false);
+  assert.equal(isSourceId(42), false);
+
+  assert.deepEqual(parseUid('jamendo:9'), { source: 'jamendo', id: '9' });
+  for (const id of SOURCE_IDS)
+    assert.deepEqual(parseUid(makeUid(id, 'x')), { source: id, id: 'x' });
+  // Si divide al primo `:`: l'id della sorgente resta intero.
+  assert.deepEqual(parseUid('audius:a:b'), { source: 'audius', id: 'a:b' });
+  assert.equal(parseUid('soundcloud:1'), null);
+  assert.equal(parseUid('audius:'), null);
+  assert.equal(parseUid(':1'), null);
+  assert.equal(parseUid('nessuno'), null);
+});
+
+test('sorgenti: ognuna ha registro, descrizione e un nome per ogni genere', () => {
+  assert.deepEqual(Object.keys(SOURCES).sort(), [...SOURCE_IDS].sort());
+  assert.deepEqual(Object.keys(SOURCE_META).sort(), [...SOURCE_IDS].sort());
+  const badges = new Set<string>();
+  for (const id of SOURCE_IDS) {
+    assert.equal(SOURCES[id].source.id, id, `id dell'adapter ${id}`);
+    assert.equal(SOURCES[id].source.label, SOURCE_META[id].label, `nome dell'adapter ${id}`);
+    assert.match(SOURCE_META[id].badge, /^[A-Z]{3}$/u);
+    badges.add(SOURCE_META[id].badge);
+    for (const genre of GENRES) {
+      assert.ok(genre[id], `il genere ${genre.key} non ha un nome per ${id}`);
+    }
+  }
+  // Due sorgenti con la stessa sigla sarebbero indistinguibili nelle righe.
+  assert.equal(badges.size, SOURCE_IDS.length);
+});
+
+test('sorgenti: una sconosciuta non entra in libreria e non diventa un brano', () => {
+  assert.equal(parseTrack({ ...track('1'), source: 'soundcloud', uid: 'soundcloud:1' }), undefined);
+  // Prima un media item senza la nostra copia in extras, con un uid
+  // estraneo, diventava un brano Audius.
+  assert.equal(trackFromMediaItem({ mediaId: 'soundcloud:1', url: 'https://x/1.mp3' }), null);
+});
+
+test('attribuzione: Audius e Jamendo come prima, decisa dalla descrizione della sorgente', () => {
+  const audius = describeAttribution({
+    ...track('1'),
+    sourceUrl: 'https://audius.co/a/b',
+    rightsLabel: 'CC BY-SA',
+  });
+  assert.equal(audius.provider, 'Audius');
+  assert.deepEqual(audius.parts, [
+    { kind: 'link', label: 'Pagina del brano', url: 'https://audius.co/a/b' },
+    { kind: 'text', label: 'CC BY-SA' },
+    { kind: 'link', label: 'Open Music License', url: AUDIUS_OPEN_MUSIC_LICENSE_URL },
+  ]);
+  assert.deepEqual(describeAttribution(track('2')).parts, [
+    { kind: 'text', label: 'Regime di diritti non specificato' },
+    { kind: 'link', label: 'Open Music License', url: AUDIUS_OPEN_MUSIC_LICENSE_URL },
+  ]);
+
+  const jamendo = describeAttribution({
+    ...jamendoTrack('3'),
+    sourceUrl: 'https://www.jamendo.com/track/3',
+    rightsLabel: 'CC BY-NC 3.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by-nc/3.0/',
+  });
+  assert.equal(jamendo.provider, 'Jamendo');
+  assert.deepEqual(jamendo.parts, [
+    { kind: 'link', label: 'Pagina del brano', url: 'https://www.jamendo.com/track/3' },
+    {
+      kind: 'link',
+      label: 'CC BY-NC 3.0',
+      url: 'https://creativecommons.org/licenses/by-nc/3.0/',
+    },
+  ]);
+  // Senza URL di licenza il regime si dichiara comunque, come testo.
+  assert.deepEqual(describeAttribution(jamendoTrack('4')).parts, [
+    { kind: 'text', label: 'Creative Commons' },
+  ]);
+});
+
+test('testi: le sorgenti si nominano in italiano, anche negli avvisi', () => {
+  assert.equal(joinLabels([]), '');
+  assert.equal(joinLabels(['A']), 'A');
+  assert.equal(joinLabels(['A', 'B']), 'A e B');
+  assert.equal(joinLabels(['A', 'B', 'C']), 'A, B e C');
+  assert.equal(
+    failureNotice({ source: 'jamendo', message: 'rete non raggiungibile' }),
+    'Jamendo non risponde: rete non raggiungibile',
+  );
+
+  const original = { ...SOURCES };
+  try {
+    assert.equal(activeSourceLabels(), 'Audius e Jamendo');
+    // Spenta nel registro, sparisce anche dai testi che la nominavano.
+    SOURCES.jamendo = { ...SOURCES.jamendo, enabled: false };
+    assert.equal(activeSourceLabels(), 'Audius');
+  } finally {
+    Object.assign(SOURCES, original);
+  }
 });
 
 // --- identita' della build --------------------------------------------

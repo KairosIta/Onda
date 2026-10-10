@@ -11,6 +11,7 @@ import {
   type TrendingParams,
 } from '@/types/track';
 import { fetchJSON } from './http';
+import { SOURCE_META } from './meta';
 
 const BASE = 'https://api.jamendo.com/v3.0';
 
@@ -290,7 +291,7 @@ async function fetchTracks(requestUrl: string, signal?: AbortSignal): Promise<Tr
 
 export const jamendoSource: MusicSource = {
   id: 'jamendo',
-  label: 'Jamendo',
+  label: SOURCE_META.jamendo.label,
 
   async search({ query, ...rest }: SearchParams): Promise<Track[]> {
     return fetchTracks(url('/tracks/', { search: query, ...page(rest) }), rest.signal);
