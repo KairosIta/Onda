@@ -73,9 +73,9 @@ export default function AboutScreen() {
         <Text style={styles.sectionTitle}>I tuoi dati</Text>
         <Text style={styles.body}>
           Preferiti, cronologia, playlist, preferenze di riproduzione, l’ultima coda con la
-          posizione raggiunta e una copia temporanea dei cataloghi consultati restano nello spazio
-          privato dell’app. Onda non integra pubblicità, analytics o segnalazioni automatiche dei
-          crash.
+          posizione raggiunta e una copia temporanea dei cataloghi Jamendo consultati restano nello
+          spazio privato dell’app; i cataloghi Audius restano solo in memoria finché l’app è aperta.
+          Onda non integra pubblicità, analytics o segnalazioni automatiche dei crash.
         </Text>
         <Text style={styles.body}>
           Il backup cloud e il trasferimento Android dei dati dell’app sono disabilitati. Puoi

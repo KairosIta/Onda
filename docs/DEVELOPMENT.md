@@ -173,14 +173,18 @@ scartato senza buttare via le altre parti sane della libreria.
 Lo storage ha una versione (`schema.version`, `services/storageSchema`,
 puro e testato): `services/storage` la porta alla corrente prima che
 qualunque store legga. Dati senza versione valgono come versione 1; prima di
-migrare ogni chiave nota viene copiata in `backup.*`, e se una migrazione
-lancia si ripristina tutto e la versione non avanza. Una versione piu' nuova
+migrare ogni chiave dei dati viene copiata in `backup.*`, e se una migrazione
+lancia si ripristina tutto e la versione non avanza. La cache di React Query
+non ha backup: si rifa' dalla rete, e una sua copia sopravvivrebbe alla
+sessione a cui i termini di Audius limitano i loro dati. Una versione piu' nuova
 della nostra non si tocca. Un valore che non si riesce nemmeno a parsare non
 si cancella: finisce in `quarantine.*`. Una migrazione nuova e' una voce in
 `MIGRATIONS` con la sua versione di arrivo e un test da versione vecchia.
-Oggi sono due: 1 → 2 porta il repeat numerico a `off/one/all`, 2 → 3 toglie
+Oggi sono tre: 1 → 2 porta il repeat numerico a `off/one/all`, 2 → 3 toglie
 dalla cache di React Query gli elenchi a scorrimento salvati con l'offset
-unico, che non sapevano dire da dove riprendere.
+unico, che non sapevano dire da dove riprendere, e 3 → 4 toglie dalla cache
+i dati Audius scritti prima della regola di sessione, insieme alla loro
+copia in `backup.*`.
 
 La coda invece non e' in uno store nostro: vive dentro RNTP, che resta l'unica
 fonte di verita' anche quando i comandi arrivano dalla notifica. `store/session`
@@ -222,7 +226,12 @@ React Query e' reidratata da MMKV prima del primo render
 (`services/queryClient`): trending, vetrine, artisti e album tornano da disco
 e si rinfrescano in background, la ricerca no. La potatura — trenta query,
 due pagine per elenco, tre giorni — sta in `queryPersistenceSchema`, puro e
-testato, e vale anche come `gcTime`.
+testato, e vale anche come `gcTime`. I dati Audius non vanno su disco: i
+termini API di Audius ammettono solo una cache di sessione. Profili e album
+Audius restano fuori interi; dagli elenchi federati si tolgono i brani
+Audius e la query si segna da rinfrescare (`isInvalidated`), cosi' alla
+riapertura mostra subito il resto e torna completa appena risponde la rete.
+L'elenco delle sorgenti di sola sessione e' `SESSION_ONLY_SOURCES`.
 
 Le sorgenti dichiarano le funzioni opzionali (`spotlight`, `searchArtists`,
 `searchAlbums`, gli album) e la federazione salta chi non le ha senza

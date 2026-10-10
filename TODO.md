@@ -82,6 +82,13 @@ passa nel registro dei collaudi con la sua prova.
       ritorno in primo piano le query scadute si rinfrescano da sole. Dal 9
       ottobre 2026 la migrazione dello storage 2 → 3 scarta una volta gli
       elenchi salvati con l'offset unico, che non sapevano da dove riprendere.
+      Dal 10 ottobre 2026 i dati Audius non vanno su disco, perché i loro
+      termini API ammettono solo una cache di sessione. Profili e album Audius
+      restano fuori; gli elenchi federati tornano con i soli brani Jamendo e si
+      ricaricano subito (`SESSION_ONLY_SOURCES`, tre test), e la migrazione
+      3 → 4 toglie i dati salvati prima, anche dal backup. Da collaudare: alla
+      riapertura trending e vetrine mostrano i brani Jamendo e si completano
+      con quelli Audius appena risponde la rete.
 
 ### Riproduzione
 
@@ -249,8 +256,11 @@ passa nel registro dei collaudi con la sua prova.
       attribuzioni implementate, profilo non commerciale e richieste pronte per
       i fornitori. La build federata resta bloccata: Jamendo deve autorizzare il
       Client ID in un APK pubblico o un'architettura alternativa; per Audius va
-      archiviata una copia leggibile degli API Terms e confermata la
-      rappresentazione dei valori di attribuzione mancanti.
+      archiviata la copia leggibile degli API Terms (il PDF del 2 luglio 2025,
+      leggibile dal 10 ottobre 2026), confermata la rappresentazione dei valori
+      di attribuzione mancanti e chiarito se la libreria locale rientra nella
+      clausola sulla cache di sessione. I dati di catalogo Audius restano già
+      solo in memoria.
       **Done:** nota di conformità versionata, privacy policy, nome della sorgente,
       backlink originale e licenza/restrizione di ogni brano visibili; piano e
       quota Jamendo confermati; decisione documentata su Client ID/proxy per una
@@ -410,13 +420,13 @@ passa nel registro dei collaudi con la sua prova.
 ### Test e toolchain
 
 - [ ] Estendere i test unitari a mutazioni degli store, `formatTime`, shuffle e
-      migrazioni complete. Coperti oggi (132 test): validazione, repeat,
+      migrazioni complete. Coperti oggi (136 test): validazione, repeat,
       cursore per sorgente e paginazione federata con sorgenti finte,
       composizione della federazione (anche di artisti e album), annullamento
       delle richieste e tentativi Jamendo, entità HTML Jamendo, budget di
       salti, export/import, riepilogo della coda, sessione di ascolto, stato
       del player, politica di lettura del progresso, potatura della cache,
-      migrazioni dello storage fino alla 3, ricerche recenti, geometria del
+      dati Audius esclusi dal disco, migrazioni dello storage fino alla 4, ricerche recenti, geometria del
       riordino, prossimo brano, albero per Android Auto, regola dell'audit
       delle dipendenze, elenco delle sorgenti con descrizione e attribuzione e
       versione della cache di Metro.
