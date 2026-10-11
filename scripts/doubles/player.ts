@@ -8,8 +8,8 @@ import type {
 } from '@/player/types';
 
 /**
- * Il player finto dei test in Node, al posto dell'adattatore su RNTP (lo
- * sostituisce `test-doubles.mjs`). Segue il contratto di
+ * Il player finto dei test in Node, al posto del modulo Media3 (lo
+ * sostituisce `test-doubles.mjs` a `src/player/media3.ts`). Segue il contratto di
  * `src/player/backend.ts` e la coda di Media3, cosi' le regole di Onda
  * sopra il player si provano senza telefono.
  *

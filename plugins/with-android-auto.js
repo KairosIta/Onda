@@ -1,8 +1,9 @@
 /**
  * Dichiara Onda come app multimediale per Android Auto.
  *
- * Il servizio di RNTP espone gia' l'intent filter MediaBrowserService;
- * quello che manca, e che Android Auto pretende per elencare l'app, e' il
+ * Il servizio del player (`modules/onda-player`) espone gia' l'intent filter
+ * MediaBrowserService; quello che manca, e che Android Auto pretende per
+ * elencare l'app, e' il
  * descrittore `automotive_app_desc` referenziato dal manifest. La cartella
  * android/ e' rigenerata dal prebuild, quindi la risorsa si scrive da qui.
  *
@@ -11,11 +12,11 @@
  * letti sul solo manifest sorgente dell'app, non su quello unito:
  *
  * - MissingMediaBrowserServiceIntentFilter vuole un <service> con l'azione
- *   android.media.browse.MediaBrowserService. C'e', ma nel manifest della
- *   libreria RNTP, che il detector non guarda: falso positivo.
+ *   android.media.browse.MediaBrowserService. C'e', ma nel manifest del
+ *   modulo del player, che il detector non guarda: falso positivo.
  * - MissingIntentFilterForMediaSearch vuole un intent filter per
  *   android.media.action.MEDIA_PLAY_FROM_SEARCH, cioe' la ricerca vocale
- *   ("metti jazz su Onda"). Manca davvero: RNTP non inoltra a JS le
+ *   ("metti jazz su Onda"). Manca davvero: il player non gestisce le
  *   ricerche della sessione media e l'app non legge la query dall'intent di
  *   avvio. Dichiarare il filtro senza gestirlo aprirebbe Onda a vuoto, quindi
  *   resta un'esclusione dichiarata finche' la voce in TODO.md non si chiude.

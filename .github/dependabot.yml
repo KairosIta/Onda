@@ -28,9 +28,6 @@ updates:
       # che il plugin la supporti; minor e patch della 9 passano.
       - dependency-name: eslint
         update-types: ['version-update:semver-major']
-      # @rntp/player resta alla 5.8.0 finché non viene sostituito da un
-      # player con una licenza che ne consenta la distribuzione (TODO.md, P0).
-      - dependency-name: '@rntp/player'
   - package-ecosystem: github-actions
     directory: /
     schedule:

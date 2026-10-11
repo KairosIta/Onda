@@ -19,8 +19,8 @@ const PACKAGES = {
   'expo-secure-store': double('secure-store.ts'),
 };
 
-/** L'adattatore su RNTP: al suo posto il player finto, dietro la stessa facciata. */
-const RNTP_ADAPTER = pathToFileURL(path.join(HERE, '..', 'src', 'player', 'rntp.ts')).href;
+/** Il collegamento al modulo nativo: al suo posto il player finto, dietro la stessa facciata. */
+const NATIVE_BACKEND = pathToFileURL(path.join(HERE, '..', 'src', 'player', 'media3.ts')).href;
 
 registerHooks({
   resolve(specifier, context, next) {
@@ -28,6 +28,6 @@ registerHooks({
       return { url: PACKAGES[specifier], shortCircuit: true };
     }
     const resolved = next(specifier, context);
-    return resolved.url === RNTP_ADAPTER ? { ...resolved, url: double('player.ts') } : resolved;
+    return resolved.url === NATIVE_BACKEND ? { ...resolved, url: double('player.ts') } : resolved;
   },
 });

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import { player } from '@/player';
 import { usePlaybackPrefs } from '@/store/playback';
 import { getPendingQueue, useNowPlaying } from '@/store/session';
@@ -27,16 +28,21 @@ export function useUpNext(): UpNext {
   const { item, pending } = useNowPlaying();
   const [queue, setQueue] = useState<QueueView>(readQueue);
 
-  // Rilettura a ogni cambio di brano o di coda; `item` e `pending` nelle
-  // dipendenze coprono la consegna della coda in attesa al player.
+  // Rilettura a ogni cambio di brano o di coda, e al ritorno in primo piano
+  // (in background gli eventi vanno al gestore headless); `item` e
+  // `pending` nelle dipendenze coprono la consegna della coda in attesa.
   useEffect(() => {
     const load = () => setQueue(readQueue());
     load();
     const stopQueue = player.subscribe('queueChanged', load);
     const stopTrack = player.subscribe('mediaItemTransition', load);
+    const appState = AppState.addEventListener('change', (status) => {
+      if (status === 'active') load();
+    });
     return () => {
       stopQueue();
       stopTrack();
+      appState.remove();
     };
   }, [item, pending]);
 

@@ -116,10 +116,9 @@ export function useNowPlaying(): NowPlaying {
  * Fotografa la coda del player. Chiamata a ogni transizione e cambio coda,
  * dal processo UI e dal gestore headless: MMKV e' lo stesso file.
  *
- * Una coda vuota non cancella il salvataggio: il player puo' svuotarla
- * anche quando il servizio viene fermato togliendo l'app dai recenti
- * (RNTP lo fa), ed e' proprio quella la sessione da riprendere all'avvio
- * dopo.
+ * Una coda vuota non cancella il salvataggio: un player che la svuota
+ * fermando il servizio (RNTP lo faceva, togliendo l'app dai recenti) non
+ * deve portarsi via la sessione da riprendere all'avvio dopo.
  */
 export function saveQueueSnapshot(): void {
   const items = player.getQueue();

@@ -1,5 +1,5 @@
 import type { PlayerControls } from './backend';
-import { backend } from './rntp';
+import { backend } from './media3';
 
 /**
  * Il player di Onda. L'app deve passare da qui e mai dal modulo nativo:

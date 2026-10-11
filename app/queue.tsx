@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   type AccessibilityActionEvent,
+  AppState,
   FlatList,
   Pressable,
   StyleSheet,
@@ -218,15 +219,20 @@ export default function QueueScreen() {
     drag.length.set(items.length);
   }, [drag, items.length]);
 
-  // Non e' detto che il player emetta "coda cambiata" a ogni transizione
-  // (RNTP non lo fa): il cambio di traccia e' il momento in cui vale la
-  // pena rileggerla.
+  // Il player non emette "coda cambiata" a ogni transizione (Media3 no): il
+  // cambio di traccia e' il momento in cui vale la pena rileggerla. In
+  // background gli eventi vanno al gestore headless, non qui: al ritorno si
+  // rilegge.
   useEffect(() => {
     const stopQueue = player.subscribe('queueChanged', load);
     const stopTrack = player.subscribe('mediaItemTransition', load);
+    const appState = AppState.addEventListener('change', (status) => {
+      if (status === 'active') load();
+    });
     return () => {
       stopQueue();
       stopTrack();
+      appState.remove();
     };
   }, [load]);
 

@@ -11,9 +11,9 @@ import type {
 } from './types';
 
 /**
- * Il contratto fra Onda e il modulo nativo del player. Oggi lo rispetta
- * l'adattatore su RNTP (`rntp.ts`); domani il modulo Media3 nostro, e il
- * resto dell'app non se ne accorge.
+ * Il contratto fra Onda e il modulo nativo del player, oggi il nostro su
+ * Media3 (`modules/onda-player`, collegato da `media3.ts`). Cambiare modulo
+ * vuol dire scrivere un altro backend: il resto dell'app non se ne accorge.
  *
  * Contiene solo quello che Onda usa. Oltre ai metodi, ogni backend deve:
  * - dichiarare contenuto musicale e prendere il focus audio in esclusiva;
