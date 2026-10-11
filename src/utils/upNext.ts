@@ -13,7 +13,7 @@ export interface UpNextInput {
 
 export type UpNext =
   | { kind: 'track'; index: number; title: string; artist: string }
-  /** Con lo shuffle nativo l'ordine e' privato di RNTP: si dice, non si inventa. */
+  /** Con lo shuffle nativo l'ordine resta nel player: si dice, non si inventa. */
   | { kind: 'shuffle' }
   | { kind: 'repeat-one' }
   /** Ultimo brano senza ripetizione: dopo, silenzio. */

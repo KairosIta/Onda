@@ -4,8 +4,8 @@
  * «Ascoltati di recente» finiva pieno di brani mai sentiti.
  *
  * Il tick nativo di progresso arriva ogni cinque secondi in riproduzione
- * (`progressSync` in setupPlayer), quindi la soglia si supera al più cinque
- * secondi dopo l'istante esatto: per una cronologia va benissimo.
+ * (`progressIntervalSeconds` in setupPlayer), quindi la soglia si supera al
+ * più cinque secondi dopo l'istante esatto: per una cronologia va benissimo.
  */
 
 /** Trenta secondi: la stessa soglia che usano i servizi di streaming. */

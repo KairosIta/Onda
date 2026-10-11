@@ -10,9 +10,9 @@ ciascuna con la sua evidenza, stanno nel
 stato verificato e come, e la base per non regredire.
 
 Nota per il repository pubblico: l'apertura diretta del player dal tap sulla
-notifica va ripristinata soltanto tramite un'API pubblica RNTP o una modifica
-esplicitamente autorizzata dal fornitore; Onda non distribuisce più una patch
-del sorgente RNTP.
+notifica va ripristinata soltanto tramite un'API pubblica RNTP, una modifica
+esplicitamente autorizzata dal fornitore o il modulo Media3 che sostituirà
+RNTP; Onda non distribuisce più una patch del sorgente RNTP.
 
 Questa non è una lista di idee generica: descrive ciò che Onda offre oggi e
 il lavoro necessario per mantenere pubblico il sorgente e, separatamente,
@@ -142,8 +142,10 @@ passa nel registro dei collaudi con la sua prova.
       pubblico, `@rntp/player` 5.8 apre l'app con l'intent di avvio e nessun
       URL (`setSessionActivity` in `TrackPlayerPlaybackService.kt`): il tap
       riporta Onda in primo piano dov'era, non sul player. Torna con un'API
-      pubblica RNTP o una modifica autorizzata dal fornitore (vedi la nota in
-      cima).
+      pubblica RNTP, una modifica autorizzata dal fornitore (vedi la nota in
+      cima) o il modulo Media3 che sostituirà RNTP: la sua sessione aprirà
+      l'app con `onda://notification.click`, che `+native-intent.ts` porta già
+      al player.
 - [x] Ripresa dell'ascolto all'avvio: coda e posizione nel brano sopravvivono
       alla chiusura dell'app e il mini-player riparte da dove era, in pausa,
       senza aprire lo stream né mostrare la notifica finché non si preme play.
@@ -285,6 +287,12 @@ passa nel registro dei collaudi con la sua prova.
       salvataggio periodico della posizione, sleep timer, shuffle e repeat,
       stati di buffering ed errore, Android Auto. Fino alla sostituzione il
       player resta alla 5.8.0 e Dependabot non ne propone aggiornamenti.
+      La strada scelta è un modulo Expo proprio su Media3. Primo passo fatto:
+      l'app usa il player soltanto da `src/player/`, dietro un contratto che
+      fa da specifica del modulo; nei test in Node lo segue un player finto,
+      su cui si provano le regole dell'app. Al cambio di modulo il resto
+      dell'app non cambia (`docs/DEVELOPMENT.md`, «Il player dietro una
+      facciata»).
       **Done:** player scelto con le ragioni scritte; nessuna dipendenza con
       licenza che vieti la distribuzione; riproduzione in background, notifica,
       coda, ripresa della sessione, sleep timer e Android Auto collaudati su

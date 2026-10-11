@@ -4,10 +4,11 @@ import { player, type Progress } from '@/player';
 import { progressPollInterval } from '@/services/progressPolicy';
 
 /**
- * L'unico osservatore di progresso dell'app. `useProgress` di RNTP apre un
- * timer per ogni componente che lo chiama: con il mini-player nella tab
- * bar, un secondo dentro `Screen` e il player aperto erano tre letture del
- * bridge ogni mezzo secondo, anche in pausa e con l'app in background.
+ * L'unico osservatore di progresso dell'app. Prima ogni componente apriva
+ * il suo timer (`useProgress` di RNTP): con il mini-player nella tab bar,
+ * un secondo dentro `Screen` e il player aperto erano tre letture del
+ * modulo nativo ogni mezzo secondo, anche in pausa e con l'app in
+ * background.
  *
  * Qui il timer e' uno, parte solo se qualcuno legge, va a mezzo secondo in
  * riproduzione e a due secondi in pausa (la regola sta in

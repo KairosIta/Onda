@@ -22,11 +22,12 @@ import { loadSavedPosition, loadSavedQueue, resumePosition, windowQueue } from '
  * niente. Cosi' invece mini-player e player mostrano il brano da disco, e
  * il player nativo lo riceve al primo play, skip o apertura della Coda.
  *
- * Lo store tiene anche il brano attivo del player, al posto di
- * `useActiveMediaItem` di RNTP: "brano attivo" e "coda in attesa" devono
- * cambiare insieme, in un solo snapshot. Con due store separati, nel tick
- * fra la consegna della coda e l'evento del player nessuno dei due avrebbe
- * un brano, il mini-player sparirebbe e il player si chiuderebbe da solo.
+ * Lo store tiene anche il brano attivo del player, al posto di un hook a
+ * parte (prima `useActiveMediaItem` di RNTP): "brano attivo" e "coda in
+ * attesa" devono cambiare insieme, in un solo snapshot. Con due store
+ * separati, nel tick fra la consegna della coda e l'evento del player
+ * nessuno dei due avrebbe un brano, il mini-player sparirebbe e il player
+ * si chiuderebbe da solo.
  */
 
 const QUEUE_KEY = 'session.queue.v1';
@@ -102,7 +103,7 @@ function setActive(next: MediaItem | null): void {
 /**
  * Il brano da mostrare come "in riproduzione": quello del player nativo,
  * oppure quello della coda in attesa dopo un riavvio. Le schermate usano
- * questo e non `useActiveMediaItem`, altrimenti all'avvio non avrebbero
+ * questo e non il brano del player, altrimenti all'avvio non avrebbero
  * niente da mostrare finche' l'utente non preme play.
  */
 export function useNowPlaying(): NowPlaying {

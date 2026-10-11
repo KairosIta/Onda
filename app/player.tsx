@@ -183,11 +183,12 @@ export default function PlayerScreen() {
   const [sleepOpen, setSleepOpen] = useState(false);
 
   /**
-   * useActiveMediaItem() parte da `null` e riceve la traccia un tick dopo,
-   * da una promise. Chiudere appena `active` e' vuoto significherebbe
-   * chiudere sempre al primo render: la schermata non si aprirebbe mai.
-   * Si esce solo dopo aver visto davvero una traccia sparire — cioe' quando
-   * la coda finisce mentre il player e' aperto.
+   * Il brano attivo puo' arrivare dopo il primo render: `useActiveMediaItem`
+   * di RNTP, usato prima di `useNowPlaying`, partiva da `null` e riceveva
+   * la traccia un tick dopo, da una promise. Chiudere appena `active` e'
+   * vuoto significherebbe chiudere sempre al primo render: la schermata non
+   * si aprirebbe mai. Si esce solo dopo aver visto davvero una traccia
+   * sparire — cioe' quando la coda finisce mentre il player e' aperto.
    *
    * La navigazione resta in un effetto: farla durante il render fa
    * protestare React e a volte il back si perde nel commit.

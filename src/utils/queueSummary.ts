@@ -7,9 +7,9 @@
  * verifica senza un dispositivo. Stesso motivo di `playbackPolicy` e
  * `federation`.
  *
- * Perche' non mostriamo semplicemente l'ordine giusto: RNTP tiene la
- * permutazione in un `playOrder` privato e non espone alcun accessore
- * (`isShuffleEnabled` dice solo se e' attivo). La coda canonica e
+ * Perche' non mostriamo semplicemente l'ordine giusto: lo shuffle nativo
+ * tiene a parte la sua permutazione e il contratto del player non la
+ * espone (vedi `setShuffleModeEnabled` in `@/player`). La coda canonica e
  * l'indice attivo restano quelli di partenza. Finche' resta cosi',
  * l'unica scelta onesta e' dichiarare che l'elenco non e' l'ordine.
  *

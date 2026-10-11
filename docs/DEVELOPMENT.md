@@ -108,6 +108,10 @@ app/
   +not-found.tsx            URL che non corrisponde a niente: messaggio e ritorno a Scopri
 src/
   types/track.ts            modello unificato, interfaccia MusicSource, SOURCE_IDS (l'elenco delle sorgenti)
+  player/index.ts           la facciata del player: l'app importa solo '@/player' (vedi sotto)
+  player/backend.ts         il contratto con il modulo nativo, che fa anche da specifica per Media3
+  player/types.ts           tipi ed eventi del player, con i nomi di Media3 e i tempi in secondi
+  player/rntp.ts            l'adattatore su @rntp/player, l'unico file che lo importa
   services/sources/         adapter Audius e Jamendo + registro federato (brani, vetrine, artisti, album)
   services/sources/meta.ts  nome, sigla e attribuzione di ogni sorgente (puro)
   services/sources/access.ts  come le sorgenti leggono interruttori e credenziali, senza Keystore ne' MMKV
@@ -118,10 +122,10 @@ src/
   services/genres.ts        unica tabella di traduzione dei generi tra le due API
   services/storage.ts       istanza MMKV + lettura JSON sicura e scrittura
   services/storageSchema.ts versione dello schema, migrazioni con backup, quarantena (puro)
-  services/setupPlayer.ts   configurazione RNTP (una volta per processo)
-  services/playbackService.ts  comandi da notifica, lockscreen, Bluetooth
-  services/mediaItems.ts    andata e ritorno fra il nostro modello e gli elementi di coda RNTP
-  services/playbackStatus.ts  lo stato unico del tasto play, ricavato dai segnali RNTP
+  services/setupPlayer.ts   configurazione del player (una volta per processo)
+  services/playbackService.ts  eventi del player, anche in background: cambi di brano, progresso, errori
+  services/mediaItems.ts    andata e ritorno fra il nostro modello e i MediaItem del player
+  services/playbackStatus.ts  lo stato unico del tasto play, ricavato dai segnali del player
   services/playerCommands.ts  play, pausa e skip con la semantica giusta per ogni stato
   services/playbackPolicy.ts  quando saltare uno stream morto e quando riprovare la rete da soli
   services/historyPolicy.ts   dopo quanti secondi un brano conta come ascoltato
@@ -145,7 +149,6 @@ src/
   utils/reorder.ts          geometria del riordino a trascinamento della coda (worklet)
   utils/routes.ts           validazione dei parametri di route (raccolta, id) da deep link
   hooks/useInfiniteTracks.ts  scroll infinito su qualunque elenco; il cursore per sorgente sta in services/sources
-  services/playbackService.ts registra i cambi di traccia, anche in background
   components/               TrackList, TrackRow, MiniPlayer, menu contestuale, ...
   components/Artwork.tsx    ogni copertina passa da qui: expo-image, dissolvenza, cache, segnaposto
   components/PressableScale.tsx  bottone che si ritrae con la molla condivisa; aptica opzionale
@@ -163,7 +166,9 @@ scripts/
   release-policy.ts         validazione pura di ambiente e credenziali
   metro-cache-version.cjs   versione della cache di Metro dai valori EXPO_PUBLIC_* (puro)
   smoke.ts                  collaudo degli adapter contro le API vere (npm run smoke)
-  node-hook.mjs             risolve l'alias '@/' quando gli adapter girano in Node
+  node-hook.mjs             risolve l'alias '@/' quando il codice dell'app gira in Node (test e smoke)
+  test-doubles.mjs          solo per npm test: al posto dei moduli nativi i doppi di scripts/doubles/
+  doubles/player.ts         il player finto dei test, che segue il contratto di src/player/backend.ts
 plugins/
   with-release-signing.js   firma e proprieta' Gradle della release (android/ e' rigenerabile)
   with-android-auto.js      descrittore automotive_app_desc e meta-data per Android Auto
@@ -197,19 +202,20 @@ unico, che non sapevano dire da dove riprendere, e 3 → 4 toglie dalla cache
 i dati Audius scritti prima della regola di sessione, insieme alla loro
 copia in `backup.*`.
 
-La coda invece non e' in uno store nostro: vive dentro RNTP, che resta l'unica
-fonte di verita' anche quando i comandi arrivano dalla notifica. `store/session`
-la fotografa su MMKV quando cambia (anche dal gestore headless) e salva la
-posizione dai tick del timer nativo `progressSync`; all'avvio la rimette "in
-attesa" senza caricarla nel player, cosi' niente stream e niente notifica
-prima di un play. Le schermate leggono il brano da `useNowPlaying` (nello stesso store, cosi'
-brano del player e coda in attesa cambiano in un solo snapshot), e i comandi di trasporto
-passano da `services/playerCommands`, che consegna la coda al player al primo
-play o skip. Per questo nessuna schermata chiama `useActiveMediaItem` o
-`useProgress` di RNTP direttamente: il progresso lo legge un solo timer,
-`store/progress`, e lo stato del tasto play viene da `usePlaybackStatus`.
+La coda invece non e' in uno store nostro: vive nel player nativo, che resta
+l'unica fonte di verita' anche quando i comandi arrivano dalla notifica.
+`store/session` la fotografa su MMKV quando cambia (anche dal gestore in
+background) e salva la posizione dai tick del timer nativo
+(`progressUpdated`); all'avvio la rimette "in attesa" senza caricarla nel
+player, cosi' niente stream e niente notifica prima di un play. Le schermate
+leggono il brano da `useNowPlaying` (nello stesso store, cosi' brano del
+player e coda in attesa cambiano in un solo snapshot), e i comandi di
+trasporto passano da `services/playerCommands`, che consegna la coda al
+player al primo play o skip. Per questo nessuna schermata legge brano o progresso dal player
+per conto suo: il progresso lo legge un solo timer, `store/progress`, e lo
+stato del tasto play viene da `usePlaybackStatus`.
 
-Su Android lo stato `error` di RNTP non arriva mai: dopo un errore ExoPlayer
+Su Android lo stato `error` del player non arriva mai: dopo un errore ExoPlayer
 torna `idle`, che per la tabella e' una pausa. `store/playbackFault` tiene
 quindi un flag che `playbackService` alza quando un errore ferma il player e
 che il primo caricamento o cambio brano abbassa; e' quel flag che fa comparire
@@ -252,9 +258,10 @@ sul tipo di elemento, cosi' artisti e album si alternano come i brani.
 
 Android Auto legge l'albero costruito da `services/browseTree` dalla
 libreria persistita — preferiti, playlist, ascolti recenti — e
-`browseTreeSync` lo rimanda a RNTP a ogni mutazione, accorpando quelle
-ravvicinate. Il manifest lo dichiara tramite `plugins/with-android-auto.js`;
-il servizio media e il suo intent filter li porta gia' RNTP.
+`browseTreeSync` lo rimanda al player (`setBrowseTree`) a ogni mutazione,
+accorpando quelle ravvicinate. Il manifest lo dichiara tramite
+`plugins/with-android-auto.js`; il servizio media e il suo intent filter oggi
+li porta RNTP.
 
 Quel descrittore accende in Android Lint due controlli in piu', entrambi
 errori ed entrambi letti sul solo manifest sorgente dell'app. Il plugin li
@@ -295,12 +302,74 @@ expo-font (vedi `app.json`): niente caricamento a runtime, e se manca un
 prebuild Android ricade in silenzio su Roboto, che e' il primo sintomo da
 riconoscere.
 
+### Il player dietro una facciata
+
+L'app non parla con il modulo nativo del player: passa da `src/player/`
+(`import { player } from '@/player'`). Il motivo e' la licenza di
+`@rntp/player`, che non permette di distribuire un APK che lo incorpora
+(vedi [la nota di conformità](RELEASE_COMPLIANCE.md)): verra' sostituito da
+un modulo Expo nostro su AndroidX Media3, e grazie alla facciata il resto
+dell'app non se ne accorgera'.
+
+- `src/player/index.ts` e' la facciata: esporta `player`, gli hook
+  `usePlaybackState` e `useIsPlaying` e i tipi. Cambiare modulo vuol dire
+  cambiare li' l'import del backend.
+- `src/player/backend.ts` e' il contratto, `PlayerControls`. Contiene solo
+  quello che Onda usa e fa anche da specifica del modulo Media3: oltre ai
+  metodi elenca i doveri del nativo, come il focus audio, la pausa a cuffie
+  staccate, CPU e Wi-Fi svegli a schermo spento, i comandi esterni eseguiti
+  anche con il JS sospeso e Android Auto.
+- `src/player/types.ts` ha i tipi e gli eventi, con i nomi di Media3 e i
+  tempi in secondi.
+- `src/player/rntp.ts` e' l'adattatore su RNTP, l'unico file che importa
+  `@rntp/player`.
+
+ESLint fa rispettare il confine: `@rntp/player` fuori da `rntp.ts` e' un
+errore ovunque, e nell'app (`index.js`, `app/`, `src/`) lo e' anche
+importare un file interno di `src/player/`, pure con un percorso relativo.
+I doppi dei test in `scripts/` importano il contratto apposta.
+
+Tre regole del contratto contano piu' delle altre, perche' l'app ci
+costruisce sopra. I comandi tornano subito e il nativo li esegue nell'ordine
+in cui arrivano: `activateSession` manda coda, seek e play di fila. Le
+letture vedono gia' l'effetto dei comandi dati prima: "Riproduci dopo" legge
+l'indice attivo subito dopo aver consegnato la coda in attesa. Togliendo il
+brano attivo diventa attivo il primo che resta dopo quelli tolti, come in
+Media3: `sourceGuard` ci conta.
+
+Una funzione nuova del player si aggiunge al contratto (`backend.ts`,
+`types.ts`), all'adattatore e al player finto dei test, con un test in Node
+che la usa da `@/player`.
+
+Il modulo Media3 va scritto senza consultare l'implementazione di RNTP, ne'
+il JavaScript ne' il Kotlin in `node_modules`: valgono il contratto, i test e
+la documentazione di Media3. Per l'adattatore `rntp.ts` bastano le
+tipizzazioni pubbliche di RNTP, cioe' i file `.d.ts` e i loro commenti. Dove il contratto tace, il
+[player finto](#il-player-finto-e-gli-altri-doppi) sceglie da solo, e quelle
+scelte non sono una specifica. Restano da decidere:
+
+- **brano attivo tolto in fondo alla coda**: se dopo non resta niente, il
+  player finto resta sull'ultimo brano; Media3 probabilmente si ferma, da
+  verificare;
+- **precedente sul primo brano con ripeti tutto**: il player finto
+  riavvolge il brano; Media3 probabilmente torna all'ultimo, da verificare;
+- **ordine dello shuffle**: il contratto non lo espone, quindi la Coda e la
+  riga "Prossimo" dichiarano di non saperlo (`utils/queueSummary`,
+  `utils/upNext`). Media3 lo conosce: con un accessore si potrebbe mostrare
+  l'ordine vero;
+- **tocco sulla notifica**: con RNTP 5.8 riporta l'app dov'era. La sessione
+  del modulo nuovo puo' aprirla con `onda://notification.click`, che
+  `app/+native-intent.ts` porta gia' al player (voce aperta in TODO.md);
+- **servizio media e Android Auto**: oggi il servizio e il suo intent filter
+  MediaBrowserService stanno nel manifest di RNTP (vedi
+  `plugins/with-android-auto.js`); il modulo nuovo dovra' dichiararli lui.
+
 ---
 
-## Collaudo delle API senza device
+## Collaudo senza device
 
-I test unitari non usano rete, MMKV o moduli React Native e vanno eseguiti
-prima del collaudo live:
+I test non usano rete ne' dispositivo e vanno eseguiti prima del collaudo
+live:
 
 ```bash
 npm test
@@ -312,7 +381,9 @@ npm run format:check
 Coprono la validazione della libreria e delle preferenze playback persistite,
 le migrazioni dello storage e il cursore della paginazione federata, con
 sorgenti finte che scorrono un catalogo vero: una sorgente giu' per sempre,
-una che cade e torna, un artista con una richiesta fallita.
+una che cade e torna, un artista con una richiesta fallita. Sopra il player
+finto coprono anche la sessione di ascolto, il guardiano delle sorgenti e la
+reazione agli errori di riproduzione.
 
 `npm run check:audit` e' il controllo delle dipendenze che gira in CI:
 `npm audit` alla soglia alta, con le sole eccezioni dichiarate in
@@ -328,13 +399,62 @@ una rotta nuova fa fallire il typecheck con un "not assignable" su una rotta
 che esiste. Rigenerarlo ad ogni controllo rende l'esito uguale su ogni
 computer, anche dove `.expo/` non e' mai stata creata.
 
-`npm test` disattiva l'isolamento per processo del test runner di Node: in
-questo modo il riepilogo mostra i singoli casi invece di contarli come un solo
-file, senza cambiare il loro ambiente o la loro semantica.
+### Il player finto e gli altri doppi
+
+`npm test` carica, dopo `scripts/node-hook.mjs`, anche
+`scripts/test-doubles.mjs`, che mette al posto dei moduli nativi i doppi in
+memoria di `scripts/doubles/`: `react-native` (solo `AppState`, con
+`setAppState` per simulare l'uscita dall'app), `react-native-mmkv` ed
+`expo-secure-store`. Al posto dell'adattatore `src/player/rntp.ts` mette il
+player finto, `doubles/player.ts`: la facciata resta quella vera, quindi
+store e servizi si provano cosi' come sono. Lo smoke non carica i doppi.
+
+Il player finto e' la lettura eseguibile del contratto, e il modulo Media3
+dovra' comportarsi allo stesso modo:
+
+- i comandi su coda, brano attivo, posizione e ripetizione cambiano subito
+  lo stato che le letture vedono; gli altri (play, pausa, `retry`, shuffle,
+  timer di spegnimento, albero di Android Auto) vengono solo registrati.
+  `fakePlayer.calls()` da' i nomi di tutti, in ordine, e
+  `fakePlayer.argsOf(nome)` i loro argomenti;
+- gli eventi che seguono i comandi (coda cambiata, cambio di brano)
+  aspettano `fakePlayer.flush()`, come quelli che il nativo manda dopo;
+- quelli che dipendono da rete e decoder (audio che esce, errori, progresso)
+  li manda il test con `fakePlayer.emit()`;
+- non prepara stream: la durata resta 0 e lo shuffle non riordina niente.
+
+Ogni file di test gira in un processo suo: i test di un file condividono
+player finto e store, quelli di file diversi no. Per questo i file che usano
+il player chiudono ogni test con un `afterEach` che consegna gli eventi
+rimasti, cosi' non arrivano al test dopo.
+
+I moduli che carica anche lo smoke prendono i tipi del player con
+`import type { ... } from '@/player'`. La rimozione dei tipi di Node lascia
+`import { type X } from '@/player'` come import senza nomi, che carica
+comunque la facciata e con lei RNTP, che fuori da React Native non si
+carica.
+
+### Smoke
 
 ```bash
 npm run smoke
 ```
+
+Gli adapter sono TypeScript puro, senza React Native dentro: girano in Node
+cosi' come sono, contro le API vere. Il Client ID Jamendo arriva da
+`JAMENDO_CLIENT_ID`, nell'ambiente o in `.env`; senza, Jamendo si salta e lo
+script lo dice. Lo script controlla
+per ogni sorgente ricerca, trending, paginazione, pagine artista e album,
+la federazione, tutti i generi, e chiede agli stream un `Range` per verificare
+che il seek sia possibile.
+
+Serve perche' il typecheck non puo' vedere niente di tutto questo: al primo
+giro ha trovato tre bug reali in Jamendo (parametro `order` rifiutato sugli
+album, pagine artista vuote, generi che sembravano inesistenti). Rilancialo
+dopo ogni modifica agli adapter.
+
+Un `warn` su un genere non e' un errore: e' una sorgente che per quel tag non
+ha risultati. Un `FAIL` si', ed e' quasi sempre l'API che e' cambiata.
 
 ### Audit delle dipendenze
 
@@ -360,22 +480,6 @@ npx expo-doctor
 
 Rimuovere l'eccezione non appena Metro/Expo pubblica una dipendenza corretta
 compatibile con SDK 57.
-
-Gli adapter sono TypeScript puro, senza React Native dentro: girano in Node
-cosi' come sono, contro le API vere. Il Client ID Jamendo arriva da
-`JAMENDO_CLIENT_ID`, nell'ambiente o in `.env`; senza, Jamendo si salta e lo
-script lo dice. Lo script controlla
-per ogni sorgente ricerca, trending, paginazione, pagine artista e album,
-la federazione, tutti i generi, e chiede agli stream un `Range` per verificare
-che il seek sia possibile.
-
-Serve perche' il typecheck non puo' vedere niente di tutto questo: al primo
-giro ha trovato tre bug reali in Jamendo (parametro `order` rifiutato sugli
-album, pagine artista vuote, generi che sembravano inesistenti). Rilancialo
-dopo ogni modifica agli adapter.
-
-Un `warn` su un genere non e' un errore: e' una sorgente che per quel tag non
-ha risultati. Un `FAIL` si', ed e' quasi sempre l'API che e' cambiata.
 
 ---
 
@@ -722,7 +826,7 @@ conferme della [nota di conformità](RELEASE_COMPLIANCE.md).
 ## Gotcha Android
 
 **La notifica non compare.** Permesso `POST_NOTIFICATIONS` non concesso
-(obbligatorio da Android 13). L'app lo richiede all'avvio; se hai negato,
+(obbligatorio da Android 13). L'app lo chiede al primo play; se hai negato,
 riabilitalo dalle impostazioni di sistema.
 
 **L'audio si ferma andando in background.** Il service e' stato registrato
@@ -762,7 +866,8 @@ con `useSafeAreaInsets()`. Se aggiungi un foglio nuovo, ricordatene.
 Un modulo nativo vecchio stile sotto la Nuova Architettura. RN 0.86 non ha
 piu' l'architettura vecchia, quindi non si aggira: serve una versione del
 modulo che sia un TurboModule vero. E' esattamente il motivo per cui
-il player deve essere `@rntp/player` 5.x, costruito per la New Architecture.
+il player e' `@rntp/player` 5.x, costruito per la New Architecture, e per cui
+il modulo che lo sostituira' sara' un modulo Expo, che la supporta.
 
 **Un genere mostra solo tracce Audius.** Prima di sospettare il tag, lancia
 `npm run smoke`: quasi sempre e' l'instabilita' di Jamendo qui sotto, non un
@@ -785,8 +890,9 @@ elenco che si chiude.
 Nel catalogo Jamendo esistono brani il cui file audio non c'e' piu' (404
 sull'URL restituito dall'API) e uno di questi sta stabilmente in cima ai
 brani popolari. `playbackService` salta al successivo, ma non piu' di tre
-volte per coda. Gli errori classificati `network` non fanno avanzare: la coda
-resta ferma finche' la connessione non torna o l'utente sceglie altro.
+volte di fila: il budget torna pieno appena un brano suona. Gli errori
+classificati `network` non fanno avanzare: si riprova da soli tre volte, a
+distanze crescenti, e poi resta Riprova.
 
 ---
 
@@ -797,19 +903,27 @@ scritta per la New Architecture con JSI e TurboModules. Non va confusa con
 il vecchio pacchetto npm `react-native-track-player`, rimasto sulla linea 4.x
 e con una vecchia alpha 5 non compatibile con l'API stabile. La versione e'
 esatta, senza caret: e' il componente che fa suonare la musica e si aggiorna
-solo insieme alla checklist playback/background/notifica.
+solo insieme alla checklist playback/background/notifica. Sta dietro la
+[facciata `src/player/`](#il-player-dietro-una-facciata) e verra' sostituito
+da un modulo nostro su Media3: la sua licenza non permette di distribuire
+l'APK.
 
-**Il player non si apre se si interpreta subito un media item nullo come fine coda.**
-`useActiveMediaItem()` parte da `null` prima della prima transizione. Un
-`if (!active) router.back()` in un effetto chiude quindi la
+**Il player non si apre se si interpreta subito un brano nullo come fine coda.**
+Il brano attivo puo' arrivare dopo il primo render: `useActiveMediaItem()` di
+RNTP, usato prima di `useNowPlaying`, partiva da `null` e lo riceveva un tick
+dopo. Un `if (!active) router.back()` in un effetto chiude quindi la
 schermata _sempre_, prima ancora che si veda. `app/player.tsx` esce solo dopo
 aver visto davvero una traccia sparire. Vale per qualunque schermata nuova
 che voglia chiudersi quando la riproduzione finisce.
 
-**`useProgress` 5.8 misura l'intervallo in secondi.** `useProgress(0.5)`
-interroga il player ogni 500 ms; `useProgress(500)` lo farebbe soltanto ogni
-8 minuti e 20 secondi, lasciando fermi slider, tempi e mini-player. Verificare
-sempre sia l'avanzamento sia l'azzeramento al cambio traccia.
+**I tempi del player sono in secondi.** Posizioni, durate, `seekTo`,
+`sleepAfter` e `progressIntervalSeconds`. Un valore in millisecondi passa il
+typecheck e sbaglia di mille volte: con `progressIntervalSeconds: 5000` la
+posizione si salverebbe ogni 83 minuti circa. E' la stessa trappola di
+`useProgress` di RNTP, che misurava l'intervallo in secondi:
+`useProgress(500)` avrebbe interrogato il player ogni 8 minuti e 20 secondi
+invece che ogni mezzo secondo. Verificare sempre sia l'avanzamento sia
+l'azzeramento al cambio traccia.
 
 **Gli album esistono solo su Jamendo.** Audius espone `album_backlink` sulle
 tracce, ma nella pratica e' quasi sempre `null`: mappare il campo avrebbe
@@ -909,8 +1023,10 @@ riavvio metterebbe in pausa la musica senza che nessuno capisca perche'.
   Restano rete lenta, captive portal e cambio Wi-Fi/5G, nella checklist
   device. Per un player musicale l'aereo e la metropolitana sono normalita',
   non casi limite.
-- **Test sugli store** — lo smoke copre le API, non `library`/`playback`. Sono
-  i bug che l'utente paga di piu', perche' perde dati.
+- **Test sugli store** — con i doppi in memoria di MMKV e del player gli store
+  si provano in Node: la sessione di ascolto e' coperta, `library` e
+  `playback` non ancora (i loro schemi si'). Sono i bug che l'utente paga di
+  piu', perche' perde dati.
 
 ---
 
