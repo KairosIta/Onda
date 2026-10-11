@@ -281,6 +281,14 @@ function build(): string {
     env,
   );
   preparePersonalDebugKeystore(env);
+  // Le parti pure del player nativo (modules/onda-player) hanno test JVM:
+  // girano qui, perche' la CI non compila con Gradle.
+  run(
+    'Test JVM del player',
+    gradleWrapper(root),
+    gradleArgs(':onda-player:testReleaseUnitTest'),
+    env,
+  );
   runAndroidLint(env);
   run('APK personale standalone', gradleWrapper(root), gradleArgs('assembleRelease'), env);
 
