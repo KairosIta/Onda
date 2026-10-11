@@ -292,7 +292,8 @@ passa nel registro dei collaudi con la sua prova.
       fa da specifica del modulo; nei test in Node lo segue un player finto,
       su cui si provano le regole dell'app. Al cambio di modulo il resto
       dell'app non cambia (`docs/DEVELOPMENT.md`, «Il player dietro una
-      facciata»).
+      facciata»). Il primo passo è **collaudato l'11 ottobre 2026** su
+      Motorola Edge 50 Neo, Android 16 (registro dei collaudi).
       **Done:** player scelto con le ragioni scritte; nessuna dipendenza con
       licenza che vieti la distribuzione; riproduzione in background, notifica,
       coda, ripresa della sessione, sleep timer e Android Auto collaudati su

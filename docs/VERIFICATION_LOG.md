@@ -12,6 +12,26 @@ date, misure, conteggi di test e nomi di file si riferiscono a quel momento.
 
 ## Baseline verificata
 
+### Verificato l'11 ottobre 2026 su Motorola Edge 50 Neo, Android 16
+
+Build personale del branch `refactor/player-facade`, all'ultimo commit
+(`61af16c`): l'app usa il player soltanto dalla facciata `src/player/`.
+
+- [x] `npm run install:personal` completo, sopra la build precedente e con la
+      Libreria intatta; `npm run check:installed` conferma sul dispositivo
+      `0.2.0+61af16c`.
+- [x] Sorgente spenta mentre suona un suo brano: con un brano Jamendo in
+      riproduzione e brani Audius dopo di lui in coda, spegnere Jamendo in
+      Sorgenti fa partire da solo il primo brano Audius che segue. La sessione
+      media resta `PLAYING`, senza errore. È la prova sul player vero della
+      regola del contratto: tolto il brano attivo, diventa attivo il primo che
+      resta dopo di lui.
+- [x] «Riproduci dopo» dopo un riavvio: messa in pausa la coda e tolta Onda
+      dai recenti, alla riapertura il mini-player mostra il brano ripristinato
+      in pausa, e Onda non ha sessione media, servizio né notifica. «Riproduci
+      dopo» su un altro brano, senza premere play, lo mette nella Coda subito
+      dopo quello ripristinato; la musica non parte e il mini-player resta.
+
 ### Verificato il 10 ottobre 2026 su Motorola Edge 50 Neo, Android 16
 
 Build personale del branch della PR #30, all'ultimo commit di codice
