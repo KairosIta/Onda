@@ -218,13 +218,16 @@ internal object PlaybackCore {
     prefs.remoteCommands = commands
   }
 
+  /**
+   * Prepara il player se e' fermo in `idle`, anche dopo un errore: l'errore
+   * resta attaccato al player finche' non lo si riprepara, pure se nel
+   * frattempo la coda e' cambiata.
+   */
   fun play() {
     if (stoppedByUser) return
     val p = player ?: return
     bindService()
-    if (p.playbackState == Player.STATE_IDLE && p.playerError == null && p.mediaItemCount > 0) {
-      p.prepare()
-    }
+    if (p.playbackState == Player.STATE_IDLE && p.mediaItemCount > 0) p.prepare()
     p.play()
   }
 
@@ -275,12 +278,13 @@ internal object PlaybackCore {
     pendingRetry = null
   }
 
+  /**
+   * Non prepara: lo fa `play()`. L'app carica la coda ripristinata anche
+   * senza suonare (per inserirci un brano o aprire la Coda), e allora non
+   * deve aprire servizio e notifica ne' scaricare niente.
+   */
   fun setMediaItems(items: List<MediaItem>, startIndex: Int) {
-    val p = ensurePlayer()
-    p.setMediaItems(items, startIndex.coerceIn(0, maxOf(items.size - 1, 0)), 0)
-    if (items.isEmpty() || stoppedByUser) return
-    bindService()
-    p.prepare()
+    ensurePlayer().setMediaItems(items, startIndex.coerceIn(0, maxOf(items.size - 1, 0)), 0)
   }
 
   fun insertMediaItems(index: Int, items: List<MediaItem>) {

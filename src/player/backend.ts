@@ -77,7 +77,11 @@ export interface PlayerControls {
   scheduleRetry(seconds: number): void;
   cancelRetry(): void;
 
-  /** Sostituisce la coda, attiva `startIndex` e parte dall'inizio del brano. */
+  /**
+   * Sostituisce la coda, attiva `startIndex` e si mette all'inizio del
+   * brano. Non scarica niente e non apre la notifica prima di un `play`: la
+   * coda ripristinata si carica anche solo per inserirci un brano.
+   */
   setMediaItems(items: MediaItem[], startIndex: number): void;
   /** Accoda in fondo. */
   addMediaItem(item: MediaItem): void;

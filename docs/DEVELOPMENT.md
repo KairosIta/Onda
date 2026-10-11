@@ -223,8 +223,8 @@ torna `idle`, che per la tabella e' una pausa. `store/playbackFault` tiene
 quindi un flag che `playbackService` alza quando un errore ferma il player e
 che il primo caricamento o cambio brano abbassa; e' quel flag che fa comparire
 l'avviso con Riprova. Per lo stesso motivo il salto automatico dopo un brano
-morto chiama `retry()` dopo `skipToNext()`: senza ripreparare la sorgente,
-`play()` su un player `idle` non fa niente. Un errore di rete invece non
+morto chiama `retry()` dopo `skipToNext()`: il contratto non promette che
+`play()` riprepari un player fermo dopo un errore. Un errore di rete invece non
 consuma il budget di salti: `playbackService` riprova da solo tre volte a
 distanze crescenti (`NETWORK_RETRY_DELAYS_MS` in `playbackPolicy`), e solo
 dopo resta all'utente il Riprova. L'attesa la conta il player
@@ -371,9 +371,9 @@ va provata su device prima di entrare.
 
 - **Un player per processo, sul main thread** (`PlaybackCore`). Nasce al
   primo comando di coda o di play, oppure quando Android Auto avvia il
-  servizio a freddo: fino ad allora non ci sono sessione, servizio ne'
-  notifica, ed e' per questo che la coda ripristinata all'avvio non apre lo
-  stream. Audio musicale con il focus in esclusiva, pausa a cuffie staccate,
+  servizio a freddo. Solo `play()` lo prepara e apre sessione, servizio e
+  notifica: caricare la coda ripristinata per inserirci un brano o per
+  aprire la Coda non apre lo stream. Audio musicale con il focus in esclusiva, pausa a cuffie staccate,
   CPU e Wi-Fi svegli (`WAKE_MODE_NETWORK`).
 - **Thread.** Le funzioni del modulo sono sincrone e girano sul thread del
   JS. I comandi si accodano in ordine su un `Handler` del main thread e
