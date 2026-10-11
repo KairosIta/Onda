@@ -1,8 +1,10 @@
 node_modules/
 .expo/
 dist/
-android/
-ios/
+# Generati da prebuild. Il codice nativo di Onda sta in modules/.
+/android/
+/ios/
+modules/*/android/build/
 *.apk
 *.aab
 
