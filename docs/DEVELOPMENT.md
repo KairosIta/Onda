@@ -109,9 +109,10 @@ app/
 src/
   types/track.ts            modello unificato, interfaccia MusicSource, SOURCE_IDS (l'elenco delle sorgenti)
   player/index.ts           la facciata del player: l'app importa solo '@/player' (vedi sotto)
-  player/backend.ts         il contratto con il modulo nativo, che fa anche da specifica per Media3
+  player/backend.ts         il contratto con il modulo nativo del player
   player/types.ts           tipi ed eventi del player, con i nomi di Media3 e i tempi in secondi
-  player/rntp.ts            l'adattatore su @rntp/player, l'unico file che lo importa
+  player/media3Backend.ts   il contratto sopra il modulo Media3: elementi, eventi, instradamento (puro)
+  player/media3.ts          collega il modulo nativo, l'unico file dell'app che lo importa
   services/sources/         adapter Audius e Jamendo + registro federato (brani, vetrine, artisti, album)
   services/sources/meta.ts  nome, sigla e attribuzione di ogni sorgente (puro)
   services/sources/access.ts  come le sorgenti leggono interruttori e credenziali, senza Keystore ne' MMKV
@@ -161,6 +162,8 @@ src/
   services/haptics.ts       feedback tattile di sistema: l'unico file che parla con expo-haptics
   theme.ts                  palette, spaziature, tipografia (Manrope), molla condivisa
 assets/fonts/               Manrope (SIL OFL 1.1), incorporata dal plugin expo-font come famiglia XML
+modules/
+  onda-player/              il player nativo: modulo Expo in Kotlin su AndroidX Media3, con test JVM
 scripts/
   release.ts                pipeline fail-closed per APK di distribuzione
   release-policy.ts         validazione pura di ambiente e credenziali
@@ -224,7 +227,8 @@ morto chiama `retry()` dopo `skipToNext()`: senza ripreparare la sorgente,
 `play()` su un player `idle` non fa niente. Un errore di rete invece non
 consuma il budget di salti: `playbackService` riprova da solo tre volte a
 distanze crescenti (`NETWORK_RETRY_DELAYS_MS` in `playbackPolicy`), e solo
-dopo resta all'utente il Riprova.
+dopo resta all'utente il Riprova. L'attesa la conta il player
+(`scheduleRetry`), perche' con l'app in background i timer JS sono fermi.
 
 La cronologia non si aggiorna al cambio di brano ma al tick di progresso:
 `services/historyPolicy` dice quando un brano conta come ascoltato (trenta
@@ -260,14 +264,14 @@ Android Auto legge l'albero costruito da `services/browseTree` dalla
 libreria persistita — preferiti, playlist, ascolti recenti — e
 `browseTreeSync` lo rimanda al player (`setBrowseTree`) a ogni mutazione,
 accorpando quelle ravvicinate. Il manifest lo dichiara tramite
-`plugins/with-android-auto.js`; il servizio media e il suo intent filter oggi
-li porta RNTP.
+`plugins/with-android-auto.js`; il servizio media e il suo intent filter li
+dichiara il modulo del player.
 
 Quel descrittore accende in Android Lint due controlli in piu', entrambi
 errori ed entrambi letti sul solo manifest sorgente dell'app. Il plugin li
 tace sull'elemento `<application>`, e il perche' sta scritto accanto: il
 controllo sul servizio e' un falso positivo, perche' il filtro
-MediaBrowserService vive nel manifest della libreria RNTP; quello sulla
+MediaBrowserService vive nel manifest del modulo del player; quello sulla
 ricerca vocale (`MEDIA_PLAY_FROM_SEARCH`) segnala una mancanza vera, aperta
 in TODO.md. Dichiarare quel filtro senza gestire la query aprirebbe Onda a
 vuoto a ogni "metti jazz su Onda".
@@ -305,29 +309,30 @@ riconoscere.
 ### Il player dietro una facciata
 
 L'app non parla con il modulo nativo del player: passa da `src/player/`
-(`import { player } from '@/player'`). Il motivo e' la licenza di
-`@rntp/player`, che non permette di distribuire un APK che lo incorpora
-(vedi [la nota di conformità](RELEASE_COMPLIANCE.md)): verra' sostituito da
-un modulo Expo nostro su AndroidX Media3, e grazie alla facciata il resto
-dell'app non se ne accorgera'.
+(`import { player } from '@/player'`). La facciata e' nata per sostituire
+`@rntp/player`, la cui licenza non permetteva di distribuire un APK che lo
+incorpora; oggi sotto c'e' il modulo nostro su AndroidX Media3
+([sotto](#il-modulo-media3)), e il resto dell'app non se n'e' accorto.
 
 - `src/player/index.ts` e' la facciata: esporta `player`, gli hook
   `usePlaybackState` e `useIsPlaying` e i tipi. Cambiare modulo vuol dire
   cambiare li' l'import del backend.
 - `src/player/backend.ts` e' il contratto, `PlayerControls`. Contiene solo
-  quello che Onda usa e fa anche da specifica del modulo Media3: oltre ai
-  metodi elenca i doveri del nativo, come il focus audio, la pausa a cuffie
-  staccate, CPU e Wi-Fi svegli a schermo spento, i comandi esterni eseguiti
-  anche con il JS sospeso e Android Auto.
+  quello che Onda usa: oltre ai metodi elenca i doveri del nativo, come il
+  focus audio, la pausa a cuffie staccate, CPU e Wi-Fi svegli a schermo
+  spento, i comandi esterni eseguiti anche con il JS sospeso e Android Auto.
 - `src/player/types.ts` ha i tipi e gli eventi, con i nomi di Media3 e i
   tempi in secondi.
-- `src/player/rntp.ts` e' l'adattatore su RNTP, l'unico file che importa
-  `@rntp/player`.
+- `src/player/media3Backend.ts` mette il contratto sopra il modulo nativo.
+  E' una fabbrica pura: modulo e `AppState` arrivano da fuori, cosi' i test
+  in Node la provano con un modulo finto.
+- `src/player/media3.ts` la collega al modulo vero, ed e' l'unico file
+  dell'app che importa `modules/onda-player`.
 
-ESLint fa rispettare il confine: `@rntp/player` fuori da `rntp.ts` e' un
-errore ovunque, e nell'app (`index.js`, `app/`, `src/`) lo e' anche
-importare un file interno di `src/player/`, pure con un percorso relativo.
-I doppi dei test in `scripts/` importano il contratto apposta.
+ESLint fa rispettare il confine: nell'app (`index.js`, `app/`, `src/`)
+importare un file interno di `src/player/` o il modulo nativo e' un errore,
+anche con un percorso relativo. I doppi dei test in `scripts/` importano il
+contratto apposta.
 
 Tre regole del contratto contano piu' delle altre, perche' l'app ci
 costruisce sopra. I comandi tornano subito e il nativo li esegue nell'ordine
@@ -337,32 +342,98 @@ l'indice attivo subito dopo aver consegnato la coda in attesa. Togliendo il
 brano attivo diventa attivo il primo che resta dopo quelli tolti, come in
 Media3: `sourceGuard` ci conta.
 
+Nei casi di confine il contratto segue Media3, come risulta dalla sua
+documentazione e dai suoi test, e il player finto con lui:
+
+- tolto il brano attivo senza niente dopo, diventa attivo il primo della
+  coda: con ripeti tutto si continua da li', altrimenti la riproduzione
+  finisce (`ended`);
+- indietro sul primo brano riavvolge, ma con ripeti tutto va all'ultimo;
+  avanti sull'ultimo non fa niente; ripeti uno non conta per navigare;
+- con lo shuffle "dopo" segue l'ordine shuffle, che il contratto non
+  espone: la Coda e la riga "Prossimo" dichiarano di non saperlo
+  (`utils/queueSummary`, `utils/upNext`). Un accessore e' una voce in TODO.md.
+
 Una funzione nuova del player si aggiunge al contratto (`backend.ts`,
-`types.ts`), all'adattatore e al player finto dei test, con un test in Node
-che la usa da `@/player`.
+`types.ts`), al modulo nativo con la sua fabbrica JS e al player finto dei
+test, con un test in Node che la usa da `@/player`.
 
-Il modulo Media3 va scritto senza consultare l'implementazione di RNTP, ne'
-il JavaScript ne' il Kotlin in `node_modules`: valgono il contratto, i test e
-la documentazione di Media3. Per l'adattatore `rntp.ts` bastano le
-tipizzazioni pubbliche di RNTP, cioe' i file `.d.ts` e i loro commenti. Dove il contratto tace, il
-[player finto](#il-player-finto-e-gli-altri-doppi) sceglie da solo, e quelle
-scelte non sono una specifica. Restano da decidere:
+Il modulo e' scritto senza consultare l'implementazione di RNTP, ne' il
+JavaScript ne' il Kotlin: valgono il contratto, i test, la documentazione e
+il sorgente di Media3. Chi lo modifica tiene la stessa regola.
 
-- **brano attivo tolto in fondo alla coda**: se dopo non resta niente, il
-  player finto resta sull'ultimo brano; Media3 probabilmente si ferma, da
-  verificare;
-- **precedente sul primo brano con ripeti tutto**: il player finto
-  riavvolge il brano; Media3 probabilmente torna all'ultimo, da verificare;
-- **ordine dello shuffle**: il contratto non lo espone, quindi la Coda e la
-  riga "Prossimo" dichiarano di non saperlo (`utils/queueSummary`,
-  `utils/upNext`). Media3 lo conosce: con un accessore si potrebbe mostrare
-  l'ordine vero;
-- **tocco sulla notifica**: con RNTP 5.8 riporta l'app dov'era. La sessione
-  del modulo nuovo puo' aprirla con `onda://notification.click`, che
-  `app/+native-intent.ts` porta gia' al player (voce aperta in TODO.md);
-- **servizio media e Android Auto**: oggi il servizio e il suo intent filter
-  MediaBrowserService stanno nel manifest di RNTP (vedi
-  `plugins/with-android-auto.js`); il modulo nuovo dovra' dichiararli lui.
+### Il modulo Media3
+
+`modules/onda-player` e' un modulo Expo locale in Kotlin (package
+`com.onda.playback`), che l'autolinking di Expo collega da solo. Usa Media3
+1.11.1 (`media3-exoplayer` e `media3-session`, Apache 2.0); una versione nuova
+va provata su device prima di entrare.
+
+- **Un player per processo, sul main thread** (`PlaybackCore`). Nasce al
+  primo comando di coda o di play, oppure quando Android Auto avvia il
+  servizio a freddo: fino ad allora non ci sono sessione, servizio ne'
+  notifica, ed e' per questo che la coda ripristinata all'avvio non apre lo
+  stream. Audio musicale con il focus in esclusiva, pausa a cuffie staccate,
+  CPU e Wi-Fi svegli (`WAKE_MODE_NETWORK`).
+- **Thread.** Le funzioni del modulo sono sincrone e girano sul thread del
+  JS. I comandi si accodano in ordine su un `Handler` del main thread e
+  tornano subito; le letture passano dalla stessa coda e aspettano la
+  risposta, quindi vedono i comandi dati prima, perche' ExoPlayer aggiorna lo
+  stato visibile appena riceve un comando. Una lettura senza risposta in due
+  secondi scrive `Lettura del player non riuscita` nel log e ripiega su un
+  valore neutro: e' un guasto da cercare, non un caso previsto. Audio in
+  uscita e stato fanno eccezione: valgono come li ha annunciati l'ultimo
+  evento e si leggono senza aspettare.
+- **Servizio** (`PlaybackService`, un `MediaLibraryService` dichiarato nel
+  manifest del modulo). Quando la musica sta per partire il core lo avvia e
+  ci resta legato con un `MediaController`; Media3 ne fa un foreground
+  service con la notifica. I tasti di `setup` vanno al controller della
+  notifica, ad Android Auto e ai controller fidati del sistema; ogni altra
+  app legge soltanto. Il tocco sulla notifica apre
+  `onda://notification.click`, che `app/+native-intent.ts` porta al player.
+- **Recenti.** Tolta dai recenti, Onda si ferma e il servizio si chiude, ma
+  coda e posizione restano nel player: se processo e JS sopravvivono,
+  riaprendo l'app il mini-player le mostra in pausa. Finche' l'app non torna
+  in primo piano un `play()` dal JS viene ignorato, cosi' un tentativo dopo
+  un errore non fa ripartire la musica appena fermata.
+- **Timer nativi**: posizione (`progressUpdated`, ogni
+  `progressIntervalSeconds` e alla pausa), spegnimento (`sleepAfter`, contato
+  su `elapsedRealtime`) e nuovo tentativo dopo un errore di rete
+  (`scheduleRetry`). Con l'app in background React Native ferma i timer JS
+  (`JavaTimerManager`, se non gira un task headless): un `setTimeout` per
+  riprovare dopo un tunnel a schermo spento non partirebbe mai.
+- **Eventi.** Il modulo manda un solo evento, `onPlayerEvent`, con `type` e i
+  campi del contratto. `media3Backend` lo consegna una volta sola: ai
+  listener se l'app e' `active`, al gestore in background altrimenti, in fila
+  e con dieci secondi al massimo per evento. Gli stessi gestori stanno in
+  entrambi i posti (`playbackService`), e un errore consegnato due volte
+  salterebbe due brani. Per questo la Coda e la riga "Prossimo" rileggono il
+  player anche al ritorno in primo piano.
+- **Elementi.** Gli `extras` e una chiave scelta dal JS viaggiano nel `tag`
+  del `MediaItem`, che resta nel processo: in `MediaMetadata.extras`
+  arriverebbero a ogni controller. Con la chiave, `media3Backend` restituisce
+  lo stesso oggetto che aveva mandato; un elemento senza chiave (dopo una
+  ricarica del JS, o scelto in Android Auto) si ricostruisce dai campi.
+- **Errori.** I codici di `PlaybackException` diventano le categorie del
+  contratto (`ErrorCategory`): rete, timeout e risposte HTTP 5xx, 408 e 429
+  sono `network`, il resto dell'IO e il parsing `source`, decoder e uscita
+  audio `renderer`.
+- **Android Auto.** L'albero di `setBrowseTree` si salva in un file, per il
+  servizio a freddo. Lo stesso brano puo' stare in Preferiti, in una playlist
+  e negli ascolti recenti, quindi in macchina il suo id porta anche la
+  cartella (`cartella|uid`): scelto un brano, in coda vanno i brani suonabili
+  della stessa cartella, a partire da lui. In coda torna l'uid nudo.
+
+Le parti pure (categorie d'errore, tasti, timer di spegnimento, albero di
+Auto) hanno test JVM in `modules/onda-player/android/src/test`. Li esegue
+`npm run build:personal` prima dell'Android Lint; da soli, dopo un prebuild:
+
+```bash
+cd android
+./gradlew :onda-player:testReleaseUnitTest
+```
+
+Su Windows il comando e' `gradlew.bat`.
 
 ---
 
@@ -383,7 +454,9 @@ le migrazioni dello storage e il cursore della paginazione federata, con
 sorgenti finte che scorrono un catalogo vero: una sorgente giu' per sempre,
 una che cade e torna, un artista con una richiesta fallita. Sopra il player
 finto coprono anche la sessione di ascolto, il guardiano delle sorgenti e la
-reazione agli errori di riproduzione.
+reazione agli errori di riproduzione. L'adattatore sul modulo Media3 ha i suoi,
+con un modulo nativo finto (`scripts/media3-backend.test.ts`); il Kotlin ha i
+test JVM che girano nella build personale ([Il modulo Media3](#il-modulo-media3)).
 
 `npm run check:audit` e' il controllo delle dipendenze che gira in CI:
 `npm audit` alla soglia alta, con le sole eccezioni dichiarate in
@@ -405,22 +478,25 @@ computer, anche dove `.expo/` non e' mai stata creata.
 `scripts/test-doubles.mjs`, che mette al posto dei moduli nativi i doppi in
 memoria di `scripts/doubles/`: `react-native` (solo `AppState`, con
 `setAppState` per simulare l'uscita dall'app), `react-native-mmkv` ed
-`expo-secure-store`. Al posto dell'adattatore `src/player/rntp.ts` mette il
-player finto, `doubles/player.ts`: la facciata resta quella vera, quindi
-store e servizi si provano cosi' come sono. Lo smoke non carica i doppi.
+`expo-secure-store`. Al posto di `src/player/media3.ts`, che collega il
+modulo nativo, mette il player finto, `doubles/player.ts`: la facciata resta
+quella vera, quindi store e servizi si provano cosi' come sono. Lo smoke non
+carica i doppi.
 
-Il player finto e' la lettura eseguibile del contratto, e il modulo Media3
-dovra' comportarsi allo stesso modo:
+Il player finto e' la lettura eseguibile del contratto, e nei casi che il
+contratto fissa il modulo Media3 si comporta allo stesso modo
+(`scripts/player-double.test.ts` lo tiene allineato):
 
 - i comandi su coda, brano attivo, posizione e ripetizione cambiano subito
   lo stato che le letture vedono; gli altri (play, pausa, `retry`, shuffle,
-  timer di spegnimento, albero di Android Auto) vengono solo registrati.
+  timer di spegnimento e nuovo tentativo, albero di Android Auto) vengono
+  solo registrati.
   `fakePlayer.calls()` da' i nomi di tutti, in ordine, e
   `fakePlayer.argsOf(nome)` i loro argomenti;
 - gli eventi che seguono i comandi (coda cambiata, cambio di brano)
   aspettano `fakePlayer.flush()`, come quelli che il nativo manda dopo;
-- quelli che dipendono da rete e decoder (audio che esce, errori, progresso)
-  li manda il test con `fakePlayer.emit()`;
+- quelli che dipendono da rete e decoder (audio che esce, stato, errori,
+  progresso) li manda il test con `fakePlayer.emit()`;
 - non prepara stream: la durata resta 0 e lo shuffle non riordina niente.
 
 Ogni file di test gira in un processo suo: i test di un file condividono
@@ -431,8 +507,8 @@ rimasti, cosi' non arrivano al test dopo.
 I moduli che carica anche lo smoke prendono i tipi del player con
 `import type { ... } from '@/player'`. La rimozione dei tipi di Node lascia
 `import { type X } from '@/player'` come import senza nomi, che carica
-comunque la facciata e con lei RNTP, che fuori da React Native non si
-carica.
+comunque la facciata e con lei il modulo nativo, che fuori da React Native
+non si carica.
 
 ### Smoke
 
@@ -738,8 +814,8 @@ confronto senza stampare o passare le password sulla command line.
 ### R8 e le trappole che non ha
 
 R8 rinomina e rimuove classi, e il codice che usa la reflection salta solo a
-runtime: il typecheck e la build non se ne accorgono. Media3 e track-player
-erano il rischio serio, perche' Media3 fa parecchia reflection.
+runtime: il typecheck e la build non se ne accorgono. Media3 e' il rischio
+serio, perche' fa parecchia reflection.
 
 Non serve nessuna regola di keep: gli AAR moderni portano le proprie
 `consumer-proguard-rules`, e con questo stack R8 passa senza aggiunte.
@@ -829,15 +905,18 @@ conferme della [nota di conformità](RELEASE_COMPLIANCE.md).
 (obbligatorio da Android 13). L'app lo chiede al primo play; se hai negato,
 riabilitalo dalle impostazioni di sistema.
 
-**L'audio si ferma andando in background.** Il service e' stato registrato
-dentro React invece che in `index.js`, oppure manca `foregroundServiceType`
-nel manifest. Dopo `npx expo prebuild --platform android`, controlla che
-`android/app/src/main/AndroidManifest.xml` contenga il service RNTP con
-`android:foregroundServiceType="mediaPlayback"`. Le versioni recenti di RNTP
-lo dichiarano da sole nel merge del manifest: se non c'e', aggiungilo a mano.
+**L'audio si ferma andando in background.** Manca il servizio o il suo
+`foregroundServiceType`. Il manifest del modulo
+(`modules/onda-player/android/src/main/AndroidManifest.xml`) dichiara
+`com.onda.playback.PlaybackService` con
+`android:foregroundServiceType="mediaPlayback"`, e il merge lo porta
+nell'APK: controllalo con
+`aapt2 dump xmltree --file AndroidManifest.xml dist/personal/Onda-personal.apk`.
 
-**Errore "player is not initialized".** `setupPlayer()` chiamato prima che
-il modulo nativo sia pronto, tipico dopo un fast refresh. Ricarica l'app.
+**Nel log `Lettura del player non riuscita`.** Il main thread non ha risposto
+in due secondi a una lettura del JS: qualcosa lo tiene occupato o lo blocca, e
+intanto la lettura ha restituito un valore neutro. E' un guasto da cercare
+(vedi [Il modulo Media3](#il-modulo-media3)).
 
 **Una sorgente non risponde.** L'errore compare come banner senza bloccare
 l'altra sorgente: e' voluto. Il banner ora si accende anche se la sorgente
@@ -865,9 +944,8 @@ con `useSafeAreaInsets()`. Se aggiungi un foglio nuovo, ricordatene.
 **L'app parte e crasha subito con `TurboModuleInteropUtils$ParsingException`.**
 Un modulo nativo vecchio stile sotto la Nuova Architettura. RN 0.86 non ha
 piu' l'architettura vecchia, quindi non si aggira: serve una versione del
-modulo che sia un TurboModule vero. E' esattamente il motivo per cui
-il player e' `@rntp/player` 5.x, costruito per la New Architecture, e per cui
-il modulo che lo sostituira' sara' un modulo Expo, che la supporta.
+modulo che sia un TurboModule vero. E' anche il motivo per cui il player e'
+un modulo Expo, che la supporta.
 
 **Un genere mostra solo tracce Audius.** Prima di sospettare il tag, lancia
 `npm run smoke`: quasi sempre e' l'instabilita' di Jamendo qui sotto, non un
@@ -892,21 +970,21 @@ sull'URL restituito dall'API) e uno di questi sta stabilmente in cima ai
 brani popolari. `playbackService` salta al successivo, ma non piu' di tre
 volte di fila: il budget torna pieno appena un brano suona. Gli errori
 classificati `network` non fanno avanzare: si riprova da soli tre volte, a
-distanze crescenti, e poi resta Riprova.
+distanze crescenti e anche a schermo spento, e poi resta Riprova.
 
 ---
 
 ## Scelte da conoscere
 
-**Il player e' `@rntp/player@5.8.0`.** E' la linea stabile ufficiale RNTP
-scritta per la New Architecture con JSI e TurboModules. Non va confusa con
-il vecchio pacchetto npm `react-native-track-player`, rimasto sulla linea 4.x
-e con una vecchia alpha 5 non compatibile con l'API stabile. La versione e'
-esatta, senza caret: e' il componente che fa suonare la musica e si aggiorna
-solo insieme alla checklist playback/background/notifica. Sta dietro la
-[facciata `src/player/`](#il-player-dietro-una-facciata) e verra' sostituito
-da un modulo nostro su Media3: la sua licenza non permette di distribuire
-l'APK.
+**Il player e' un modulo nostro su Media3.** Fino all'11 ottobre 2026 era
+`@rntp/player` 5.8.0, la cui licenza non permette di distribuire un APK che lo
+incorpora. Fra i player open source per React Native non ce n'era uno con
+quello che serve a Onda (coda nativa con riordino, controlli con il JS
+sospeso, Android Auto) e una licenza adatta: `modules/onda-player` e' scritto
+qui, su AndroidX Media3, dietro la
+[facciata `src/player/`](#il-player-dietro-una-facciata). La versione di
+Media3 e' esatta e si aggiorna solo insieme al collaudo su device di coda,
+notifica, background e Android Auto.
 
 **Il player non si apre se si interpreta subito un brano nullo come fine coda.**
 Il brano attivo puo' arrivare dopo il primo render: `useActiveMediaItem()` di

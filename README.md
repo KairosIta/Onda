@@ -112,9 +112,9 @@ PowerShell, debug USB ed errori comuni, è in
   Auto è dichiarato nell'APK ma non ancora provato con un'unità o con il
   Desktop Head Unit. Le prove che mancano sono in [TODO.md](TODO.md), quelle
   fatte nel [registro dei collaudi](docs/VERIFICATION_LOG.md).
-- Il player nativo `@rntp/player` ha una licenza separata: è gratuito solo per
-  uso personale privato o didattico/ricerca accademica qualificata. Ogni altro
-  uso richiede una licenza commerciale del fornitore.
+- Il player nativo è nostro (`modules/onda-player`, MIT) e usa AndroidX Media3,
+  sotto Apache 2.0. Fino all'11 ottobre 2026 era `@rntp/player`, la cui licenza
+  non permetteva di distribuire un APK che lo incorporasse.
 
 La roadmap è in [TODO.md](TODO.md) e le prove già fatte nel
 [registro dei collaudi](docs/VERIFICATION_LOG.md); architettura e procedure di
@@ -123,9 +123,10 @@ collaudo sono nella [guida per sviluppatori](docs/DEVELOPMENT.md).
 ## Licenze e responsabilità
 
 Il codice e la documentazione originali di Onda sono disponibili sotto
-[MIT](LICENSE). Questa licenza non si estende automaticamente al player RNTP,
-agli asset di brand, alle API, alle credenziali, alla musica, agli artwork, ai
-metadati o ai marchi di terzi.
+[MIT](LICENSE). Questa licenza non si estende automaticamente alle dipendenze
+di terze parti (come AndroidX Media3, sotto Apache 2.0), agli asset di brand,
+alle API, alle credenziali, alla musica, agli artwork, ai metadati o ai marchi
+di terzi.
 
 Prima di usare, modificare o distribuire il progetto leggi
 [Contenuti, software e servizi di terze parti](THIRD_PARTY_CONTENT.md) e la

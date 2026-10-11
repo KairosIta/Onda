@@ -144,9 +144,7 @@ fallo soltanto dopo aver deciso che preferiti e playlist non servono più.
 
 ## Limiti legali
 
-Il sorgente originale Onda è MIT, ma una build funzionante scarica anche
-`@rntp/player`, che usa una licenza separata. La versione corrente è gratuita
-solo per uso personale privato o per specifico uso didattico/ricerca accademica;
-aziende, organizzazioni non profit, enti pubblici e ogni altro uso richiedono
-una licenza commerciale. API e contenuti hanno condizioni ulteriori: leggi
+Il sorgente originale Onda è MIT, e una build scarica dipendenze che tengono
+la propria licenza, come AndroidX Media3 sotto Apache 2.0. API e contenuti
+hanno condizioni ulteriori: leggi
 [`THIRD_PARTY_CONTENT.md`](../THIRD_PARTY_CONTENT.md).

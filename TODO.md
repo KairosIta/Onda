@@ -9,11 +9,6 @@ ciascuna con la sua evidenza, stanno nel
 [registro dei collaudi](docs/VERIFICATION_LOG.md): sono la memoria di cosa è
 stato verificato e come, e la base per non regredire.
 
-Nota per il repository pubblico: l'apertura diretta del player dal tap sulla
-notifica va ripristinata soltanto tramite un'API pubblica RNTP, una modifica
-esplicitamente autorizzata dal fornitore o il modulo Media3 che sostituirà
-RNTP; Onda non distribuisce più una patch del sorgente RNTP.
-
 Questa non è una lista di idee generica: descrive ciò che Onda offre oggi e
 il lavoro necessario per mantenere pubblico il sorgente e, separatamente,
 arrivare a un'eventuale release binaria affidabile.
@@ -125,6 +120,13 @@ passa nel registro dei collaudi con la sua prova.
       di ascolto e lì non c'era niente da correggere. I commenti in
       `src/store/playback.ts` e `src/utils/shuffle.ts` che dichiaravano «RNTP non
       ha uno shuffle nativo» erano rimasti indietro e sono stati riscritti.
+- [ ] Ordine vero dello shuffle nella Coda e nella riga «Prossimo». Con RNTP
+      non si poteva leggere; Media3 lo tiene nella `Timeline` (primo e
+      successivo con lo shuffle acceso). Serve un accessore nel contratto,
+      nel modulo e nel player finto, poi la Coda può mostrare l'ordine di
+      ascolto invece di dichiarare di non saperlo.
+      **Done:** con lo shuffle acceso la Coda elenca i brani nell'ordine in
+      cui suoneranno e «Prossimo» nomina quello giusto, provati su device.
 - [x] Timer di spegnimento nativo da 15 a 90 minuti. **Collaudato il 30 agosto
       2026** su Android 16 in Doze profondo (`deviceidle force-idle`, batteria
       simulata scollegata, schermo spento): armato alle 11:36:19 su 15 minuti, un
@@ -136,16 +138,16 @@ passa nel registro dei collaudi con la sua prova.
       `endsAt` lo azzera un `setTimeout` JS che il sistema differisce: a schermo
       spento però non c'è UI da leggere, e al risveglio i timer vengono smaltiti
       prima che la schermata torni visibile.
-- [ ] Apertura del player dal tap sulla notifica. La normalizzazione dei deep
-      link `trackplayer://` e `onda://` verso `/player` resta pronta in
-      `app/+native-intent.ts`, ma senza la patch RNTP, tolta dal repository
-      pubblico, `@rntp/player` 5.8 apre l'app con l'intent di avvio e nessun
-      URL (`setSessionActivity` in `TrackPlayerPlaybackService.kt`): il tap
-      riporta Onda in primo piano dov'era, non sul player. Torna con un'API
-      pubblica RNTP, una modifica autorizzata dal fornitore (vedi la nota in
-      cima) o il modulo Media3 che sostituirà RNTP: la sua sessione aprirà
-      l'app con `onda://notification.click`, che `+native-intent.ts` porta già
-      al player.
+- [ ] Apertura del player dal tap sulla notifica. **Implementato l'11 ottobre
+      2026, da collaudare**: la sessione del modulo Media3 apre l'app con
+      `onda://notification.click`, che `app/+native-intent.ts` porta al player.
+      Con `@rntp/player` 5.8 il tap riportava Onda in primo piano dov'era.
+- [ ] Ripresa da Bluetooth o dalla scheda multimediale di sistema dopo la
+      chiusura del processo. Media3 la offre con un `MediaButtonReceiver` e
+      `onPlaybackResumption`, che restituisce coda e posizione salvate; oggi
+      il receiver non c'è e un tasto play a processo morto non fa niente.
+      **Done:** play dalle cuffie e dalla scheda di sistema dopo un riavvio,
+      senza aprire Onda, con il brano e la posizione salvati.
 - [x] Ripresa dell'ascolto all'avvio: coda e posizione nel brano sopravvivono
       alla chiusura dell'app e il mini-player riparte da dove era, in pausa,
       senza aprire lo stream né mostrare la notifica finché non si preme play.
@@ -155,7 +157,7 @@ passa nel registro dei collaudi con la sua prova.
       fotografa
       su MMKV a ogni transizione e cambio coda, anche dal gestore headless, in
       una finestra di 200 brani intorno a quello attivo; la posizione arriva dal
-      timer nativo `progressSync` di RNTP ogni cinque secondi e alla pausa, più
+      timer nativo di posizione del player ogni cinque secondi e alla pausa, più
       un salvataggio all'uscita dall'app. All'avvio la coda resta «in attesa»
       (`src/store/session.ts`) e il player nativo la riceve al primo play, skip,
       accodamento o apertura della Coda. Nove test coprono finestra,
@@ -178,7 +180,7 @@ passa nel registro dei collaudi con la sua prova.
       device. Righe ad altezza
       fissa e geometria in `utils/reorder.ts` (due test, gira come worklet);
       lo scroll della lista si spegne mentre una riga è in mano;
-      `moveMediaItem` di RNTP fa lo spostamento e l'annullamento rimette i
+      `moveMediaItem` del player fa lo spostamento e l'annullamento rimette i
       brani dopo quello che suona in quel momento. Manca lo scorrimento
       automatico ai bordi: una coda più lunga dello schermo si riordina in
       più passaggi.
@@ -190,20 +192,28 @@ passa nel registro dei collaudi con la sua prova.
 - [ ] Android Auto: preferiti, playlist e ascolti recenti come cartelle
       sfogliabili dal display dell'auto. **Implementato il 9 settembre 2026, da
       collaudare**: l'albero lo costruisce `services/browseTree.ts` dalla
-      libreria persistita (due test) e `browseTreeSync` lo rimanda a RNTP a
+      libreria persistita (due test) e `browseTreeSync` lo rimanda al player a
       ogni mutazione; `plugins/with-android-auto.js` aggiunge al manifest il
-      descrittore `automotive_app_desc`, il servizio media lo dichiara già
-      RNTP. Senza `extras` nelle voci, per tenere leggero il passaggio nativo:
-      cronologia e cuoricino risolvono l'uid dalla libreria. Nessuna prova
-      con un'unità o con il Desktop Head Unit.
+      descrittore `automotive_app_desc`, il servizio media lo dichiara il
+      modulo del player. Senza `extras` nelle voci, per tenere leggero il
+      passaggio nativo: cronologia e cuoricino risolvono l'uid dalla libreria.
+      Scelto un brano in macchina, in coda vanno i brani della sua cartella
+      (test JVM del modulo). Nessuna prova con un'unità o con il Desktop Head
+      Unit.
+- [ ] Copertine in Android Auto. L'auto non scarica le copertine da un URL
+      https: le vuole come `content://`. Serve un ContentProvider nel modulo
+      del player che le prenda dalla rete con una cache piccola.
+      **Done:** copertine visibili nel Desktop Head Unit per preferiti,
+      playlist e ascolti recenti.
 - [ ] Ricerca vocale: «metti jazz su Onda» dall'Assistant o dal display
       dell'auto cerca nelle sorgenti e fa partire i risultati. Servono
       l'intent filter `MEDIA_PLAY_FROM_SEARCH` sull'attività, un modulo Expo
       locale che legga la query dall'intent di avvio e da `onNewIntent`, e un
-      gestore JS che federi la ricerca e riempia la coda; la via della
-      sessione media resta chiusa finché RNTP non inoltra a JS le richieste
-      di ricerca di Media3. Fino ad allora `with-android-auto.js` tace il
-      controllo Lint corrispondente, con il motivo scritto accanto.
+      gestore JS che federi la ricerca e riempia la coda. Ora che il player è
+      nostro c'è anche la via della sessione media: le richieste di ricerca di
+      Media3 (`onSearch`, `onSetMediaItems` con la query) inoltrate al JS.
+      Fino ad allora `with-android-auto.js` tace il controllo Lint
+      corrispondente, con il motivo scritto accanto.
 
 ### Libreria locale
 
@@ -223,7 +233,8 @@ passa nel registro dei collaudi con la sua prova.
 ### Progetto e distribuzione
 
 - [x] Android, tema scuro, icona legacy/adaptive/monochrome e UI edge-to-edge.
-- [x] Expo SDK 57, React Native 0.86, TypeScript 6 e `@rntp/player` 5.8.
+- [x] Expo SDK 57, React Native 0.86, TypeScript 6 e AndroidX Media3 1.11 nel
+      modulo nostro `modules/onda-player`.
 - [x] Codice e documentazione sotto licenza MIT; contenuti, marchi e
       credenziali esclusi in `THIRD_PARTY_CONTENT.md`.
 - [x] Build release minificata e firmabile tramite config plugin.
@@ -285,15 +296,19 @@ passa nel registro dei collaudi con la sua prova.
       confrontati con ciò che Onda usa oggi: coda nativa con riordino, controlli
       in notifica e lock screen anche con JS sospeso, servizio in foreground,
       salvataggio periodico della posizione, sleep timer, shuffle e repeat,
-      stati di buffering ed errore, Android Auto. Fino alla sostituzione il
-      player resta alla 5.8.0 e Dependabot non ne propone aggiornamenti.
-      La strada scelta è un modulo Expo proprio su Media3. Primo passo fatto:
+      stati di buffering ed errore, Android Auto.
+      La strada scelta è un modulo Expo proprio su Media3. Primo passo:
       l'app usa il player soltanto da `src/player/`, dietro un contratto che
       fa da specifica del modulo; nei test in Node lo segue un player finto,
-      su cui si provano le regole dell'app. Al cambio di modulo il resto
-      dell'app non cambia (`docs/DEVELOPMENT.md`, «Il player dietro una
-      facciata»). Il primo passo è **collaudato l'11 ottobre 2026** su
-      Motorola Edge 50 Neo, Android 16 (registro dei collaudi).
+      su cui si provano le regole dell'app (`docs/DEVELOPMENT.md`, «Il player
+      dietro una facciata»), **collaudato l'11 ottobre 2026** su Motorola
+      Edge 50 Neo, Android 16 (registro dei collaudi).
+      **Implementato l'11 ottobre 2026, da collaudare**: `modules/onda-player`,
+      modulo Expo nostro su Media3 1.11.1 (Apache 2.0), scritto senza
+      consultare l'implementazione di RNTP; `@rntp/player` è uscito da
+      dipendenze, lockfile e APK (`docs/DEVELOPMENT.md`, «Il modulo
+      Media3»). `THIRD_PARTY_CONTENT.md` e `docs/RELEASE_COMPLIANCE.md` sono
+      aggiornati.
       **Done:** player scelto con le ragioni scritte; nessuna dipendenza con
       licenza che vieti la distribuzione; riproduzione in background, notifica,
       coda, ripresa della sessione, sleep timer e Android Auto collaudati su
@@ -316,7 +331,7 @@ passa nel registro dei collaudi con la sua prova.
 
 ### Riproduzione e rete
 
-- [ ] **Unificare gli stati del player e gestire tutte le promise RNTP.** Dal
+- [ ] **Unificare gli stati del player e gestire i comandi in volo.** Dal
       9 settembre 2026 lo stato è uno solo (idle, buffering, playing, paused,
       ended, error), ricavato in `src/services/playbackStatus.ts` e usato da
       entrambi i tasti play: il caricamento mostra uno spinner, l'errore un
@@ -568,8 +583,8 @@ passa nel registro dei collaudi con la sua prova.
       dp il 10 settembre. Restano: chiusura con uno strappo, lo slider che non
       muove il foglio, la schermata precedente scurita sotto il foglio,
       chevron e tasto back senza fasce scure, copertina a 0,92 in pausa.
-      L'apertura dalla notifica ad app chiusa dipende da RNTP (vedi
-      «Apertura del player dal tap sulla notifica»).
+      L'apertura dalla notifica ad app chiusa si prova con il modulo Media3
+      (vedi «Apertura del player dal tap sulla notifica»).
 - [ ] Coda in attesa: trascinare lo slider e poi premere play; «Riproduci
       dopo» e «Accoda» dal menu di un brano; apertura della Coda dal player.
       In ogni caso il mini-player non deve sparire e il player non deve
@@ -656,8 +671,8 @@ passa nel registro dei collaudi con la sua prova.
       data.
 - [ ] **Timer a fine brano**, oltre a quelli a minuti. Il commento in
       `store/sleepTimer.ts` lo dava per fatto in `player.tsx`, dove non c'è
-      mai stato. Prima va capito se RNTP offre un equivalente nativo di
-      `sleepAfterTime`, l'unico che resta preciso sotto Doze.
+      mai stato. Media3 lo fa nativo con `setPauseAtEndOfMediaItems`, che
+      resta preciso sotto Doze come `sleepAfter`: va portato nel contratto.
 - [ ] **ReplayGain, gapless e crossfade** soltanto dopo misure e verifica del
       supporto del motore audio.
 

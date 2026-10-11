@@ -9,17 +9,18 @@ diritto sul software, sui contenuti o sui servizi di terze parti.
 Le dipendenze non sono rilicenziate sotto MIT. `npm ci` le scarica dai relativi
 registri e ogni dipendenza conserva la propria licenza.
 
-In particolare, Onda usa `@rntp/player@5.8.0`. Il file `license.txt` distribuito
-nel pacchetto da Double Symmetry concede uso gratuito soltanto a privati per
-scopi personali e non professionali, oppure a istituzioni accademiche
-qualificate per didattica o ricerca non commerciale. Aziende, organizzazioni
-non profit, enti pubblici e qualsiasi altro uso richiedono una
-[licenza commerciale RNTP](https://rntp.dev/pricing). La MIT di Onda non
-modifica né amplia questi diritti.
+In particolare, il player di Onda (`modules/onda-player`) è codice originale
+sotto MIT e usa AndroidX Media3 (`androidx.media3:media3-exoplayer` e
+`androidx.media3:media3-session`) di The Android Open Source Project, sotto
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). Gradle lo
+scarica durante la build e lo incorpora nell'APK: chi distribuisce un APK deve
+accompagnarlo con il testo della licenza Apache 2.0 e con gli avvisi delle
+dipendenze incorporate.
 
-Il repository non include né modifica il sorgente RNTP: dichiara soltanto la
-dipendenza npm. Questo non autorizza a ridistribuire RNTP o un APK che lo
-incorpora.
+Fino all'11 ottobre 2026 Onda usava `@rntp/player@5.8.0`, la cui licenza non
+consentiva di ridistribuire un APK che lo incorporasse; da quel giorno non è
+più una dipendenza. Il modulo Media3 è stato scritto senza consultarne
+l'implementazione.
 
 Il carattere tipografico Manrope, in `assets/fonts/`, è Copyright 2018 The
 Manrope Project Authors ed è distribuito sotto la

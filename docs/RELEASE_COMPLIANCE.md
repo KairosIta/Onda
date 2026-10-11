@@ -1,9 +1,9 @@
 # Nota di conformità della release
 
 Revisione tecnica del **22 agosto 2026**, aggiornata il **10 ottobre 2026** per
-i termini API di Audius e le credenziali inserite dall'utente. Questa nota registra le condizioni
-verificate per Onda e non sostituisce un parere legale o un'autorizzazione dei
-fornitori.
+i termini API di Audius e le credenziali inserite dall'utente, e l'**11 ottobre
+2026** per il player su Media3. Questa nota registra le condizioni verificate
+per Onda e non sostituisce un parere legale o un'autorizzazione dei fornitori.
 
 ## Decisione corrente
 
@@ -64,14 +64,14 @@ rientra nella clausola.
 | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Audius  | Nome della sorgente, pagina canonica, regime di diritti ricevuto e collegamento esplicito alla Open Music License nel player. Le tracce gated o non riproducibili sono filtrate. I dati di catalogo restano solo in memoria per la sessione. | Il profilo non commerciale resta subordinato alla verifica dei vigenti API Terms. Una release commerciale è bloccata: l'API non fornisce sempre identità del licenziante e avviso di copyright necessari all'attribuzione commerciale prevista dalla OML.                                               |
 | Jamendo | Nome della sorgente, pagina canonica e URL della licenza Creative Commons specifica nel player. Nessuna cache dei brani o modalità offline. Client ID inserito dall'utente in app e verificato con una richiesta prima del salvataggio.      | Ogni persona usa il Client ID della propria applicazione Jamendo, inserito in app. La distribuzione di un APK condiviso resta bloccata finché Jamendo non conferma per iscritto questo modello: applicazioni registrate dai singoli utenti, clausola sulle applicazioni duplicate, quota per Client ID. |
-| RNTP    | Il pacchetto `@rntp/player` viene scaricato da npm e non è incluso integralmente nel repository.                                                                                                                                             | La versione 5.8.0 è gratuita solo per uso personale privato o didattico/ricerca accademica qualificata. Ogni altro uso richiede la licenza commerciale del fornitore; nessun APK viene pubblicato dal progetto.                                                                                         |
+| Player  | Modulo nostro `modules/onda-player` (MIT) su AndroidX Media3, che Gradle scarica e incorpora nell'APK. `@rntp/player` non è più una dipendenza dall'11 ottobre 2026.                                                                         | Media3 è sotto Apache 2.0, che consente la distribuzione: un APK ufficiale deve portare il testo della licenza e gli avvisi delle dipendenze incorporate (gate di release).                                                                                                                             |
 | Privacy | Policy v1.4 nel repository e accessibile dall'app; nessun advertising, analytics o backend Onda; backup Android disabilitato; credenziali cifrate con il Keystore, fuori da backup ed export.                                                | Coerente con il profilo esaminato; va aggiornata se cambiano servizi, raccolta dati o distribuzione.                                                                                                                                                                                                    |
 
 Di conseguenza **il sorgente può essere pubblico, ma la build federata Audius +
 Jamendo non è autorizzata alla distribuzione pubblica allo stato attuale**. Non
 allegare APK personali a release, issue o pull request. Un'eventuale variante
 solo Audius è una decisione di prodotto separata e richiede prima la verifica
-degli API Terms vigenti e della licenza del player.
+degli API Terms vigenti.
 
 ## Conferme da ottenere
 
@@ -131,6 +131,7 @@ Prima di distribuire un APK ufficiale devono essere presenti:
    una release reale;
 4. aggiornamento coordinato di questa nota, `THIRD_PARTY_CONTENT.md`, privacy e
    schermata Informazioni.
-5. licenza o autorizzazione RNTP compatibile con la distribuzione prevista;
+5. licenza Apache 2.0 e avvisi delle dipendenze incorporate (AndroidX Media3 e
+   le altre) consultabili dall'APK, per esempio dalla schermata Informazioni;
 6. nessuna credenziale nell'APK e nessuna credenziale in log, export o backup,
    verificati su una build di release.
