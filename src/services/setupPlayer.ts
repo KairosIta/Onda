@@ -1,4 +1,4 @@
-import TrackPlayer, { PlayerCommand } from '@rntp/player';
+import { player } from '@/player';
 import { applyRepeat } from '@/store/playback';
 import { startBrowseTreeSync } from './browseTreeSync';
 import { startSourceGuard } from './sourceGuard';
@@ -14,32 +14,15 @@ export function setupPlayer(): Promise<void> {
 
   ready = Promise.resolve()
     .then(() => {
-      TrackPlayer.setupPlayer({
-        contentType: 'music',
-        handleAudioBecomingNoisy: true,
-        audioMixing: 'exclusive',
+      player.setup({
         // Timer nativo che emette la posizione ogni cinque secondi in
         // riproduzione e un ultimo colpo alla pausa, a schermo spento
         // compreso: e' cosi' che la sessione (store/session) sa da dove
-        // riprendere. Senza `http` non manda niente fuori dal telefono.
-        progressSync: { intervalSeconds: 5 },
-        android: {
-          wakeMode: 'network',
-          taskRemovedBehavior: 'stop',
-        },
-      });
-
-      // Il comportamento nativo continua a funzionare con JS sospeso e in
-      // Android Auto; non servono listener JS per i normali tasti media.
-      TrackPlayer.setCommands({
-        capabilities: [
-          PlayerCommand.PlayPause,
-          PlayerCommand.Next,
-          PlayerCommand.Previous,
-          PlayerCommand.Seek,
-          PlayerCommand.Stop,
-        ],
-        handling: 'native',
+        // riprendere.
+        progressIntervalSeconds: 5,
+        // Il comportamento nativo continua a funzionare con JS sospeso e in
+        // Android Auto; non servono listener JS per i normali tasti media.
+        commands: ['play-pause', 'next', 'previous', 'seek', 'stop'],
       });
 
       applyRepeat();

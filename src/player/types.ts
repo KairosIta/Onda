@@ -44,11 +44,9 @@ export type PlaybackState = 'idle' | 'ready' | 'buffering' | 'ended' | 'error';
  * - `source`: il brano non si puo' leggere (404, formato non supportato);
  *   si salta;
  * - `renderer`: guasto del decoder o dell'uscita audio; si salta;
- * - `play-not-permitted`: solo web, su Android non arriva;
  * - `unknown`: non classificato; si salta.
  */
-export type PlaybackErrorCode =
-  'network' | 'source' | 'renderer' | 'play-not-permitted' | 'unknown';
+export type PlaybackErrorCode = 'network' | 'source' | 'renderer' | 'unknown';
 
 /** I comandi che notifica, schermata di blocco, cuffie e Android Auto possono dare. */
 export type RemoteCommand = 'play-pause' | 'next' | 'previous' | 'seek' | 'stop';

@@ -117,11 +117,7 @@ export function MiniPlayer() {
         accessibilityRole="button"
         accessibilityLabel={`Apri il player: ${track.title} di ${track.artist}`}
       >
-        <Artwork
-          uri={typeof track.artworkUrl === 'string' ? track.artworkUrl : undefined}
-          size={40}
-          recyclingKey={String(track.mediaId ?? '')}
-        />
+        <Artwork uri={track.artworkUrl} size={40} recyclingKey={track.mediaId} />
 
         <View style={styles.meta}>
           <Text numberOfLines={1} style={styles.title}>

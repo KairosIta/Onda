@@ -98,7 +98,11 @@ const CONVERT: {
   mediaItemTransition: ({ item }) => ({ item: item && fromRntp(item) }),
   mediaMetadataChanged: () => ({}),
   queueChanged: () => ({}),
-  playbackError: ({ code, message }) => ({ code, message }),
+  // `play-not-permitted` e' un rifiuto del browser: su Android non arriva.
+  playbackError: ({ code, message }) => ({
+    code: code === 'play-not-permitted' ? 'unknown' : code,
+    message,
+  }),
   progressUpdated: ({ mediaId, position, duration }) => ({ mediaId, position, duration }),
 };
 

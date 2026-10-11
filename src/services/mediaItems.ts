@@ -1,7 +1,7 @@
-import type { MediaItem } from '@rntp/player';
+import type { MediaItem } from '@/player';
 import { parseUid, type Track } from '@/types/track';
 
-/** Converte il nostro modello in quello che si aspetta RNTP. */
+/** Converte il nostro modello in quello che si aspetta il player. */
 export const toMediaItem = (t: Track): MediaItem => ({
   mediaId: t.uid,
   url: t.streamUrl,
@@ -15,8 +15,8 @@ export const toMediaItem = (t: Track): MediaItem => ({
 });
 
 /**
- * La strada inversa. RNTP conserva solo i campi che gli abbiamo dato: la
- * copia intera del nostro modello viaggia in `extras`, e se manca (un
+ * La strada inversa. Il player conserva solo i campi che gli abbiamo dato:
+ * la copia intera del nostro modello viaggia in `extras`, e se manca (un
  * elemento non nostro) si ricostruisce il minimo indispensabile dall'uid.
  *
  * Un uid di una sorgente che non conosciamo non diventa un brano: prima
@@ -35,10 +35,10 @@ export function trackFromMediaItem(item: MediaItem): Track | null {
     uid,
     source: parsed.source,
     id: parsed.id,
-    title: String(item.title ?? ''),
-    artist: String(item.artist ?? ''),
-    artworkUrl: typeof item.artworkUrl === 'string' ? item.artworkUrl : undefined,
-    durationSec: Number(item.duration ?? 0),
-    streamUrl: typeof item.url === 'string' ? item.url : '',
+    title: item.title ?? '',
+    artist: item.artist ?? '',
+    artworkUrl: item.artworkUrl,
+    durationSec: item.duration ?? 0,
+    streamUrl: item.url,
   };
 }

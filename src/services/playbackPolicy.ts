@@ -1,4 +1,4 @@
-import type { PlaybackErrorCode } from '@rntp/player';
+import type { PlaybackErrorCode } from '@/player';
 
 /**
  * Regole di reazione agli errori di riproduzione, separate dai listener
@@ -40,7 +40,7 @@ export interface SkipContext {
 
 export function decideSkip({ code, skipsUsed, queue }: SkipContext): SkipDecision {
   // Una caduta di rete e' recuperabile: non deve divorare la coda.
-  if (code === 'network' || code === 'play-not-permitted') return 'ignora';
+  if (code === 'network') return 'ignora';
   if (skipsUsed >= MAX_SOURCE_SKIPS) return 'fermati';
 
   const { index, length } = queue();

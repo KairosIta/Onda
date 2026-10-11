@@ -1,12 +1,4 @@
-import TrackPlayer, {
-  Event,
-  type BackgroundEvent,
-  type IsPlayingChangedEvent,
-  type MediaItem,
-  type PlaybackErrorEvent,
-  type PlaybackProgressUpdatedEvent,
-  type PlaybackStateChangedEvent,
-} from '@rntp/player';
+import { type MediaItem, player, type PlayerEvent, type PlayerEvents } from '@/player';
 import { recordPlay, remember } from '@/store/library';
 import { clearPlaybackFault, markPlaybackFault } from '@/store/playbackFault';
 import { savePosition, saveQueueSnapshot } from '@/store/session';
@@ -36,8 +28,8 @@ function scheduleNetworkRetry(): void {
   cancelNetworkRetry();
   networkRetryTimer = setTimeout(() => {
     networkRetryTimer = null;
-    TrackPlayer.retry();
-    TrackPlayer.play();
+    player.retry();
+    player.play();
   }, delay);
 }
 
@@ -61,7 +53,7 @@ function handleTransition(item: MediaItem | null): void {
 }
 
 /** Il player si e' rimesso a caricare: l'errore precedente e' superato. */
-function handleStateChanged({ state }: PlaybackStateChangedEvent): void {
+function handleStateChanged({ state }: PlayerEvents['playbackStateChanged']): void {
   if (state !== 'idle') clearPlaybackFault();
 }
 
@@ -70,27 +62,27 @@ function handleStateChanged({ state }: PlaybackStateChangedEvent): void {
  * disco e, superata la soglia di ascolto (historyPolicy), il brano entra in
  * cronologia. Non al cambio di brano: un brano saltato non è un ascolto.
  */
-function handleProgress({ mediaId, position, duration }: PlaybackProgressUpdatedEvent): void {
+function handleProgress({ mediaId, position, duration }: PlayerEvents['progressUpdated']): void {
   savePosition(mediaId, position);
   if (!mediaId || listenedId === mediaId) return;
   if (!reachedListen(position, duration)) return;
   listenedId = mediaId;
   // Trenta secondi di scroll possono aver sfrattato il brano dal catalogo
   // volatile: il media item lo porta con sé, e da lì si rimette a posto.
-  const item = TrackPlayer.getActiveMediaItem();
+  const item = player.getActiveMediaItem();
   if (item?.mediaId === mediaId) rememberItem(item);
   recordPlay(mediaId);
 }
 
-function handlePlaybackError(error: PlaybackErrorEvent): void {
+function handlePlaybackError(error: PlayerEvents['playbackError']): void {
   console.warn(`[player] ${error.code}: ${error.message}`);
 
   const decision = decideSkip({
     code: error.code,
     skipsUsed: sourceSkips,
     queue: () => ({
-      index: TrackPlayer.getActiveMediaItemIndex(),
-      length: TrackPlayer.getQueue().length,
+      index: player.getActiveIndex(),
+      length: player.getQueue().length,
     }),
   });
   if (decision !== 'salta') {
@@ -102,12 +94,12 @@ function handlePlaybackError(error: PlaybackErrorEvent): void {
   sourceSkips++;
   // Dopo un errore ExoPlayer e' `idle`: spostare l'indice e chiamare play()
   // non basta, la sorgente nuova va preparata, ed e' cio' che fa `retry`.
-  TrackPlayer.skipToNext();
-  TrackPlayer.retry();
-  TrackPlayer.play();
+  player.skipToNext();
+  player.retry();
+  player.play();
 }
 
-function handleIsPlayingChanged({ playing }: IsPlayingChangedEvent): void {
+function handleIsPlayingChanged({ playing }: PlayerEvents['isPlayingChanged']): void {
   sourceSkips = budgetAfterPlayingChange(playing, sourceSkips);
   if (playing) {
     // Suona di nuovo: i tentativi ripartono da zero per il prossimo tunnel.
@@ -121,27 +113,27 @@ export function startForegroundPlaybackListeners(): void {
   if (foregroundListenersStarted) return;
   foregroundListenersStarted = true;
 
-  TrackPlayer.addEventListener(Event.MediaItemTransition, ({ item }) => {
+  player.subscribe('mediaItemTransition', ({ item }) => {
     handleTransition(item);
   });
-  TrackPlayer.addEventListener(Event.QueueChanged, saveQueueSnapshot);
-  TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, handleProgress);
-  TrackPlayer.addEventListener(Event.PlaybackError, handlePlaybackError);
-  TrackPlayer.addEventListener(Event.IsPlayingChanged, handleIsPlayingChanged);
-  TrackPlayer.addEventListener(Event.PlaybackStateChanged, handleStateChanged);
+  player.subscribe('queueChanged', saveQueueSnapshot);
+  player.subscribe('progressUpdated', handleProgress);
+  player.subscribe('playbackError', handlePlaybackError);
+  player.subscribe('isPlayingChanged', handleIsPlayingChanged);
+  player.subscribe('playbackStateChanged', handleStateChanged);
 }
 
 /** Gestore Headless JS Android, registrato in index.js. */
-export async function playbackService(event: BackgroundEvent): Promise<void> {
-  if (event.type === Event.MediaItemTransition) {
+export async function playbackService(event: PlayerEvent): Promise<void> {
+  if (event.type === 'mediaItemTransition') {
     handleTransition(event.item);
-  } else if (event.type === Event.QueueChanged) {
+  } else if (event.type === 'queueChanged') {
     saveQueueSnapshot();
-  } else if (event.type === Event.PlaybackProgressUpdated) {
+  } else if (event.type === 'progressUpdated') {
     handleProgress(event);
-  } else if (event.type === Event.PlaybackError) {
+  } else if (event.type === 'playbackError') {
     handlePlaybackError(event);
-  } else if (event.type === Event.IsPlayingChanged) {
+  } else if (event.type === 'isPlayingChanged') {
     handleIsPlayingChanged(event);
   }
 }

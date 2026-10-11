@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import TrackPlayer, { Event, RepeatMode } from '@rntp/player';
+import { player } from '@/player';
 import { usePlaybackPrefs } from '@/store/playback';
 import { getPendingQueue, useNowPlaying } from '@/store/session';
 import { describeUpNext, type UpNext, type UpNextInput } from '@/utils/upNext';
@@ -16,11 +16,8 @@ function readQueue(): QueueView {
     };
   }
   return {
-    items: TrackPlayer.getQueue().map((m) => ({
-      title: String(m.title ?? ''),
-      artist: String(m.artist ?? ''),
-    })),
-    activeIndex: TrackPlayer.getActiveMediaItemIndex(),
+    items: player.getQueue().map((m) => ({ title: m.title ?? '', artist: m.artist ?? '' })),
+    activeIndex: player.getActiveIndex(),
   };
 }
 
@@ -35,17 +32,13 @@ export function useUpNext(): UpNext {
   useEffect(() => {
     const load = () => setQueue(readQueue());
     load();
-    const queueSub = TrackPlayer.addEventListener(Event.QueueChanged, load);
-    const trackSub = TrackPlayer.addEventListener(Event.MediaItemTransition, load);
+    const stopQueue = player.subscribe('queueChanged', load);
+    const stopTrack = player.subscribe('mediaItemTransition', load);
     return () => {
-      queueSub.remove();
-      trackSub.remove();
+      stopQueue();
+      stopTrack();
     };
   }, [item, pending]);
 
-  return describeUpNext({
-    ...queue,
-    shuffle,
-    repeat: repeat === RepeatMode.One ? 'one' : repeat === RepeatMode.All ? 'all' : 'off',
-  });
+  return describeUpNext({ ...queue, shuffle, repeat });
 }

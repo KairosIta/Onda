@@ -1,5 +1,7 @@
+import type { PlaybackState } from '@/player';
+
 /**
- * Un solo stato per il tasto play, ricavato dai tre segnali che RNTP
+ * Un solo stato per il tasto play, ricavato dai tre segnali che il player
  * espone separatamente: lo stato del player (`idle/ready/buffering/ended/
  * error`), se sta davvero uscendo audio e se c'e' un brano caricato.
  *
@@ -21,15 +23,14 @@ export type PlaybackStatus =
   | 'error';
 
 export interface PlaybackSignals {
-  /** `PlaybackState` di RNTP, come stringa per restare fuori da React Native. */
-  state: string;
+  state: PlaybackState;
   playing: boolean;
   hasItem: boolean;
   /** Coda ripristinata dal disco ma non ancora caricata nel player. */
   pending: boolean;
   /**
    * L'ultimo errore ha fermato il player. Serve perche' su Android lo
-   * stato `error` non arriva mai: dopo un errore RNTP riporta `idle`.
+   * stato `error` non arriva mai: dopo un errore il player riporta `idle`.
    */
   fault: boolean;
 }

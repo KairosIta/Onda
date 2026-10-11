@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import TrackPlayer from '@rntp/player';
+import { player } from '@/player';
 import { toMediaItem } from '@/services/mediaItems';
 import { playableQueue } from '@/services/playableTracks';
 import { resetPlaybackErrorBudget } from '@/services/playbackService';
@@ -30,8 +30,8 @@ export function useQueue() {
 
     // Shuffle e' gestito nativamente: preserva l'elemento scelto e permette
     // di attivarlo/disattivarlo anche dopo che la coda e' stata caricata.
-    TrackPlayer.setMediaItems(tracks.map(toMediaItem), index);
-    TrackPlayer.play();
+    player.setMediaItems(tracks.map(toMediaItem), index);
+    player.play();
     return true;
   }, []);
 
@@ -42,8 +42,8 @@ export function useQueue() {
     // La coda ripristinata va prima messa nel player, altrimenti "dopo il
     // brano corrente" sarebbe dentro una coda vuota.
     activateSession({ play: false });
-    const current = TrackPlayer.getActiveMediaItemIndex();
-    TrackPlayer.insertMediaItem((current ?? -1) + 1, toMediaItem(track));
+    const current = player.getActiveIndex();
+    player.insertMediaItem((current ?? -1) + 1, toMediaItem(track));
     return true;
   }, []);
 
@@ -52,7 +52,7 @@ export function useQueue() {
     if (!isSourceAvailable(track.source)) return false;
     remember([track]);
     activateSession({ play: false });
-    TrackPlayer.addMediaItem(toMediaItem(track));
+    player.addMediaItem(toMediaItem(track));
     return true;
   }, []);
 

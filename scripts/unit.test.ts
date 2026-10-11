@@ -87,6 +87,7 @@ import {
   statusFromCheck,
   statusFromRequest,
 } from '@/services/notificationPolicy';
+import type { PlaybackState } from '@/player';
 import { derivePlaybackStatus, describePlayButton } from '@/services/playbackStatus';
 import {
   PROGRESS_PAUSED_MS,
@@ -292,27 +293,25 @@ test('il cursore avanza chi risponde, ferma chi cade e toglie chi ha finito', ()
   assert.equal(advanceCursor({}, [{ source: 'audius', result: ok([track('a')]) }], 20), undefined);
 });
 
-const repeatModes = { off: 'off', one: 'one', all: 'all' } as const;
-
 test('le preferenze playback partono con valori sicuri', () => {
-  assert.deepEqual(loadPlaybackPrefs(undefined, repeatModes), { shuffle: false, repeat: 'off' });
-  assert.deepEqual(loadPlaybackPrefs({ shuffle: 'si', repeat: 'sconosciuto' }, repeatModes), {
+  assert.deepEqual(loadPlaybackPrefs(undefined), { shuffle: false, repeat: 'off' });
+  assert.deepEqual(loadPlaybackPrefs({ shuffle: 'si', repeat: 'sconosciuto' }), {
     shuffle: false,
     repeat: 'off',
   });
 });
 
 test('le preferenze playback conservano il formato corrente', () => {
-  assert.deepEqual(loadPlaybackPrefs({ shuffle: true, repeat: 'one' }, repeatModes), {
+  assert.deepEqual(loadPlaybackPrefs({ shuffle: true, repeat: 'one' }), {
     shuffle: true,
     repeat: 'one',
   });
 });
 
 test('le preferenze playback migrano i vecchi repeat numerici', () => {
-  assert.equal(loadPlaybackPrefs({ repeat: 0 }, repeatModes).repeat, 'off');
-  assert.equal(loadPlaybackPrefs({ repeat: 1 }, repeatModes).repeat, 'one');
-  assert.equal(loadPlaybackPrefs({ repeat: 2 }, repeatModes).repeat, 'all');
+  assert.equal(loadPlaybackPrefs({ repeat: 0 }).repeat, 'off');
+  assert.equal(loadPlaybackPrefs({ repeat: 1 }).repeat, 'one');
+  assert.equal(loadPlaybackPrefs({ repeat: 2 }).repeat, 'all');
 });
 
 test('le entita HTML di Jamendo si decodificano in una sola passata', () => {
@@ -422,7 +421,6 @@ test('gli errori recuperabili non consumano il budget di salti', () => {
     return { index: 0, length: 10 };
   };
   assert.equal(decideSkip(inCoda({ code: 'network', queue })), 'ignora');
-  assert.equal(decideSkip(inCoda({ code: 'play-not-permitted', queue })), 'ignora');
   assert.equal(letture, 0);
 });
 
@@ -917,7 +915,7 @@ test('sui titoli di coda si riparte da capo', () => {
   assert.equal(resumePosition(ignota, { uid: 'audius:a', position: 500, savedAt: 0 }), 500);
 });
 
-test('un elemento della coda RNTP torna al nostro modello', () => {
+test('un elemento della coda del player torna al nostro modello', () => {
   const t = track('a');
   assert.deepEqual(trackFromMediaItem(toMediaItem(t)), t, 'la copia in extras vince');
 
@@ -934,14 +932,18 @@ test('un elemento della coda RNTP torna al nostro modello', () => {
   assert.equal(estraneo?.streamUrl, 'https://x/9.mp3');
   assert.equal(estraneo?.durationSec, 61);
 
-  assert.equal(trackFromMediaItem({ url: 'https://x' }), null, 'senza uid non e un brano');
+  assert.equal(
+    trackFromMediaItem({ mediaId: '', url: 'https://x' }),
+    null,
+    'senza uid non e un brano',
+  );
 });
 
 // --- stato del player ---------------------------------------------------
 
 test('lo stato del tasto play segue una tabella sola', () => {
   const s = (
-    state: string,
+    state: PlaybackState,
     playing: boolean,
     over: Partial<Parameters<typeof derivePlaybackStatus>[0]> = {},
   ) =>
@@ -1261,7 +1263,7 @@ test('l albero per Android Auto mostra solo cio che c e davvero', () => {
   assert.equal(tree[1]?.items.length, 1, 'la playlist vuota non compare');
   assert.equal(tree[1]?.items[0]?.children?.[0]?.mediaId, 'audius:b');
   assert.equal(tree[0]?.items[0]?.url, 'https://x/a', 'ogni voce porta il suo stream');
-  assert.equal(tree[0]?.items[0]?.extras, undefined, 'niente modello intero nel payload');
+  assert.equal('extras' in (tree[0]?.items[0] ?? {}), false, 'niente modello intero nel payload');
 });
 
 test('senza libreria l albero e vuoto e le cartelle hanno un tetto', () => {

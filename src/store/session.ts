@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
-import TrackPlayer, { Event, type MediaItem } from '@rntp/player';
+import { type MediaItem, player } from '@/player';
 import { toMediaItem, trackFromMediaItem } from '@/services/mediaItems';
 import { type IsSourceActive, playableQueue } from '@/services/playableTracks';
 import { isSourceAvailable } from '@/services/sources/access';
@@ -15,7 +15,7 @@ import { loadSavedPosition, loadSavedQueue, resumePosition, windowQueue } from '
  * dell'app. Prima Onda ripartiva sempre vuota, e "riprendi da dove eri"
  * era una promessa della schermata Scopri che nessuno manteneva.
  *
- * La coda vera resta dentro RNTP (vedi `queue.tsx`): questo store la
+ * La coda vera resta nel player nativo (vedi `queue.tsx`): questo store la
  * fotografa su disco quando cambia e la tiene *in attesa* all'avvio, senza
  * caricarla nel player. Caricarla subito vorrebbe dire aprire lo stream e
  * far comparire la notifica in pausa prima che l'utente abbia toccato
@@ -85,9 +85,7 @@ function setPending(next: PendingSession | null): void {
   pending = next;
   const track = next?.tracks[next.index];
   setProgressOverride(
-    next && track
-      ? { position: next.position, duration: track.durationSec, buffered: 0, cached: 0 }
-      : null,
+    next && track ? { position: next.position, duration: track.durationSec, buffered: 0 } : null,
   );
   publish();
 }
@@ -114,16 +112,17 @@ export function useNowPlaying(): NowPlaying {
 // --- salvataggio -----------------------------------------------------
 
 /**
- * Fotografa la coda di RNTP. Chiamata a ogni transizione e cambio coda,
+ * Fotografa la coda del player. Chiamata a ogni transizione e cambio coda,
  * dal processo UI e dal gestore headless: MMKV e' lo stesso file.
  *
- * Una coda vuota non cancella il salvataggio: RNTP la svuota anche quando
- * il servizio viene fermato togliendo l'app dai recenti, ed e' proprio
- * quella la sessione da riprendere all'avvio dopo.
+ * Una coda vuota non cancella il salvataggio: il player puo' svuotarla
+ * anche quando il servizio viene fermato togliendo l'app dai recenti
+ * (RNTP lo fa), ed e' proprio quella la sessione da riprendere all'avvio
+ * dopo.
  */
 export function saveQueueSnapshot(): void {
-  const items = TrackPlayer.getQueue();
-  const activeIndex = TrackPlayer.getActiveMediaItemIndex();
+  const items = player.getQueue();
+  const activeIndex = player.getActiveIndex();
   if (items.length === 0 || activeIndex === null) return;
 
   const tracks: Track[] = [];
@@ -140,7 +139,7 @@ export function saveQueueSnapshot(): void {
 }
 
 /**
- * La posizione arriva dal timer nativo di RNTP (`progressSync` in
+ * La posizione arriva dal timer nativo del player (`progressUpdated`, vedi
  * setupPlayer): ogni cinque secondi in riproduzione e un ultimo colpo alla
  * pausa, a schermo spento compreso. Niente timer JS da tenere vivi.
  */
@@ -217,31 +216,31 @@ export function activateSession({ play }: { play: boolean }): boolean {
   // Gia' consegnata: i comandi al controller sono in ordine, quindi un
   // play accodato adesso parte appena il brano e' pronto.
   if (pending.loading) {
-    if (play) TrackPlayer.play();
+    if (play) player.play();
     return true;
   }
 
   // Il player ha gia' un brano: la coda in attesa era un residuo (il
   // controller nativo si connette dopo setupPlayer) e va solo dimenticata.
-  const live = TrackPlayer.getActiveMediaItem();
+  const live = player.getActiveMediaItem();
   if (live) {
     setActive(live);
     return false;
   }
 
   setPending({ ...pending, loading: true });
-  TrackPlayer.setMediaItems(tracks.map(toMediaItem), index);
+  player.setMediaItems(tracks.map(toMediaItem), index);
   // Il seek si applica al brano appena preparato, prima di un eventuale
   // play; il controller li esegue nell'ordine in cui arrivano.
-  if (position > 0) TrackPlayer.seekTo(position);
-  if (play) TrackPlayer.play();
+  if (position > 0) player.seekTo(position);
+  if (play) player.play();
   return true;
 }
 
 /** Lo slider mosso prima del primo play: si ricorda solo da dove ripartire. */
 export function seekPending(position: number): void {
   if (!pending || pending.loading) return;
-  savePosition(pending.item.mediaId ?? '', position);
+  savePosition(pending.item.mediaId, position);
   setPending({ ...pending, position });
 }
 
@@ -262,25 +261,25 @@ export function startSessionPersistence(): void {
   if (started) return;
   started = true;
 
-  active = TrackPlayer.getActiveMediaItem();
+  active = player.getActiveMediaItem();
   publish();
 
-  TrackPlayer.addEventListener(Event.MediaItemTransition, ({ item }) => setActive(item));
-  TrackPlayer.addEventListener(Event.MediaMetadataChanged, () => {
-    setActive(TrackPlayer.getActiveMediaItem());
+  player.subscribe('mediaItemTransition', ({ item }) => setActive(item));
+  player.subscribe('mediaMetadataChanged', () => {
+    setActive(player.getActiveMediaItem());
   });
 
   AppState.addEventListener('change', (status) => {
     if (status === 'active') {
       // In background gli eventi vanno al gestore headless, non qui: al
       // ritorno si rilegge il player invece di fidarsi dell'ultimo evento.
-      setActive(TrackPlayer.getActiveMediaItem());
+      setActive(player.getActiveMediaItem());
       return;
     }
     // Uscendo dall'app si salva subito la posizione: il timer nativo puo'
     // essere a meta' dei suoi cinque secondi, e se il sistema uccide il
     // processo poco dopo e' l'ultima parola che resta.
-    const live = TrackPlayer.getActiveMediaItem();
-    if (live?.mediaId) savePosition(live.mediaId, TrackPlayer.getProgress().position);
+    const live = player.getActiveMediaItem();
+    if (live?.mediaId) savePosition(live.mediaId, player.getProgress().position);
   });
 }

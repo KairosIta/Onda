@@ -1,10 +1,10 @@
-import TrackPlayer from '@rntp/player';
+import { player } from '@/player';
 import { requestNotificationPermission } from '@/store/notificationPermission';
 import { activateSession } from '@/store/session';
 import type { PlaybackStatus } from './playbackStatus';
 
 /**
- * I comandi di trasporto dell'app passano da qui, non da TrackPlayer
+ * I comandi di trasporto dell'app passano da qui, non dal player
  * direttamente: sono loro a sapere che una coda ripristinata va prima
  * caricata nel player, e cosa vuol dire "play" in ogni stato.
  */
@@ -12,7 +12,7 @@ import type { PlaybackStatus } from './playbackStatus';
 export function togglePlayback(status: PlaybackStatus): void {
   if (status === 'playing' || status === 'buffering') {
     // Chi tocca uno spinner vuole fermare il caricamento.
-    TrackPlayer.pause();
+    player.pause();
     return;
   }
 
@@ -29,26 +29,26 @@ export function togglePlayback(status: PlaybackStatus): void {
       return;
     case 'ended':
       // A coda finita ExoPlayer ignora play(): si riparte dal brano corrente.
-      TrackPlayer.seekTo(0);
-      TrackPlayer.play();
+      player.seekTo(0);
+      player.play();
       return;
     default:
-      TrackPlayer.play();
+      player.play();
   }
 }
 
 export function skipToNext(): void {
   activateSession({ play: true });
-  TrackPlayer.skipToNext();
+  player.skipToNext();
 }
 
 export function skipToPrevious(): void {
   activateSession({ play: true });
-  TrackPlayer.skipToPrevious();
+  player.skipToPrevious();
 }
 
 /** `retry` riprepara la sorgente ma non riparte da solo. */
 export function retryPlayback(): void {
-  TrackPlayer.retry();
-  TrackPlayer.play();
+  player.retry();
+  player.play();
 }

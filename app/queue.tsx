@@ -19,11 +19,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
-import TrackPlayer, { Event, type MediaItem } from '@rntp/player';
 import { Artwork } from '@/components/Artwork';
 import { PressableScale } from '@/components/PressableScale';
 import { type Snack, Snackbar } from '@/components/Snackbar';
 import { Empty } from '@/components/StateViews';
+import { type MediaItem, player } from '@/player';
 import { haptics } from '@/services/haptics';
 import { usePlaybackPrefs } from '@/store/playback';
 import { colors, formatTime, motion, spacing, touch, type } from '@/theme';
@@ -139,12 +139,10 @@ const QueueRow = memo(function QueueRow({
         accessibilityActions={ACTIONS}
         onAccessibilityAction={onAction}
       >
-        {/* In RNTP l'artwork puo' essere anche una risorsa locale, non
-            solo un URL: qui si mostra solo la stringa. */}
         <Artwork
-          uri={typeof item.artworkUrl === 'string' ? item.artworkUrl : undefined}
+          uri={item.artworkUrl}
           size={44}
-          recyclingKey={String(item.mediaId ?? '') + ':' + index}
+          recyclingKey={item.mediaId + ':' + index}
           fade={false}
         />
 
@@ -157,11 +155,11 @@ const QueueRow = memo(function QueueRow({
           </Text>
         </View>
 
-        <Text style={styles.duration}>{formatTime(Number(item.duration ?? 0))}</Text>
+        <Text style={styles.duration}>{formatTime(item.duration ?? 0)}</Text>
 
-        {/* RNTP non permette di rimuovere la traccia in riproduzione.
-            Togliere un brano vibra `reject` come in playlist: stessa
-            azione, stesso feedback. */}
+        {/* Il brano in riproduzione non si toglie da qui. Togliere un
+            brano vibra `reject` come in playlist: stessa azione, stesso
+            feedback. */}
         <Pressable
           disabled={isActive}
           style={({ pressed }) => [touch.target, pressed && styles.textPressed]}
@@ -187,7 +185,7 @@ const QueueRow = memo(function QueueRow({
 });
 
 /**
- * La coda vive dentro RNTP, non in uno store nostro: e' l'unica fonte
+ * La coda vive nel player nativo, non in uno store nostro: e' l'unica fonte
  * di verita' anche quando i comandi arrivano dalla notifica. Qui la si
  * legge e basta, ricaricandola a ogni cambio di traccia.
  */
@@ -195,10 +193,8 @@ export default function QueueScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { shuffle } = usePlaybackPrefs();
-  const [items, setItems] = useState<MediaItem[]>(() => TrackPlayer.getQueue());
-  const [activeIndex, setActiveIndex] = useState<number | null>(() =>
-    TrackPlayer.getActiveMediaItemIndex(),
-  );
+  const [items, setItems] = useState<MediaItem[]>(() => player.getQueue());
+  const [activeIndex, setActiveIndex] = useState<number | null>(() => player.getActiveIndex());
   const [snack, setSnack] = useState<Snack | null>(null);
   // La lista non scorre mentre una riga e' in mano: lo scroll e il
   // trascinamento sullo stesso asse si ruberebbero il gesto a vicenda.
@@ -214,22 +210,23 @@ export default function QueueScreen() {
   );
 
   const load = useCallback(() => {
-    setItems(TrackPlayer.getQueue());
-    setActiveIndex(TrackPlayer.getActiveMediaItemIndex());
+    setItems(player.getQueue());
+    setActiveIndex(player.getActiveIndex());
   }, []);
 
   useEffect(() => {
     drag.length.set(items.length);
   }, [drag, items.length]);
 
-  // RNTP non emette un evento "coda cambiata" per la transizione: il
-  // cambio di traccia e' il momento in cui vale la pena rileggerla.
+  // Non e' detto che il player emetta "coda cambiata" a ogni transizione
+  // (RNTP non lo fa): il cambio di traccia e' il momento in cui vale la
+  // pena rileggerla.
   useEffect(() => {
-    const queueSub = TrackPlayer.addEventListener(Event.QueueChanged, load);
-    const trackSub = TrackPlayer.addEventListener(Event.MediaItemTransition, load);
+    const stopQueue = player.subscribe('queueChanged', load);
+    const stopTrack = player.subscribe('mediaItemTransition', load);
     return () => {
-      queueSub.remove();
-      trackSub.remove();
+      stopQueue();
+      stopTrack();
     };
   }, [load]);
 
@@ -248,15 +245,15 @@ export default function QueueScreen() {
     if (activeIndex >= items.length - 1) return;
     haptics.reject();
     const removed = items.slice(activeIndex + 1);
-    TrackPlayer.removeMediaItems(activeIndex + 1, items.length);
+    player.removeMediaItems(activeIndex + 1, items.length);
     load();
     setSnack({
       message: `${removed.length} ${removed.length === 1 ? 'brano tolto' : 'brani tolti'} dalla coda`,
       action: {
         label: 'Annulla',
         onPress: () => {
-          const current = TrackPlayer.getActiveMediaItemIndex() ?? -1;
-          TrackPlayer.insertMediaItems(current + 1, removed);
+          const current = player.getActiveIndex() ?? -1;
+          player.insertMediaItems(current + 1, removed);
           haptics.success();
           load();
         },
@@ -267,8 +264,8 @@ export default function QueueScreen() {
   const onPress = useCallback(
     (index: number) => {
       haptics.tap();
-      TrackPlayer.skipToIndex(index);
-      TrackPlayer.play();
+      player.skipToIndex(index);
+      player.play();
       load();
     },
     [load],
@@ -277,7 +274,7 @@ export default function QueueScreen() {
   const onRemove = useCallback(
     (index: number) => {
       haptics.reject();
-      TrackPlayer.removeMediaItem(index);
+      player.removeMediaItem(index);
       load();
     },
     [load],
@@ -288,11 +285,11 @@ export default function QueueScreen() {
   const onMove = useCallback(
     (from: number, to: number) => {
       setDragging(false);
-      const length = TrackPlayer.getQueue().length;
+      const length = player.getQueue().length;
       if (from < 0 || to < 0 || from >= length || to >= length || from === to) return;
       haptics.gestureEnd();
       // Media3 sposta l'elemento senza toccare quello in riproduzione.
-      TrackPlayer.moveMediaItem(from, to);
+      player.moveMediaItem(from, to);
       load();
     },
     [load],
@@ -329,7 +326,7 @@ export default function QueueScreen() {
 
       <FlatList
         data={items}
-        keyExtractor={(t, i) => `${String(t.mediaId ?? 'x')}:${i}`}
+        keyExtractor={(t, i) => `${t.mediaId}:${i}`}
         scrollEnabled={!dragging}
         getItemLayout={(_, index) => ({
           length: ROW_HEIGHT,

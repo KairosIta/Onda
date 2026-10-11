@@ -1,4 +1,4 @@
-import TrackPlayer from '@rntp/player';
+import { player } from '@/player';
 import { prunePending } from '@/store/session';
 import { getSources, subscribeSources } from '@/store/sources';
 import { parseUid, SOURCE_IDS } from '@/types/track';
@@ -16,11 +16,11 @@ import { isSourceAvailable } from './sources/access';
 let started = false;
 
 function prunePlayer(): void {
-  const sources = TrackPlayer.getQueue().map((item) =>
-    item.mediaId ? (parseUid(item.mediaId)?.source ?? null) : null,
-  );
+  const sources = player
+    .getQueue()
+    .map((item) => (item.mediaId ? (parseUid(item.mediaId)?.source ?? null) : null));
   for (const [from, to] of inactiveRuns(sources, isSourceAvailable)) {
-    TrackPlayer.removeMediaItems(from, to);
+    player.removeMediaItems(from, to);
   }
 }
 

@@ -1,4 +1,4 @@
-import TrackPlayer from '@rntp/player';
+import { player } from '@/player';
 import { getLibrary, subscribeLibrary } from '@/store/library';
 import { subscribeSources } from '@/store/sources';
 import { buildBrowseTree } from './browseTree';
@@ -19,7 +19,7 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 function push(): void {
   timer = null;
   try {
-    TrackPlayer.setBrowseTree(buildBrowseTree(getLibrary(), isSourceAvailable));
+    player.setBrowseTree(buildBrowseTree(getLibrary(), isSourceAvailable));
   } catch (error) {
     // L'albero e' un di piu': senza, l'app al telefono funziona uguale.
     console.warn('[auto] albero di navigazione non aggiornato', error);

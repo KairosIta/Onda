@@ -1,12 +1,12 @@
 import { useSyncExternalStore } from 'react';
-import TrackPlayer from '@rntp/player';
+import { player } from '@/player';
 
 /**
  * Timer di spegnimento. Non persistito: un timer sopravvissuto al
  * riavvio dell'app metterebbe in pausa la musica senza che nessuno
  * capisca perche'.
  *
- * Solo a minuti, e nativo (`sleepAfterTime`): un timer JS sotto Doze
+ * Solo a minuti, e nativo (`sleepAfter`): un timer JS sotto Doze
  * scatterebbe in ritardo. Un timer "a fine brano" non c'e'; e' in
  * roadmap (TODO.md, P3).
  */
@@ -32,7 +32,7 @@ export function useSleepTimer(): number | null {
 export function startSleepTimer(minutes: number): void {
   cancelSleepTimer();
   endsAt = Date.now() + minutes * 60_000;
-  TrackPlayer.sleepAfterTime(minutes * 60);
+  player.sleepAfter(minutes * 60);
   handle = setTimeout(() => {
     endsAt = null;
     handle = null;
@@ -43,7 +43,7 @@ export function startSleepTimer(minutes: number): void {
 
 export function cancelSleepTimer(): void {
   if (handle) clearTimeout(handle);
-  TrackPlayer.cancelSleepTimer();
+  player.cancelSleep();
   handle = null;
   endsAt = null;
   notify();

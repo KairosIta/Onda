@@ -1,4 +1,4 @@
-import type { BrowseCategory, BrowseItem } from '@rntp/player';
+import type { BrowseCategory, BrowseItem } from '@/player';
 import type { LibraryState } from '@/store/librarySchema';
 import type { Track } from '@/types/track';
 import type { IsSourceActive } from './playableTracks';

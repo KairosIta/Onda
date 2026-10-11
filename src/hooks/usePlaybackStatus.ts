@@ -1,4 +1,4 @@
-import { useIsPlaying, usePlaybackState } from '@rntp/player';
+import { useIsPlaying, usePlaybackState } from '@/player';
 import { derivePlaybackStatus, type PlaybackStatus } from '@/services/playbackStatus';
 import { usePlaybackFault } from '@/store/playbackFault';
 import { useNowPlaying } from '@/store/session';

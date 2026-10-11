@@ -25,7 +25,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
-import TrackPlayer, { RepeatMode } from '@rntp/player';
+import { player } from '@/player';
 import { Artwork } from '@/components/Artwork';
 import { HeartButton } from '@/components/HeartButton';
 import { PressableScale } from '@/components/PressableScale';
@@ -139,7 +139,7 @@ const SeekBar = memo(function SeekBar({ pending }: { pending: boolean }) {
             // Prima del primo play il brano non e' nel player: si
             // ricorda solo da dove ripartira'.
             if (pending) seekPending(v);
-            else TrackPlayer.seekTo(v);
+            else player.seekTo(v);
             setSeekTo(null);
           }}
           accessibilityLabel="Posizione nel brano"
@@ -275,7 +275,7 @@ export default function PlayerScreen() {
   const uid = active?.mediaId;
 
   /**
-   * RNTP conserva solo i campi che gli abbiamo dato. Per il cuoricino
+   * Il player conserva solo i campi che gli abbiamo dato. Per il cuoricino
    * serve il nostro modello: prima si prova il catalogo, poi la copia
    * che viaggia dentro l'elemento della coda.
    */
@@ -447,20 +447,20 @@ export default function PlayerScreen() {
             </PressableScale>
 
             <PressableScale
-              onPress={() => haptics.toggle(cycleRepeat() !== RepeatMode.Off)}
+              onPress={() => haptics.toggle(cycleRepeat() !== 'off')}
               containerStyle={touch.target}
               scaleTo={motion.iconPressScale}
               accessibilityRole="button"
               accessibilityLabel="Modalità di ripetizione"
-              accessibilityState={{ selected: repeat !== RepeatMode.Off }}
+              accessibilityState={{ selected: repeat !== 'off' }}
             >
               <View>
                 <Ionicons
                   name="repeat"
                   size={24}
-                  color={repeat === RepeatMode.Off ? colors.textMuted : colors.accent}
+                  color={repeat === 'off' ? colors.textMuted : colors.accent}
                 />
-                {repeat === RepeatMode.One ? <Text style={styles.repeatOne}>1</Text> : null}
+                {repeat === 'one' ? <Text style={styles.repeatOne}>1</Text> : null}
               </View>
             </PressableScale>
           </View>

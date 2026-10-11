@@ -1,14 +1,14 @@
 import { useSyncExternalStore } from 'react';
-import TrackPlayer, { RepeatMode } from '@rntp/player';
+import { player, type RepeatMode } from '@/player';
 import { readJSON, writeJSON } from '@/services/storage';
-import { loadPlaybackPrefs } from './playbackSchema';
+import { loadPlaybackPrefs, type PlaybackPrefs } from './playbackSchema';
 
 /**
  * Preferenze di riproduzione, separate dalla libreria perche' cambiano
  * spesso e non hanno niente a che vedere con quello che l'utente salva.
  *
- * Shuffle e repeat sono entrambi stati nativi di RNTP e vanno
- * risincronizzati sul player a ogni cambio (vedi applyRepeat).
+ * Shuffle e repeat sono entrambi stati del player nativo e vanno
+ * risincronizzati a ogni cambio (vedi applyRepeat).
  *
  * Attenzione: lo shuffle nativo non riordina la coda, tiene a parte una
  * permutazione privata. La coda e l'indice attivo restano quelli di
@@ -16,18 +16,9 @@ import { loadPlaybackPrefs } from './playbackSchema';
  * l'ordine di ascolto — vedi `describeQueue`.
  */
 
-export interface PlaybackPrefs {
-  shuffle: boolean;
-  repeat: RepeatMode;
-}
-
 const KEY = 'playback.v1';
 
-let state: PlaybackPrefs = loadPlaybackPrefs(readJSON(KEY), {
-  off: RepeatMode.Off,
-  one: RepeatMode.One,
-  all: RepeatMode.All,
-});
+let state: PlaybackPrefs = loadPlaybackPrefs(readJSON(KEY));
 
 const listeners = new Set<() => void>();
 
@@ -52,23 +43,23 @@ export const getRepeat = (): RepeatMode => state.repeat;
 export function toggleShuffle(): void {
   const next = { ...state, shuffle: !state.shuffle };
   commit(next);
-  TrackPlayer.setShuffleEnabled(next.shuffle);
+  player.setShuffleModeEnabled(next.shuffle);
 }
 
 /** Ciclo Coda -> Traccia -> Nessuna ripetizione. */
 export function cycleRepeat(): RepeatMode {
-  const order = [RepeatMode.All, RepeatMode.One, RepeatMode.Off];
+  const order: RepeatMode[] = ['all', 'one', 'off'];
   const next = order[(order.indexOf(state.repeat) + 1) % order.length];
   commit({ ...state, repeat: next });
-  TrackPlayer.setRepeatMode(next);
+  player.setRepeatMode(next);
   return next;
 }
 
 /** Riallinea il player alla preferenza salvata: da chiamare dopo setupPlayer. */
 export function applyRepeat(): void {
   try {
-    TrackPlayer.setRepeatMode(state.repeat);
-    TrackPlayer.setShuffleEnabled(state.shuffle);
+    player.setRepeatMode(state.repeat);
+    player.setShuffleModeEnabled(state.shuffle);
   } catch {
     // Player non ancora pronto: la preferenza resta salvata e si
     // riapplica al prossimo avvio.

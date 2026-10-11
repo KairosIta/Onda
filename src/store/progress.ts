@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
-import TrackPlayer, { Event, type Progress } from '@rntp/player';
+import { player, type Progress } from '@/player';
 import { progressPollInterval } from '@/services/progressPolicy';
 
 /**
@@ -14,7 +14,7 @@ import { progressPollInterval } from '@/services/progressPolicy';
  * `progressPolicy`), e si ferma senza brano o con l'app dietro le quinte.
  */
 
-const EMPTY: Progress = { position: 0, duration: 0, buffered: 0, cached: 0 };
+const EMPTY: Progress = { position: 0, duration: 0, buffered: 0 };
 
 let snapshot: Progress = EMPTY;
 /**
@@ -38,12 +38,12 @@ const same = (a: Progress, b: Progress): boolean =>
 
 function tick(): void {
   if (override) return;
-  let next = TrackPlayer.getProgress();
+  let next = player.getProgress();
   // Finche' lo stream non e' preparato ExoPlayer non conosce la durata e
   // ne riporta zero: slider e barra collasserebbero per un secondo a ogni
   // brano ripreso a meta'. La durata dichiarata dalla sorgente basta.
   if (next.duration <= 0) {
-    const declared = TrackPlayer.getActiveMediaItem()?.duration;
+    const declared = player.getActiveMediaItem()?.duration;
     if (declared && declared > 0) next = { ...next, duration: declared };
   }
   // Stesso riferimento se niente e' cambiato: useSyncExternalStore
@@ -100,8 +100,8 @@ export function setProgressOverride(next: Progress | null): void {
 }
 
 function syncFromPlayer(): void {
-  playing = TrackPlayer.isPlaying();
-  hasTrack = TrackPlayer.getActiveMediaItemIndex() !== null;
+  playing = player.isPlaying();
+  hasTrack = player.getActiveIndex() !== null;
 }
 
 /** Da chiamare una volta, dopo setupPlayer: prima il player non risponde. */
@@ -112,12 +112,12 @@ export function startProgressObserver(): void {
   syncFromPlayer();
   appActive = AppState.currentState !== 'background';
 
-  TrackPlayer.addEventListener(Event.IsPlayingChanged, ({ playing: next }) => {
+  player.subscribe('isPlayingChanged', ({ playing: next }) => {
     playing = next;
     tick();
     reschedule();
   });
-  TrackPlayer.addEventListener(Event.MediaItemTransition, ({ item }) => {
+  player.subscribe('mediaItemTransition', ({ item }) => {
     hasTrack = item !== null;
     tick();
     reschedule();
