@@ -16,11 +16,11 @@ import type {
  * I comandi cambiano lo stato subito, come promette il contratto. Gli
  * eventi che ne seguono (coda e brano cambiati) restano in attesa fino a
  * `fakePlayer.flush()`, perche' il nativo li manda dopo; quelli che
- * dipendono da rete e decoder (audio che esce, errori, progresso) li
- * manda il test con `fakePlayer.emit()`.
+ * dipendono da rete e decoder (audio che esce, stato, errori, progresso)
+ * li manda il test con `fakePlayer.emit()`, compreso `ended` a fine coda.
  *
- * Non prepara stream: la durata resta ignota e lo shuffle non riordina
- * niente.
+ * Non prepara stream: la durata resta ignota, lo shuffle non riordina
+ * niente e i timer (spegnimento, nuovo tentativo) si registrano e basta.
  */
 
 type Listener = (event: PlayerEvent) => void;
@@ -86,9 +86,9 @@ function remove(from: number, to: number): void {
     if (active >= to) {
       active -= to - from;
     } else if (active >= from) {
-      // Il contratto: tocca al primo che resta dopo quelli tolti. Se dopo
-      // non resta niente il contratto tace; qui si resta sull'ultimo.
-      active = queue.length === 0 ? null : Math.min(from, queue.length - 1);
+      // Il contratto: tocca al primo che resta dopo quelli tolti; se dopo
+      // non resta niente, al primo della coda, come in Media3.
+      active = queue.length === 0 ? null : from < queue.length ? from : 0;
       position = 0;
     }
   });
@@ -125,14 +125,18 @@ export const backend: PlayerBackend = {
   skipToPrevious() {
     record('skipToPrevious');
     if (active === null) return;
-    if (position > 3 || active === 0) position = 0;
-    else jumpTo(active - 1);
+    if (position > 3) position = 0;
+    else if (active > 0) jumpTo(active - 1);
+    else if (repeat === 'all') jumpTo(queue.length - 1);
+    else position = 0;
   },
   skipToIndex(index) {
     record('skipToIndex', index);
     if (index >= 0 && index < queue.length) jumpTo(index);
   },
   retry: () => record('retry'),
+  scheduleRetry: (seconds) => record('scheduleRetry', seconds),
+  cancelRetry: () => record('cancelRetry'),
 
   setMediaItems(items, startIndex) {
     record('setMediaItems', items, startIndex);

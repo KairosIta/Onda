@@ -48,7 +48,10 @@ export type PlaybackState = 'idle' | 'ready' | 'buffering' | 'ended' | 'error';
  */
 export type PlaybackErrorCode = 'network' | 'source' | 'renderer' | 'unknown';
 
-/** I comandi che notifica, schermata di blocco, cuffie e Android Auto possono dare. */
+/**
+ * I comandi che notifica, schermata di blocco, cuffie e Android Auto possono
+ * dare. `stop` ferma la riproduzione e lascia la coda.
+ */
 export type RemoteCommand = 'play-pause' | 'next' | 'previous' | 'seek' | 'stop';
 
 /** Una voce dell'albero di Android Auto: un brano, o una cartella con `children`. */
@@ -75,7 +78,10 @@ type NoPayload = Record<never, never>;
 export interface PlayerEvents {
   isPlayingChanged: { playing: boolean };
   playbackStateChanged: { state: PlaybackState };
-  /** Cambio di brano; `null` quando la coda si svuota. */
+  /**
+   * Cambio di brano, anche quando lo stesso brano ricomincia con `one`;
+   * `null` quando la coda si svuota.
+   */
   mediaItemTransition: { item: MediaItem | null };
   mediaMetadataChanged: NoPayload;
   queueChanged: NoPayload;

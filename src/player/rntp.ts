@@ -119,6 +119,17 @@ function convert<K extends PlayerEventName>(name: K, payload: unknown): PlayerEv
   return { type: name, ...fromRntpPayload(payload) };
 }
 
+/**
+ * RNTP non ha un tentativo programmato: qui resta un timer JS, che con l'app
+ * in background non scatta. Il modulo Media3 lo fara' nativo.
+ */
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+function cancelRetry(): void {
+  if (retryTimer) clearTimeout(retryTimer);
+  retryTimer = null;
+}
+
 export const backend: PlayerBackend = {
   setup({ progressIntervalSeconds, commands }) {
     TrackPlayer.setupPlayer({
@@ -136,6 +147,8 @@ export const backend: PlayerBackend = {
       capabilities: commands.map((c) => COMMAND[c]),
       handling: 'native',
     });
+    // Il contratto: un cambio di brano annulla il tentativo in attesa.
+    TrackPlayer.addEventListener(Event.MediaItemTransition, cancelRetry);
   },
 
   registerBackgroundHandler(handler) {
@@ -159,12 +172,24 @@ export const backend: PlayerBackend = {
   },
 
   play: () => TrackPlayer.play(),
-  pause: () => TrackPlayer.pause(),
+  pause: () => {
+    cancelRetry();
+    TrackPlayer.pause();
+  },
   seekTo: (seconds) => TrackPlayer.seekTo(seconds),
   skipToNext: () => TrackPlayer.skipToNext(),
   skipToPrevious: () => TrackPlayer.skipToPrevious(),
   skipToIndex: (index) => TrackPlayer.skipToIndex(index),
   retry: () => TrackPlayer.retry(),
+  scheduleRetry: (seconds) => {
+    cancelRetry();
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      TrackPlayer.retry();
+      TrackPlayer.play();
+    }, seconds * 1000);
+  },
+  cancelRetry,
 
   setMediaItems: (items, startIndex) => TrackPlayer.setMediaItems(items, startIndex),
   addMediaItem: (item) => TrackPlayer.addMediaItem(item),

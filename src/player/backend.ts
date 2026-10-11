@@ -47,11 +47,21 @@ export interface PlayerControls {
     listener: (event: PlayerEventOf<K>) => void,
   ): () => void;
 
+  /** A coda finita (`ended`) non riparte da solo: prima un `seekTo` o un salto. */
   play(): void;
+  /** Annulla anche un `scheduleRetry` in attesa. */
   pause(): void;
   seekTo(seconds: number): void;
+  /**
+   * Passa al brano dopo; sull'ultimo non fa niente, ma con `all` torna al
+   * primo. Con `one` si naviga come senza ripetizione.
+   */
   skipToNext(): void;
-  /** Torna al brano precedente; oltre i primi 3 secondi circa riavvolge quello attivo. */
+  /**
+   * Torna al brano precedente; oltre i primi 3 secondi riavvolge quello
+   * attivo. Sul primo brano riavvolge, ma con `all` va all'ultimo, come in
+   * Media3.
+   */
   skipToPrevious(): void;
   skipToIndex(index: number): void;
   /**
@@ -59,6 +69,13 @@ export interface PlayerControls {
    * niente. Non riparte da solo.
    */
   retry(): void;
+  /**
+   * `retry` e poi `play` fra `seconds` secondi, con un timer nativo: con
+   * l'app in background i timer JS sono fermi. Ne vale uno alla volta, e lo
+   * annullano un cambio di brano, `pause` e `cancelRetry`.
+   */
+  scheduleRetry(seconds: number): void;
+  cancelRetry(): void;
 
   /** Sostituisce la coda, attiva `startIndex` e parte dall'inizio del brano. */
   setMediaItems(items: MediaItem[], startIndex: number): void;
@@ -70,7 +87,9 @@ export interface PlayerControls {
   /**
    * Toglie gli elementi in `[from, to)`. Se fra loro c'e' il brano attivo,
    * diventa attivo il primo che resta dopo di loro, come in Media3:
-   * `sourceGuard` ci conta.
+   * `sourceGuard` ci conta. Con lo shuffle "dopo" segue l'ordine shuffle.
+   * Se dopo non resta niente diventa attivo il primo della coda: con `all`
+   * si continua da li', altrimenti la riproduzione finisce (`ended`).
    */
   removeMediaItems(from: number, to: number): void;
   /** `to` e' la posizione finale dell'elemento: spostare da 2 a 3 li scambia. */

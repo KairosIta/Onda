@@ -95,39 +95,47 @@ test("l'ultimo brano della coda non si salta", () => {
   assert.equal(hasPlaybackFault(), true);
 });
 
-test('dopo un errore di rete si riprova da soli, a distanze crescenti', (t) => {
-  mock.timers.enable({ apis: ['setTimeout'] });
-  t.after(() => mock.timers.reset());
+test('dopo un errore di rete si riprova da soli, a distanze crescenti', () => {
   playQueue(5);
 
   for (const delay of NETWORK_RETRY_DELAYS_MS) {
     fakePlayer.emit(networkDown);
     assert.equal(hasPlaybackFault(), true, "l'avviso resta finché il tentativo non riesce");
-    mock.timers.tick(delay - 1);
-    assert.deepEqual(fakePlayer.calls(), [], `nessun tentativo prima di ${delay} ms`);
-    mock.timers.tick(1);
-    assert.deepEqual(fakePlayer.calls(), ['retry', 'play']);
+    // Il timer e' del player: con l'app in background quelli JS sono fermi.
+    assert.deepEqual(fakePlayer.calls(), ['scheduleRetry']);
+    assert.deepEqual(fakePlayer.argsOf('scheduleRetry'), [[delay / 1000]]);
     fakePlayer.clearCalls();
   }
 
   fakePlayer.emit(networkDown);
-  mock.timers.tick(60_000);
   assert.deepEqual(fakePlayer.calls(), [], 'esauriti i tentativi resta Riprova');
   assert.equal(player.getActiveIndex(), 0, 'un errore di rete non consuma la coda');
 });
 
-test('un cambio di brano annulla il tentativo in sospeso', (t) => {
-  mock.timers.enable({ apis: ['setTimeout'] });
-  t.after(() => mock.timers.reset());
+test('un cambio di brano annulla il tentativo in attesa', () => {
   playQueue(5);
 
   fakePlayer.emit(networkDown);
   player.skipToNext();
   fakePlayer.flush();
+  assert.deepEqual(fakePlayer.calls(), ['scheduleRetry', 'skipToNext', 'cancelRetry']);
   assert.equal(hasPlaybackFault(), false);
+});
+
+test('un brano che torna a suonare chiude il tentativo e ricarica i tentativi', () => {
+  playQueue(5);
+
+  fakePlayer.emit(networkDown);
+  fakePlayer.emit({ type: 'isPlayingChanged', playing: true });
+  assert.deepEqual(fakePlayer.calls(), ['scheduleRetry', 'cancelRetry']);
   fakePlayer.clearCalls();
-  mock.timers.tick(NETWORK_RETRY_DELAYS_MS[0]);
-  assert.deepEqual(fakePlayer.calls(), []);
+
+  fakePlayer.emit(networkDown);
+  assert.deepEqual(
+    fakePlayer.argsOf('scheduleRetry'),
+    [[NETWORK_RETRY_DELAYS_MS[0] / 1000]],
+    'il prossimo tunnel riparte dalla prima attesa',
+  );
 });
 
 test('il gestore in background reagisce come quello in primo piano', async () => {

@@ -77,6 +77,18 @@ test('spenta una sorgente, il player passa al primo brano che resta', (t) => {
   assert.equal(player.getActiveMediaItem()?.mediaId, 'audius:b');
 });
 
+test('spento il tratto in fondo mentre suona, si torna al primo brano', (t) => {
+  t.after(() => setSourceEnabled('jamendo', true));
+  startSourceGuard();
+  play([track('audius', 'a'), track('audius', 'b'), track('jamendo', 'j')], 2);
+
+  setSourceEnabled('jamendo', false);
+  assert.deepEqual(uids(), ['audius:a', 'audius:b']);
+  // Come in Media3: senza un brano dopo, tocca al primo della coda (e la
+  // riproduzione finisce, ma lo stato lo manda il nativo).
+  assert.equal(player.getActiveMediaItem()?.mediaId, 'audius:a');
+});
+
 test("più tratti spenti escono dall'ultimo, senza sbagliare indici", (t) => {
   t.after(() => setSourceEnabled('jamendo', true));
   startSourceGuard();

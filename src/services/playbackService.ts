@@ -11,26 +11,27 @@ let sourceSkips = 0;
 let foregroundListenersStarted = false;
 /** Il brano già messo in cronologia in questa visita: si registra una volta sola. */
 let listenedId: string | null = null;
-/** Tentativi automatici dopo un errore di rete, e il timer del prossimo. */
+/** Tentativi automatici dopo un errore di rete, e se il prossimo e' in attesa. */
 let networkRetries = 0;
-let networkRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let networkRetryPending = false;
 
 function cancelNetworkRetry(): void {
-  if (networkRetryTimer) clearTimeout(networkRetryTimer);
-  networkRetryTimer = null;
+  if (!networkRetryPending) return;
+  networkRetryPending = false;
+  player.cancelRetry();
 }
 
-/** Riprepara la sorgente e riparte: la stessa mossa del tasto Riprova. */
+/**
+ * Riprepara la sorgente e riparte, la stessa mossa del tasto Riprova. Il
+ * timer e' nel player: con l'app in background quelli JS sono fermi, ed e'
+ * proprio a schermo spento che si attraversa un tunnel.
+ */
 function scheduleNetworkRetry(): void {
   const delay = networkRetryDelay(networkRetries);
   if (delay === null) return;
   networkRetries++;
-  cancelNetworkRetry();
-  networkRetryTimer = setTimeout(() => {
-    networkRetryTimer = null;
-    player.retry();
-    player.play();
-  }, delay);
+  networkRetryPending = true;
+  player.scheduleRetry(delay / 1000);
 }
 
 /**
