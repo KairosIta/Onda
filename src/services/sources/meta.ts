@@ -57,6 +57,13 @@ export const failureNotice = ({ source, message }: { source: SourceId; message: 
 export type AttributionPart =
   { kind: 'link'; label: string; url: string } | { kind: 'text'; label: string };
 
+/**
+ * Dall'app si apre solo il web. Gli URL di pagina e licenza arrivano dalle
+ * API: uno con un altro schema (`intent:`, `file:`, un'app) non diventa un
+ * collegamento. Le licenze Creative Commons di Jamendo arrivano in `http`.
+ */
+export const isWebUrl = (url: string): boolean => /^https?:\/\/[^\s/?#]+/iu.test(url);
+
 export interface Attribution {
   /** «Brano fornito da …». */
   provider: string;
@@ -78,13 +85,14 @@ export interface Attribution {
 export function describeAttribution(track: Track): Attribution {
   const meta = SOURCE_META[track.source];
   const parts: AttributionPart[] = [];
-  if (track.sourceUrl) {
+  if (track.sourceUrl && isWebUrl(track.sourceUrl)) {
     parts.push({ kind: 'link', label: 'Pagina del brano', url: track.sourceUrl });
   }
 
   const rights = track.rightsLabel ?? meta.defaultRights;
-  if (track.licenseUrl) parts.push({ kind: 'link', label: rights, url: track.licenseUrl });
-  else parts.push({ kind: 'text', label: rights });
+  if (track.licenseUrl && isWebUrl(track.licenseUrl)) {
+    parts.push({ kind: 'link', label: rights, url: track.licenseUrl });
+  } else parts.push({ kind: 'text', label: rights });
 
   if (meta.termsLink) parts.push({ kind: 'link', ...meta.termsLink });
   return { provider: meta.label, parts };

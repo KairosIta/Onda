@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Linking, StyleSheet, Text } from 'react-native';
+import { isWebUrl } from '@/services/sources/meta';
 import { colors, radius, spacing, type } from '@/theme';
 import { PressableScale } from './PressableScale';
 
@@ -7,12 +8,14 @@ import { PressableScale } from './PressableScale';
  * Riga larga quanto la scheda: si ritrae appena, perche' su una
  * superficie cosi' estesa la scala da bottone sembrerebbe un salto. Il 2%
  * da solo pero' non si vede, e con "Rimuovi animazioni" nemmeno si muove:
- * resta anche l'opacita' da premuto.
+ * resta anche l'opacita' da premuto. Si apre solo il web (`isWebUrl`).
  */
 export function ExternalLink({ label, url }: { label: string; url: string }) {
   return (
     <PressableScale
-      onPress={() => Linking.openURL(url)}
+      onPress={() => {
+        if (isWebUrl(url)) Linking.openURL(url).catch(() => {});
+      }}
       style={styles.link}
       pressedStyle={styles.pressed}
       scaleTo={0.98}

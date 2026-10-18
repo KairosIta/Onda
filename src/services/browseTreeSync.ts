@@ -2,13 +2,16 @@ import { player } from '@/player';
 import { getLibrary, subscribeLibrary } from '@/store/library';
 import { subscribeSources } from '@/store/sources';
 import { buildBrowseTree } from './browseTree';
+import { playbackUrl } from './mediaItems';
 import { isSourceAvailable } from './sources/access';
 
 /**
  * Tiene l'albero di Android Auto allineato alla libreria e alle sorgenti
  * attive. Un preferito aggiunto al telefono compare in macchina senza
  * riavviare niente, e una sorgente spenta ne sparisce; le mutazioni
- * ravvicinate (un import, un riordino) si accorpano.
+ * ravvicinate (un import, un riordino) si accorpano. Gli URL sono quelli
+ * di riproduzione: l'albero si rifa' anche quando cambia una credenziale,
+ * cosi' in macchina si suona con il Client ID corrente.
  */
 
 const DELAY_MS = 500;
@@ -19,7 +22,7 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 function push(): void {
   timer = null;
   try {
-    player.setBrowseTree(buildBrowseTree(getLibrary(), isSourceAvailable));
+    player.setBrowseTree(buildBrowseTree(getLibrary(), isSourceAvailable, playbackUrl));
   } catch (error) {
     // L'albero e' un di piu': senza, l'app al telefono funziona uguale.
     console.warn('[auto] albero di navigazione non aggiornato', error);

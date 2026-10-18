@@ -1536,7 +1536,8 @@ test('storage: da 3 a 4 la cache perde i dati Audius, anche dal backup', () => {
   });
   const report = migrateStorage(kv);
   assert.equal(report.outcome, 'upgraded');
-  assert.equal(report.applied.length, 1);
+  // Da 3 passano anche le migrazioni successive (4 → 5 non trova URL da ripulire).
+  assert.equal(report.applied.length, STORAGE_VERSION - 3);
   assert.match(report.applied[0], /Audius/);
 
   const queries = JSON.parse(kv.get('query-cache.v1')!).queries;

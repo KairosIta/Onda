@@ -17,6 +17,7 @@
  */
 
 import { isPersistedQuery, withoutSessionOnly } from './queryPersistenceSchema';
+import { stripJamendoAppTag } from './sources/jamendoStream';
 
 export interface KeyValue {
   get(key: string): string | undefined;
@@ -25,7 +26,7 @@ export interface KeyValue {
   keys(): string[];
 }
 
-export const STORAGE_VERSION = 4;
+export const STORAGE_VERSION = 5;
 export const VERSION_KEY = 'schema.version';
 export const BACKUP_PREFIX = 'backup.';
 export const QUARANTINE_PREFIX = 'quarantine.';
@@ -66,6 +67,39 @@ function readValue(kv: KeyValue, key: string): unknown {
     return undefined;
   }
 }
+
+/**
+ * Lo stesso valore con ogni `streamUrl` ripulito dal Client ID Jamendo, o
+ * il valore stesso se non c'era niente da togliere. Cammina qualunque
+ * forma: la libreria, la coda salvata e le pagine della cache hanno i
+ * brani in posti diversi, e la regola e' una sola.
+ */
+export function withoutStreamCredentials(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    let changed = false;
+    const items = value.map((item) => {
+      const next = withoutStreamCredentials(item);
+      if (next !== item) changed = true;
+      return next;
+    });
+    return changed ? items : value;
+  }
+  if (!isRecord(value)) return value;
+  let changed = false;
+  const out: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value)) {
+    const next =
+      key === 'streamUrl' && typeof item === 'string'
+        ? stripJamendoAppTag(item)
+        : withoutStreamCredentials(item);
+    if (next !== item) changed = true;
+    out[key] = next;
+  }
+  return changed ? out : value;
+}
+
+/** Le chiavi in cui un brano salvato puo' portare un URL di stream. */
+const STREAM_URL_KEYS: readonly string[] = ['library.v1', 'session.queue.v1', 'query-cache.v1'];
 
 const MIGRATIONS: readonly Migration[] = [
   {
@@ -121,6 +155,27 @@ const MIGRATIONS: readonly Migration[] = [
         return kept ? [kept] : [];
       });
       if (changed) kv.set('query-cache.v1', JSON.stringify({ ...saved, queries }));
+    },
+  },
+  {
+    to: 5,
+    describe: 'library.v1, session.queue.v1, query-cache.v1: via il Client ID dagli URL Jamendo',
+    /**
+     * Gli URL di stream di Jamendo portavano `from=app-<client_id>`, cioe'
+     * la credenziale personale, fin dentro libreria, coda salvata, cache ed
+     * export. Da qui si salvano puliti e il player rimette il Client ID
+     * corrente al momento di suonare. Si ripulisce anche la copia in
+     * `backup.*`, appena scritta da questa stessa migrazione.
+     */
+    run(kv) {
+      for (const key of STREAM_URL_KEYS) {
+        for (const target of [key, BACKUP_PREFIX + key]) {
+          const saved = readValue(kv, target);
+          if (saved === undefined) continue;
+          const clean = withoutStreamCredentials(saved);
+          if (clean !== saved) kv.set(target, JSON.stringify(clean));
+        }
+      }
     },
   },
 ];

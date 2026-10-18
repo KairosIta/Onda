@@ -1,3 +1,4 @@
+import { stripJamendoAppTag } from '@/services/sources/jamendoStream';
 import { isSourceId, type Track } from '@/types/track';
 
 export interface Playlist {
@@ -42,7 +43,9 @@ export function parseTrack(value: unknown): Track | undefined {
     title: value.title,
     artist: value.artist,
     durationSec: Math.max(0, value.durationSec),
-    streamUrl: value.streamUrl,
+    // Un file o un dato scritto prima della regola puo' ancora portare il
+    // Client ID nell'URL: si toglie in lettura, cosi' non si risalva.
+    streamUrl: stripJamendoAppTag(value.streamUrl),
     sourceUrl: optionalString(value.sourceUrl),
     rightsLabel: optionalString(value.rightsLabel),
     artworkUrl: optionalString(value.artworkUrl),

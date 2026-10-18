@@ -16,6 +16,7 @@ import {
 } from '@/types/track';
 import { currentCredentials } from './access';
 import { fetchJSON } from './http';
+import { stripJamendoAppTag } from './jamendoStream';
 import { SOURCE_META } from './meta';
 
 const BASE = 'https://api.jamendo.com/v3.0';
@@ -190,35 +191,60 @@ export function creativeCommonsLabel(licenseUrl: string | undefined): string {
   return match ? `CC ${match[1].toUpperCase()} ${match[2]}` : 'Creative Commons';
 }
 
+/**
+ * Le risposte si leggono campo per campo: la API e' di terzi e un campo di
+ * forma diversa da quella attesa non deve far cadere la pagina intera. Un
+ * testo mancante o non stringa prende il suo rimpiazzo.
+ */
+const text = (value: unknown, fallback: string): string =>
+  typeof value === 'string' && value ? decodeEntities(value) : fallback;
+
+const optionalText = (value: unknown): string | undefined =>
+  typeof value === 'string' && value ? decodeEntities(value) : undefined;
+
+const optionalString = (value: unknown): string | undefined =>
+  typeof value === 'string' && value ? value : undefined;
+
+/** Una voce senza id o senza stream non e' un brano: si salta, e le altre restano. */
+const usable = (t: JamendoTrack | null | undefined): t is JamendoTrack =>
+  typeof t?.id === 'string' && t.id !== '' && typeof t.audio === 'string' && t.audio !== '';
+
+const hasId = <T extends { id?: unknown }>(entity: T | null | undefined): entity is T =>
+  typeof entity?.id === 'string' && entity.id !== '';
+
 function mapTrack(t: JamendoTrack): Track {
+  const image = optionalString(t.image) ?? optionalString(t.album_image);
   return {
     uid: makeUid('jamendo', t.id),
     source: 'jamendo',
     id: t.id,
-    title: decodeEntities(t.name),
-    artist: t.artist_name ? decodeEntities(t.artist_name) : 'Sconosciuto',
-    artworkUrl: t.image || t.album_image,
-    artworkLargeUrl: atLargeSize(t.image || t.album_image),
+    title: text(t.name, 'Senza titolo'),
+    artist: text(t.artist_name, 'Sconosciuto'),
+    artworkUrl: image,
+    artworkLargeUrl: atLargeSize(image),
     durationSec: Number(t.duration) || 0,
-    streamUrl: t.audio,
-    sourceUrl: t.shareurl ?? `https://www.jamendo.com/track/${t.id}`,
-    rightsLabel: creativeCommonsLabel(t.license_ccurl),
-    licenseUrl: t.license_ccurl,
-    artistId: t.artist_id,
-    albumId: t.album_id,
-    albumName: t.album_name ? decodeEntities(t.album_name) : undefined,
+    // Senza il parametro `from`, che porta il Client ID: lo rimette il
+    // player al momento di suonare (`jamendoStream`).
+    streamUrl: stripJamendoAppTag(t.audio),
+    sourceUrl: optionalString(t.shareurl) ?? `https://www.jamendo.com/track/${t.id}`,
+    rightsLabel: creativeCommonsLabel(optionalString(t.license_ccurl)),
+    licenseUrl: optionalString(t.license_ccurl),
+    artistId: optionalString(t.artist_id),
+    albumId: optionalString(t.album_id),
+    albumName: optionalText(t.album_name),
   };
 }
 
 function mapArtist(a: JamendoArtist): ArtistInfo {
+  const joined = optionalString(a.joindate);
   return {
     id: a.id,
     source: 'jamendo',
-    name: a.name ? decodeEntities(a.name) : 'Sconosciuto',
+    name: text(a.name, 'Sconosciuto'),
     // L'avatar e' 132dp, cioe' ~400px su questo schermo: qui la misura
     // grande serve sempre, non c'e' una lista che paghi il peso.
-    imageUrl: atLargeSize(a.image),
-    detail: a.joindate ? `Su Jamendo dal ${a.joindate.slice(0, 4)}` : undefined,
+    imageUrl: atLargeSize(optionalString(a.image)),
+    detail: joined ? `Su Jamendo dal ${joined.slice(0, 4)}` : undefined,
   };
 }
 
@@ -226,11 +252,11 @@ function mapAlbum(a: JamendoAlbum): AlbumInfo {
   return {
     id: a.id,
     source: 'jamendo',
-    name: a.name ? decodeEntities(a.name) : 'Senza titolo',
-    artist: a.artist_name ? decodeEntities(a.artist_name) : 'Sconosciuto',
+    name: text(a.name, 'Senza titolo'),
+    artist: text(a.artist_name, 'Sconosciuto'),
     // Copertina a 180dp: stesso ragionamento dell'avatar.
-    imageUrl: atLargeSize(a.image),
-    detail: a.releasedate ? a.releasedate.slice(0, 4) : undefined,
+    imageUrl: atLargeSize(optionalString(a.image)),
+    detail: optionalString(a.releasedate)?.slice(0, 4),
   };
 }
 
@@ -250,7 +276,7 @@ async function once<T>(requestUrl: string, signal?: AbortSignal): Promise<T[]> {
     const known = JAMENDO_FAILURE_MESSAGES[jamendoCheckFromResponse(json)];
     throw new Error(known ?? (json.headers?.error_message || 'Errore Jamendo'));
   }
-  return json.results ?? [];
+  return Array.isArray(json.results) ? json.results : [];
 }
 
 /**
@@ -321,7 +347,7 @@ async function fetchResults<T>(
 
 async function fetchTracks(requestUrl: string, signal?: AbortSignal): Promise<Track[]> {
   const results = await fetchResults<JamendoTrack>(requestUrl, { signal });
-  return results.filter((t) => Boolean(t.audio)).map(mapTrack);
+  return results.filter(usable).map(mapTrack);
 }
 
 export const jamendoSource: MusicSource = {
@@ -354,7 +380,7 @@ export const jamendoSource: MusicSource = {
 
   async artistInfo(artistId: string): Promise<ArtistInfo> {
     const [a] = await fetchResults<JamendoArtist>(url('/artists/', { id: artistId }));
-    if (!a) throw new Error('Artista non trovato su Jamendo');
+    if (!hasId(a)) throw new Error('Artista non trovato su Jamendo');
     return { ...mapArtist(a), id: artistId };
   },
 
@@ -378,7 +404,7 @@ export const jamendoSource: MusicSource = {
       url('/artists/', { namesearch: query, ...page(rest) }),
       { attempts: NAME_SEARCH_ATTEMPTS, signal: rest.signal },
     );
-    return results.filter((a) => Boolean(a.id)).map(mapArtist);
+    return results.filter(hasId).map(mapArtist);
   },
 
   async searchAlbums({ query, ...rest }: SearchParams): Promise<AlbumInfo[]> {
@@ -386,7 +412,7 @@ export const jamendoSource: MusicSource = {
       url('/albums/', { namesearch: query, ...page(rest) }),
       { attempts: NAME_SEARCH_ATTEMPTS, signal: rest.signal },
     );
-    return results.filter((a) => Boolean(a.id)).map(mapAlbum);
+    return results.filter(hasId).map(mapAlbum);
   },
 
   /**
@@ -420,12 +446,12 @@ export const jamendoSource: MusicSource = {
       if (params.limit !== undefined) break;
     }
 
-    return orderAlbum(pages).map(mapTrack);
+    return orderAlbum(pages).filter(usable).map(mapTrack);
   },
 
   async albumInfo(albumId: string): Promise<AlbumInfo> {
     const [a] = await fetchResults<JamendoAlbum>(url('/albums/', { id: albumId }));
-    if (!a) throw new Error('Album non trovato su Jamendo');
+    if (!hasId(a)) throw new Error('Album non trovato su Jamendo');
     return { ...mapAlbum(a), id: albumId };
   },
 };

@@ -20,25 +20,32 @@ import type { IsSourceActive } from './playableTracks';
 /** Tetto per categoria: uno schermo in auto non e' fatto per scorrere a lungo. */
 export const BROWSE_MAX_ITEMS = 100;
 
-function playable(t: Track): BrowseItem {
+/** L'URL con cui l'auto suona un brano; nell'app e' `mediaItems.playbackUrl`. */
+export type PlaybackUrl = (t: Track) => string;
+
+function playable(t: Track, url: PlaybackUrl): BrowseItem {
   return {
     mediaId: t.uid,
     title: t.title,
     artist: t.artist,
     // La misura grande: sul display dell'auto le copertine sono enormi.
     artworkUrl: t.artworkLargeUrl ?? t.artworkUrl,
-    url: t.streamUrl,
+    url: url(t),
     duration: t.durationSec,
   };
 }
 
-export function buildBrowseTree(library: LibraryState, isActive: IsSourceActive): BrowseCategory[] {
+export function buildBrowseTree(
+  library: LibraryState,
+  isActive: IsSourceActive,
+  url: PlaybackUrl = (t) => t.streamUrl,
+): BrowseCategory[] {
   const list = (uids: string[]): BrowseItem[] =>
     uids
       .map((uid) => library.tracks[uid])
       .filter((t): t is Track => Boolean(t) && isActive(t.source))
       .slice(0, BROWSE_MAX_ITEMS)
-      .map(playable);
+      .map((t) => playable(t, url));
 
   const categories: BrowseCategory[] = [];
 

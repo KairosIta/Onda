@@ -83,7 +83,7 @@ function mapTrack(t: AudiusTrack): Track {
     durationSec: t.duration,
     // Risponde con un redirect verso il content node. ExoPlayer lo segue
     // da solo e l'endpoint supporta l'header Range, quindi il seek funziona.
-    streamUrl: withAppName(`/tracks/${t.id}/stream`),
+    streamUrl: withAppName(`/tracks/${segment(t.id)}/stream`),
     sourceUrl: audiusTrackUrl(t.permalink),
     rightsLabel: audiusRightsLabel(t.license),
     artistId: t.user?.id,
@@ -116,6 +116,16 @@ function mapUser(u: AudiusUser): ArtistInfo {
 const playable = (t: AudiusTrack): boolean => !t.is_stream_gated && t.is_streamable !== false;
 
 /**
+ * La risposta e' di terzi: una voce senza id o senza titolo non diventa un
+ * brano, e le altre della stessa pagina restano leggibili.
+ */
+const usable = (t: AudiusTrack | null | undefined): t is AudiusTrack =>
+  typeof t?.id === 'string' && t.id !== '' && typeof t.title === 'string';
+
+/** Gli id arrivano anche dai deep link: nel percorso vanno codificati. */
+const segment = (id: string): string => encodeURIComponent(id);
+
+/**
  * La API key dell'utente, se c'e', va nell'header `x-api-key` e mai
  * nell'URL: gli URL degli stream finiscono nella libreria salvata e
  * nell'export, e la chiave e' personale.
@@ -130,7 +140,8 @@ function fetchJSON<T>(url: string, signal?: AbortSignal): Promise<T> {
 
 async function fetchTracks(url: string, signal?: AbortSignal): Promise<Track[]> {
   const json = await fetchJSON<{ data?: AudiusTrack[] }>(url, signal);
-  return (json.data ?? []).filter(playable).map(mapTrack);
+  const data = Array.isArray(json.data) ? json.data : [];
+  return data.filter((t) => usable(t) && playable(t)).map(mapTrack);
 }
 
 export const audiusSource: MusicSource = {
@@ -149,13 +160,16 @@ export const audiusSource: MusicSource = {
   },
 
   async artistTracks(artistId: string, params: ListParams = {}): Promise<Track[]> {
-    return fetchTracks(withAppName(`/users/${artistId}/tracks`, page(params)), params.signal);
+    return fetchTracks(
+      withAppName(`/users/${segment(artistId)}/tracks`, page(params)),
+      params.signal,
+    );
   },
 
   async artistInfo(artistId: string): Promise<ArtistInfo> {
-    const json = await fetchJSON<{ data?: AudiusUser }>(withAppName(`/users/${artistId}`));
+    const json = await fetchJSON<{ data?: AudiusUser }>(withAppName(`/users/${segment(artistId)}`));
     const u = json.data;
-    if (!u) throw new Error('Artista non trovato su Audius');
+    if (typeof u?.id !== 'string') throw new Error('Artista non trovato su Audius');
     return { ...mapUser(u), id: artistId };
   },
 
@@ -179,6 +193,7 @@ export const audiusSource: MusicSource = {
       withAppName('/users/search', { query, ...page(rest) }),
       rest.signal,
     );
-    return (json.data ?? []).filter((u) => Boolean(u.id)).map(mapUser);
+    const data = Array.isArray(json.data) ? json.data : [];
+    return data.filter((u) => typeof u?.id === 'string' && u.id !== '').map(mapUser);
   },
 };
