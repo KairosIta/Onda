@@ -47,6 +47,11 @@ dati. Correzioni ai rilievi, tutte con regressioni automatiche.
 - [x] `npm test` 213 verdi (7 nuovi), typecheck, ESLint e Prettier puliti;
       compilazione Kotlin e 24 test JVM rieseguiti da zero, 0 falliti;
       Expo Doctor 21/21; `check:audit` verde con le due eccezioni note.
+- [x] Primo giro su GitHub del job `native-player` (PR #47): i runner Ubuntu e
+      Windows si fermavano in `android-actions/setup-android@v3`, che chiede
+      di default il pacchetto `tools`, non piu' servito da Google. Entrambi i
+      workflow passano alla v4 e chiedono solo platform-tools, Platform 36 e
+      Build-Tools 36.0.0; il passo `sdkmanager` separato non serve piu'.
 - [x] Rilevato e lasciato aperto: la CI di `main` fallisce dal 17 ottobre
       sul passo `expo-doctor` delle PR Dependabot, perche' `main` ha ancora
       le sei patch Expo precedenti. Il riallineamento e' in questo branch.

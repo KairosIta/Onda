@@ -58,8 +58,12 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
-      - run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+      # Il pacchetto `tools`, predefinito nella v3, non e' piu' servito da Google:
+      # qui si chiede all'azione soltanto cio' che serve alla build.
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
+          log-accepted-android-sdk-licenses: false
       - run: npm ci
       - run: npm run prebuild -- --no-install
       - run: npm run android:test:player
