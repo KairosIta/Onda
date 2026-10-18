@@ -57,6 +57,7 @@ function fakeNative() {
     pause: record('pause'),
     seekTo: record('seekTo'),
     skipToNext: record('skipToNext'),
+    skipToNextAfterError: () => false,
     skipToPrevious: record('skipToPrevious'),
     skipToIndex: record('skipToIndex'),
     retry: record('retry'),
@@ -113,6 +114,14 @@ const item = (id: string, extras?: Record<string, unknown>): MediaItem => ({
   title: `Titolo ${id}`,
   duration: 180,
   extras,
+});
+
+test('il recupero atomico riporta il verdetto nativo senza inviare play separati', () => {
+  const { native, backend, calls } = setup();
+  assert.equal(backend.skipToNextAfterError(), false);
+  native.skipToNextAfterError = () => true;
+  assert.equal(backend.skipToNextAfterError(), true);
+  assert.deepEqual(calls, []);
 });
 
 test('un elemento torna come lo stesso oggetto, con gli extras intatti', () => {

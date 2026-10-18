@@ -34,6 +34,7 @@ let queue: MediaItem[] = [];
 let active: number | null = null;
 let position = 0;
 let playing = false;
+let playRequested = false;
 let playbackState: PlaybackState = 'idle';
 let repeat: RepeatMode = 'off';
 let calls: Call[] = [];
@@ -110,8 +111,14 @@ export const backend: PlayerBackend = {
     };
   },
 
-  play: () => record('play'),
-  pause: () => record('pause'),
+  play() {
+    record('play');
+    playRequested = true;
+  },
+  pause() {
+    record('pause');
+    playRequested = false;
+  },
   seekTo(seconds) {
     record('seekTo', seconds);
     position = seconds;
@@ -121,6 +128,12 @@ export const backend: PlayerBackend = {
     if (active === null) return;
     if (active < queue.length - 1) jumpTo(active + 1);
     else if (repeat === 'all') jumpTo(0);
+  },
+  skipToNextAfterError() {
+    record('skipToNextAfterError');
+    if (!playRequested || active === null || active >= queue.length - 1) return false;
+    jumpTo(active + 1);
+    return true;
   },
   skipToPrevious() {
     record('skipToPrevious');
@@ -215,7 +228,11 @@ export const fakePlayer = {
 
   /** Un evento che viene dal nativo, consegnato subito. */
   emit(event: PlayerEvent): void {
-    if (event.type === 'isPlayingChanged') playing = event.playing;
+    if (event.type === 'isPlayingChanged') {
+      playing = event.playing;
+      // Il silenzio puo' essere buffering o errore, non necessariamente pausa.
+      if (playing) playRequested = true;
+    }
     if (event.type === 'playbackStateChanged') playbackState = event.state;
     deliver(event);
   },

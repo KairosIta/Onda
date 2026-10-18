@@ -92,12 +92,11 @@ function handlePlaybackError(error: PlayerEvents['playbackError']): void {
     return;
   }
 
-  sourceSkips++;
-  // Dopo un errore ExoPlayer e' `idle`: spostare l'indice e chiamare play()
-  // non basta, la sorgente nuova va preparata, ed e' cio' che fa `retry`.
-  player.skipToNext();
-  player.retry();
-  player.play();
+  // Il nativo decide sul main thread: `isPlaying` e' falso anche durante
+  // il buffering e non dice se l'utente ha chiesto una pausa. Tre comandi
+  // JS separati potrebbero invece riavviare dopo una pausa del controller.
+  if (player.skipToNextAfterError()) sourceSkips++;
+  else markPlaybackFault();
 }
 
 function handleIsPlayingChanged({ playing }: PlayerEvents['isPlayingChanged']): void {
@@ -136,6 +135,8 @@ export async function playbackService(event: PlayerEvent): Promise<void> {
     handlePlaybackError(event);
   } else if (event.type === 'isPlayingChanged') {
     handleIsPlayingChanged(event);
+  } else if (event.type === 'playbackStateChanged') {
+    handleStateChanged(event);
   }
 }
 

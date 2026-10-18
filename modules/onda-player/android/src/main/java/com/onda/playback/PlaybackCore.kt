@@ -244,6 +244,20 @@ internal object PlaybackCore {
     player?.seekToNextMediaItem()
   }
 
+  /** Un solo comando: nessun play JS puo' scavalcare una pausa arrivata nel frattempo. */
+  fun skipToNextAfterError(): Boolean {
+    val p = player ?: return false
+    return SourceRecovery.skip(
+      playRequested = p.playWhenReady && !stoppedByUser,
+      hasError = p.playerError != null,
+      hasNext = p.hasNextMediaItem(),
+    ) {
+      p.seekToNextMediaItem()
+      retry()
+      play()
+    }
+  }
+
   /** Oltre i primi 3 secondi riavvolge (`maxSeekToPreviousPosition` di Media3). */
   fun skipToPrevious() {
     player?.seekToPrevious()
@@ -264,8 +278,11 @@ internal object PlaybackCore {
 
   fun scheduleRetry(seconds: Double) {
     cancelRetry()
+    // Un errore puo' arrivare dopo la pausa, mentre finisce un caricamento.
+    if (player?.playWhenReady != true) return
     val attempt = Runnable {
       pendingRetry = null
+      if (player?.playWhenReady != true) return@Runnable
       retry()
       play()
     }
@@ -422,6 +439,12 @@ internal object PlaybackCore {
 
   private val listener =
     object : Player.Listener {
+      override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+        // Notifica e controller chiamano ExoPlayer direttamente, anche quando
+        // non suona gia' piu': onIsPlayingChanged non annuncerebbe la pausa.
+        if (!playWhenReady) cancelRetry()
+      }
+
       override fun onIsPlayingChanged(isPlaying: Boolean) {
         playingNow = isPlaying
         emit("isPlayingChanged", "playing" to isPlaying)

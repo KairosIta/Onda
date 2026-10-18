@@ -34,6 +34,7 @@ class OndaPlayerModule : Module() {
     Function("pause") { PlaybackCore.post { pause() } }
     Function("seekTo") { seconds: Double -> PlaybackCore.post { seekTo(seconds) } }
     Function("skipToNext") { PlaybackCore.post { skipToNext() } }
+    Function("skipToNextAfterError") { PlaybackCore.read(false) { skipToNextAfterError() } }
     Function("skipToPrevious") { PlaybackCore.post { skipToPrevious() } }
     Function("skipToIndex") { index: Int -> PlaybackCore.post { skipToIndex(index) } }
     Function("retry") { PlaybackCore.post { retry() } }

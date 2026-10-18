@@ -8,6 +8,7 @@ import { NativeModule, requireNativeModule } from 'expo';
  *
  * Le funzioni sono sincrone. I comandi tornano subito e il nativo li esegue
  * in ordine; le letture vedono gia' i comandi dati prima. Tempi in secondi.
+ * `skipToNextAfterError` attende il recupero atomico e ne riporta il verdetto.
  */
 
 /** Un elemento come lo manda il JS. */
@@ -54,6 +55,7 @@ export interface OndaPlayerFunctions {
   pause(): void;
   seekTo(seconds: number): void;
   skipToNext(): void;
+  skipToNextAfterError(): boolean;
   skipToPrevious(): void;
   skipToIndex(index: number): void;
   retry(): void;

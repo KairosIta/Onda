@@ -30,6 +30,8 @@ import type {
  * caricato. Le letture vedono gia' l'effetto dei comandi dati prima:
  * `useQueue` legge l'indice attivo subito dopo aver caricato la coda in
  * attesa, per inserire un brano dopo quello corrente.
+ * `skipToNextAfterError` e' l'eccezione: attende il verdetto atomico del
+ * main thread, cosi' il budget conta solo i recuperi davvero eseguiti.
  */
 export interface PlayerControls {
   /** Una volta per processo, prima che le schermate usino il player. */
@@ -57,6 +59,12 @@ export interface PlayerControls {
    * primo. Con `one` si naviga come senza ripetizione.
    */
   skipToNext(): void;
+  /**
+   * Salta, riprepara e riparte atomicamente solo se il play e' ancora
+   * richiesto e l'errore e' ancora presente. Una pausa, anche da un controller
+   * Android, revoca il recupero. Ritorna se il salto e' stato eseguito.
+   */
+  skipToNextAfterError(): boolean;
   /**
    * Torna al brano precedente; oltre i primi 3 secondi riavvolge quello
    * attivo. Sul primo brano riavvolge, ma con `all` va all'ultimo, come in

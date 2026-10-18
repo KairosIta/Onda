@@ -55,7 +55,7 @@ class PlaybackService : MediaLibraryService() {
   }
 
   override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? =
-    session
+    session?.takeIf { isOurs(it, controllerInfo) }
 
   /** Tolta dai recenti, Onda si ferma (contratto). */
   override fun onTaskRemoved(rootIntent: Intent?) {
@@ -83,9 +83,12 @@ class PlaybackService : MediaLibraryService() {
   }
 
   /**
-   * I tasti di Onda vanno a notifica, Android Auto, Onda stessa e ai
-   * controller di sistema fidati. Gli altri, compresa qualunque app
-   * installata, leggono soltanto (Media3 1.11 li tratta cosi' di suo).
+   * Chi si collega e comanda la riproduzione: Onda, la sua notifica,
+   * Android Auto, Automotive e i controller che Media3 dichiara fidati.
+   * `isTrusted` comprende il sistema (schermata di blocco, Bluetooth) ma
+   * anche qualunque app con un servizio di ascolto delle notifiche attivo,
+   * come un'app per smartwatch o un widget multimediale: comanda il
+   * trasporto come fa la schermata di blocco. Ogni altra app e' respinta.
    */
   private fun isOurs(session: MediaSession, controller: MediaSession.ControllerInfo): Boolean =
     controller.packageName == packageName ||
@@ -94,17 +97,26 @@ class PlaybackService : MediaLibraryService() {
       session.isAutoCompanionController(controller) ||
       session.isAutomotiveController(controller)
 
+  /**
+   * La libreria privata (preferiti, playlist, ascolti recenti) la sfogliano
+   * soltanto Onda, Android Auto e Automotive. Un controller fidato comanda
+   * la riproduzione, non legge la libreria.
+   */
+  private fun canBrowse(session: MediaSession, controller: MediaSession.ControllerInfo): Boolean =
+    controller.packageName == packageName ||
+      session.isAutoCompanionController(controller) ||
+      session.isAutomotiveController(controller)
+
   private inner class LibraryCallback : MediaLibrarySession.Callback {
     override fun onConnect(
       session: MediaSession,
       controller: MediaSession.ControllerInfo,
     ): MediaSession.ConnectionResult {
+      if (!isOurs(session, controller)) return MediaSession.ConnectionResult.reject()
       val result = MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
-      if (isOurs(session, controller)) {
-        val commands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
-        RemoteCommands.withheld(PlaybackCore.remoteCommands()).forEach { commands.remove(it) }
-        result.setAvailablePlayerCommands(commands.build())
-      }
+      val commands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
+      RemoteCommands.withheld(PlaybackCore.remoteCommands()).forEach { commands.remove(it) }
+      result.setAvailablePlayerCommands(commands.build())
       return result.build()
     }
 
@@ -113,13 +125,9 @@ class PlaybackService : MediaLibraryService() {
       browser: MediaSession.ControllerInfo,
       params: LibraryParams?,
     ): ListenableFuture<LibraryResult<MediaItem>> {
-      if (!isOurs(session, browser)) {
-        return Futures.immediateFuture(LibraryResult.ofError(SessionError.ERROR_PERMISSION_DENIED))
-      }
-      val root = PlaybackCore.browseTree().item(BrowseTree.ROOT_ID)!!
-      return Futures.immediateFuture(
+      return respond(access(session, browser).root()) { root ->
         LibraryResult.ofItem(ItemCodec.browseItem(BrowseTree.ROOT_ID, root), params)
-      )
+      }
     }
 
     override fun onGetChildren(
@@ -130,13 +138,9 @@ class PlaybackService : MediaLibraryService() {
       pageSize: Int,
       params: LibraryParams?,
     ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
-      val children =
-        PlaybackCore.browseTree().children(parentId)
-          ?: return Futures.immediateFuture(LibraryResult.ofError(SessionError.ERROR_BAD_VALUE))
-      val from = (page.toLong() * pageSize).coerceAtMost(children.size.toLong()).toInt()
-      val to = (from.toLong() + pageSize).coerceAtMost(children.size.toLong()).toInt()
-      val items = children.subList(from, to).map { (id, node) -> ItemCodec.browseItem(id, node) }
-      return Futures.immediateFuture(LibraryResult.ofItemList(items, params))
+      return respond(access(session, browser).children(parentId, page, pageSize)) { children ->
+        LibraryResult.ofItemList(children.map { (id, node) -> ItemCodec.browseItem(id, node) }, params)
+      }
     }
 
     override fun onGetItem(
@@ -144,10 +148,24 @@ class PlaybackService : MediaLibraryService() {
       browser: MediaSession.ControllerInfo,
       mediaId: String,
     ): ListenableFuture<LibraryResult<MediaItem>> {
-      val node =
-        PlaybackCore.browseTree().item(mediaId)
-          ?: return Futures.immediateFuture(LibraryResult.ofError(SessionError.ERROR_BAD_VALUE))
-      return Futures.immediateFuture(LibraryResult.ofItem(ItemCodec.browseItem(mediaId, node), null))
+      return respond(access(session, browser).item(mediaId)) { node ->
+        LibraryResult.ofItem(ItemCodec.browseItem(mediaId, node), null)
+      }
+    }
+
+    private fun access(session: MediaSession, browser: MediaSession.ControllerInfo) =
+      LibraryAccess(canBrowse(session, browser), PlaybackCore::browseTree)
+
+    private fun <T, R : Any> respond(
+      result: BrowseResult<T>,
+      found: (T) -> LibraryResult<R>,
+    ): ListenableFuture<LibraryResult<R>> {
+      val response: LibraryResult<R> = when (result) {
+        BrowseResult.Denied -> LibraryResult.ofError(SessionError.ERROR_PERMISSION_DENIED)
+        BrowseResult.Missing -> LibraryResult.ofError(SessionError.ERROR_BAD_VALUE)
+        is BrowseResult.Found -> found(result.value)
+      }
+      return Futures.immediateFuture(response)
     }
 
     /**

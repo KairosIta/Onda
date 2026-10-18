@@ -243,6 +243,7 @@ export function createMedia3Backend(native: NativePlayer, appState: AppStateLike
     pause: () => native.pause(),
     seekTo: (seconds) => native.seekTo(seconds),
     skipToNext: () => native.skipToNext(),
+    skipToNextAfterError: () => native.skipToNextAfterError(),
     skipToPrevious: () => native.skipToPrevious(),
     skipToIndex: (index) => native.skipToIndex(index),
     retry: () => native.retry(),
