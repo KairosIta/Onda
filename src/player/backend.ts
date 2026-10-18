@@ -37,12 +37,16 @@ export interface PlayerControls {
   /** Una volta per processo, prima che le schermate usino il player. */
   setup(options: PlayerSetup): void;
   /**
-   * Il gestore degli eventi quando l'app non e' in primo piano; ogni evento
-   * va sbrigato in pochi secondi. Va registrato all'avvio del processo,
-   * fuori dall'albero React e prima di `setup` (`index.js`). Android Auto
-   * non lo chiama: in macchina comanda il nativo.
+   * Il gestore degli eventi quando l'app non e' in primo piano. E' sincrono
+   * di proposito: con l'app in pausa Android ferma i timer JS, quindi un
+   * lavoro rimandato a dopo non avrebbe nessuno che lo aspetta, e un
+   * gestore che si ferma a meta' bloccherebbe gli eventi dietro di lui.
+   * Cio' che deve attendere lo conta il nativo (`scheduleRetry`). Va
+   * registrato all'avvio del processo, fuori dall'albero React e prima di
+   * `setup` (`index.js`). Android Auto non lo chiama: in macchina comanda
+   * il nativo.
    */
-  registerBackgroundHandler(handler: (event: PlayerEvent) => Promise<void>): void;
+  registerBackgroundHandler(handler: (event: PlayerEvent) => void): void;
   /** Eventi in primo piano; ritorna la funzione che smette di ascoltare. */
   subscribe<K extends PlayerEventName>(
     name: K,

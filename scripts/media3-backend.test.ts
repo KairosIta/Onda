@@ -9,7 +9,6 @@ import type {
 } from '../modules/onda-player';
 import {
   type AppStateLike,
-  BACKGROUND_EVENT_TIMEOUT_MS,
   createMedia3Backend,
   createPlaybackSignals,
   type NativePlayer,
@@ -182,8 +181,9 @@ test('un elemento che non viene dal JS si ricostruisce, e poi resta lo stesso', 
   assert.strictEqual(backend.getQueue()[0], first);
 });
 
-test('a coda cambiata la cache dimentica gli elementi usciti', async () => {
-  const { backend, calls, emit, replaceQueue } = setup();
+test('alla prima lettura della coda la cache dimentica gli elementi usciti', async () => {
+  const { native, backend, calls, emit, replaceQueue } = setup();
+  const reads = mock.method(native, 'getQueue');
   const a = item('a');
   backend.setMediaItems([a], 0);
   const keyOfA = (calls[0].args[0] as NativeMediaItemInput[])[0].key;
@@ -191,6 +191,12 @@ test('a coda cambiata la cache dimentica gli elementi usciti', async () => {
   backend.setMediaItems([item('b')], 0);
   emit({ type: 'queueChanged' });
   await settle();
+  // L'evento da solo non fa leggere la coda dal nativo: la lettura intera
+  // porta gli extras di ogni brano, e la fa gia' chi ne ha bisogno.
+  assert.equal(reads.mock.callCount(), 0);
+  assert.equal(backend.getQueue().length, 1);
+  assert.equal(reads.mock.callCount(), 1);
+
   // Il nativo restituisce di nuovo l'elemento vecchio con la sua chiave:
   // non e' piu' in cache, quindi si ricostruisce invece di riusare `a`.
   replaceQueue([{ key: keyOfA, mediaId: a.mediaId, url: a.url }], 0);
@@ -221,7 +227,7 @@ test('un evento va ai listener in primo piano, al gestore in background altrimen
   const foreground: PlayerEvent[] = [];
   const background: PlayerEvent[] = [];
   backend.subscribe('playbackError', (e) => foreground.push(e));
-  backend.registerBackgroundHandler(async (e) => {
+  backend.registerBackgroundHandler((e) => {
     background.push(e);
   });
 
@@ -235,49 +241,22 @@ test('un evento va ai listener in primo piano, al gestore in background altrimen
   assert.deepEqual(background, [{ type: 'playbackError', code: 'unknown', message: 'x' }]);
 });
 
-test('gli eventi restano in fila dietro un gestore in background lento', async () => {
-  const { backend, emit } = setup('background');
-  const seen: string[] = [];
-  let release: () => void = () => {};
-  backend.registerBackgroundHandler(async (e) => {
-    seen.push(`inizio ${e.type}`);
-    if (e.type === 'mediaItemTransition') await new Promise<void>((r) => (release = r));
-    seen.push(`fine ${e.type}`);
-  });
-
-  emit({ type: 'mediaItemTransition', item: null });
-  emit({ type: 'queueChanged' });
-  await settle();
-  assert.deepEqual(seen, ['inizio mediaItemTransition']);
-
-  release();
-  await settle();
-  assert.deepEqual(seen, [
-    'inizio mediaItemTransition',
-    'fine mediaItemTransition',
-    'inizio queueChanged',
-    'fine queueChanged',
-  ]);
-});
-
-test('un gestore in background che non risponde non ferma la fila', async (t) => {
-  mock.timers.enable({ apis: ['setTimeout'] });
-  t.after(() => mock.timers.reset());
+test('il gestore in background riceve gli eventi subito, in ordine, e un errore non ferma i successivi', (t) => {
+  const error = mock.method(console, 'error', () => {});
+  t.after(() => error.mock.restore());
   const { backend, emit } = setup('background');
   const seen: string[] = [];
   backend.registerBackgroundHandler((e) => {
     seen.push(e.type);
-    return e.type === 'mediaItemTransition' ? new Promise<void>(() => {}) : Promise.resolve();
+    if (e.type === 'mediaItemTransition') throw new Error('rotto');
   });
 
   emit({ type: 'mediaItemTransition', item: null });
   emit({ type: 'queueChanged' });
-  await settle();
-  assert.deepEqual(seen, ['mediaItemTransition']);
-
-  mock.timers.tick(BACKGROUND_EVENT_TIMEOUT_MS);
-  await settle();
+  // Niente microtask ne' timer di mezzo: in background i timer JS sono fermi,
+  // e un evento consegnato "dopo" potrebbe non essere consegnato mai.
   assert.deepEqual(seen, ['mediaItemTransition', 'queueChanged']);
+  assert.equal(error.mock.callCount(), 1);
 });
 
 test('un listener che lancia non ferma gli altri', async (t) => {

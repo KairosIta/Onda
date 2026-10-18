@@ -123,8 +123,12 @@ export function startForegroundPlaybackListeners(): void {
   player.subscribe('playbackStateChanged', handleStateChanged);
 }
 
-/** Gestore Headless JS Android, registrato in index.js. */
-export async function playbackService(event: PlayerEvent): Promise<void> {
+/**
+ * Il gestore degli eventi con l'app in background, registrato in index.js.
+ * Sincrono per contratto (`registerBackgroundHandler`): in background i
+ * timer JS sono fermi, e le attese le conta il player.
+ */
+export function playbackService(event: PlayerEvent): void {
   if (event.type === 'mediaItemTransition') {
     handleTransition(event.item);
   } else if (event.type === 'queueChanged') {

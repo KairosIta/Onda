@@ -36,9 +36,6 @@ export interface AppStateLike {
   readonly currentState: string | null;
 }
 
-/** Un gestore in background che non risponde non deve fermare gli eventi dopo di lui. */
-export const BACKGROUND_EVENT_TIMEOUT_MS = 10_000;
-
 const PLAYBACK_STATES: readonly PlaybackState[] = ['idle', 'ready', 'buffering', 'ended', 'error'];
 const ERROR_CODES: readonly PlaybackErrorCode[] = ['network', 'source', 'renderer', 'unknown'];
 
@@ -131,10 +128,22 @@ export function createMedia3Backend(native: NativePlayer, appState: AppStateLike
     return item;
   }
 
-  /** Tiene in cache solo gli elementi della coda di adesso. */
+  /**
+   * Tiene in cache solo gli elementi della coda di adesso. Viaggia con le
+   * letture della coda, non con l'evento `queueChanged`: la lettura
+   * intera passa dal bridge con gli `extras` di ogni brano, e a ogni
+   * cambio di coda la sessione la chiede comunque per la sua fotografia.
+   * Una lettura in piu' qui sarebbe solo peso sul thread JS.
+   */
   function prune(queue: NativeMediaItem[]): void {
     const live = new Set(queue.map(cacheKey));
     for (const key of byKey.keys()) if (!live.has(key)) byKey.delete(key);
+  }
+
+  function readQueue(): MediaItem[] {
+    const queue = native.getQueue();
+    prune(queue);
+    return queue.map(fromNative);
   }
 
   // --- eventi -----------------------------------------------------------
@@ -144,8 +153,7 @@ export function createMedia3Backend(native: NativePlayer, appState: AppStateLike
     playing: native.isPlaying(),
   });
   const listeners = new Map<PlayerEventName, Set<Listener>>();
-  let backgroundHandler: ((event: PlayerEvent) => Promise<void>) | null = null;
-  let queueTail: Promise<void> = Promise.resolve();
+  let backgroundHandler: ((event: PlayerEvent) => void) | null = null;
 
   function toEvent(raw: NativePlayerEvent): PlayerEvent | null {
     switch (raw.type) {
@@ -162,8 +170,6 @@ export function createMedia3Backend(native: NativePlayer, appState: AppStateLike
       case 'mediaMetadataChanged':
         return { type: 'mediaMetadataChanged' };
       case 'queueChanged':
-        // Una lettura fresca, non il payload: vede anche i comandi dati dopo.
-        prune(native.getQueue());
         return { type: 'queueChanged' };
       case 'playbackError': {
         const code = ERROR_CODES.find((c) => c === raw.code) ?? 'unknown';
@@ -185,9 +191,12 @@ export function createMedia3Backend(native: NativePlayer, appState: AppStateLike
    * Ogni evento va una volta sola: ai listener se l'app e' in primo piano,
    * altrimenti al gestore in background. Gli stessi gestori stanno in
    * entrambi i posti (`playbackService`): consegnarlo due volte vorrebbe
-   * dire, per esempio, saltare due brani per un errore.
+   * dire, per esempio, saltare due brani per un errore. Tutto sincrono,
+   * nell'ordine in cui il nativo emette: un gestore che lancia non ferma
+   * quelli dopo, e non c'e' un timer di guardia perche' in background i
+   * timer JS non scattano (vedi `registerBackgroundHandler`).
    */
-  async function deliver(event: PlayerEvent): Promise<void> {
+  function deliver(event: PlayerEvent): void {
     if (appState.currentState === 'active') {
       listeners.get(event.type)?.forEach((listener) => {
         try {
@@ -198,17 +207,10 @@ export function createMedia3Backend(native: NativePlayer, appState: AppStateLike
       });
       return;
     }
-    if (!backgroundHandler) return;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<void>((resolve) => {
-      timer = setTimeout(resolve, BACKGROUND_EVENT_TIMEOUT_MS);
-    });
     try {
-      await Promise.race([backgroundHandler(event), timeout]);
+      backgroundHandler?.(event);
     } catch (error) {
       console.error(`[player] gestore in background su ${event.type}`, error);
-    } finally {
-      clearTimeout(timer);
     }
   }
 
@@ -218,9 +220,7 @@ export function createMedia3Backend(native: NativePlayer, appState: AppStateLike
     const event = toEvent(raw);
     if (!event) return;
     signals.apply(event);
-    // In fila: un evento non scavalca il gestore in background ancora al
-    // lavoro su quello prima.
-    queueTail = queueTail.then(() => deliver(event));
+    deliver(event);
   });
 
   return {
@@ -262,7 +262,7 @@ export function createMedia3Backend(native: NativePlayer, appState: AppStateLike
     removeMediaItems: (from, to) => native.removeMediaItems(from, to),
     moveMediaItem: (from, to) => native.moveMediaItem(from, to),
 
-    getQueue: () => native.getQueue().map(fromNative),
+    getQueue: readQueue,
     getActiveMediaItem: () => {
       const item = native.getActiveMediaItem();
       return item && fromNative(item);

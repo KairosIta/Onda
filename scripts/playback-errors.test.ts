@@ -70,7 +70,7 @@ for (const code of ['source', 'renderer', 'unknown'] as const) {
       player.pause();
       fakePlayer.clearCalls();
       const event: PlayerEvent = { type: 'playbackError', code, message: 'errore tardivo' };
-      if (background) await playbackService(event);
+      if (background) playbackService(event);
       else fakePlayer.emit(event);
 
       assert.equal(player.getActiveIndex(), 0, 'la pausa conserva anche il brano');
@@ -169,20 +169,20 @@ test('un brano che torna a suonare chiude il tentativo e ricarica i tentativi', 
 
 test('il gestore in background reagisce come quello in primo piano', async () => {
   playQueue(5);
-  await playbackService(brokenTrack);
+  playbackService(brokenTrack);
   assert.deepEqual(fakePlayer.calls(), ['skipToNextAfterError']);
 });
 
 test('il recupero della rete in background aggiorna lo stato visibile senza cambiare brano', async () => {
   playQueue(5);
-  await playbackService(networkDown);
+  playbackService(networkDown);
   assert.equal(hasPlaybackFault(), true);
 
   // Dopo l'errore Media3 torna idle: l'avviso deve restare fino al retry.
-  await playbackService({ type: 'playbackStateChanged', state: 'idle' });
+  playbackService({ type: 'playbackStateChanged', state: 'idle' });
   assert.equal(hasPlaybackFault(), true);
 
-  await playbackService({ type: 'playbackStateChanged', state: 'buffering' });
+  playbackService({ type: 'playbackStateChanged', state: 'buffering' });
   assert.equal(hasPlaybackFault(), false, 'il retry supera il vecchio errore anche in background');
   assert.equal(
     derivePlaybackStatus({
@@ -195,8 +195,8 @@ test('il recupero della rete in background aggiorna lo stato visibile senza camb
     'buffering',
   );
 
-  await playbackService({ type: 'playbackStateChanged', state: 'ready' });
-  await playbackService({ type: 'isPlayingChanged', playing: true });
+  playbackService({ type: 'playbackStateChanged', state: 'ready' });
+  playbackService({ type: 'isPlayingChanged', playing: true });
   assert.equal(
     derivePlaybackStatus({
       state: 'ready',
@@ -212,7 +212,7 @@ test('il recupero della rete in background aggiorna lo stato visibile senza camb
   assert.deepEqual(fakePlayer.calls(), ['scheduleRetry', 'cancelRetry']);
 
   fakePlayer.clearCalls();
-  await playbackService(networkDown);
+  playbackService(networkDown);
   assert.deepEqual(
     fakePlayer.argsOf('scheduleRetry'),
     [[NETWORK_RETRY_DELAYS_MS[0] / 1000]],
