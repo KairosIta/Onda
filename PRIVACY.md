@@ -25,7 +25,8 @@ Onda salva nello spazio privato dell'app:
   richiedono i termini API di Audius;
 - una cache delle copertine Jamendo; le immagini Audius o senza una sorgente
   riconosciuta restano solo in memoria. La prima apertura dopo questo
-  aggiornamento elimina la precedente cache mista delle immagini;
+  aggiornamento elimina la precedente cache mista delle immagini; finché la
+  cancellazione non riesce, tutte le copertine restano solo in memoria;
 - le ultime ricerche digitate, per rifarle con un tocco;
 - le scelte sulle sorgenti (quali sono accese) e le credenziali che inserisci:
   il tuo Client ID Jamendo e, se la aggiungi, la tua API key Audius.

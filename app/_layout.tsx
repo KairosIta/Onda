@@ -71,9 +71,11 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 }
 
 /**
- * Preparazione della cache o del player fallita: entrambe si lasciano
- * richiamare, quindi Riprova ritenta davvero. Il messaggio si puo'
- * selezionare e copiare per una segnalazione.
+ * Il player nativo non si e' avviato: senza, nessuna schermata ha senso.
+ * `setupPlayer` dopo un errore si lascia richiamare, quindi Riprova ritenta
+ * davvero; il messaggio si puo' selezionare e copiare per una segnalazione.
+ * La preparazione della cache delle copertine non arriva mai qui: un suo
+ * fallimento tiene le immagini in memoria, non ferma l'app.
  */
 function PlayerSetupFailed({
   error,
