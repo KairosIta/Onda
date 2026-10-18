@@ -83,6 +83,7 @@ export default function ArtistScreen() {
                     {/* Priorita' alta: e' l'unica immagine della pagina e
                         sta in testa, prima delle copertine delle righe. */}
                     <Artwork
+                      source={music.id}
                       uri={info.data.imageUrl}
                       size={132}
                       radius={radius.pill}

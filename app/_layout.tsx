@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { createQueryClient } from '@/services/queryClient';
+import { prepareArtworkCache } from '@/services/artworkCache';
 import { setupPlayer } from '@/services/setupPlayer';
 import { startNotificationPermissionWatch } from '@/store/notificationPermission';
 // Collega le sorgenti a interruttori e credenziali prima di qualunque
@@ -70,9 +71,9 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 }
 
 /**
- * Il player nativo non si e' avviato: senza, nessuna schermata ha senso.
- * `setupPlayer` dopo un errore si lascia richiamare, quindi Riprova ritenta
- * davvero; il messaggio si può selezionare e copiare per una segnalazione.
+ * Preparazione della cache o del player fallita: entrambe si lasciano
+ * richiamare, quindi Riprova ritenta davvero. Il messaggio si puo'
+ * selezionare e copiare per una segnalazione.
  */
 function PlayerSetupFailed({
   error,
@@ -85,10 +86,10 @@ function PlayerSetupFailed({
 }) {
   return (
     <View style={styles.crash}>
-      <Text style={styles.crashTitle}>Il player non si è avviato</Text>
+      <Text style={styles.crashTitle}>Onda non si è avviata</Text>
       <Text style={styles.crashHint}>
-        Senza il player nativo Onda non può riprodurre niente. Riprova; se succede ancora, copia il
-        messaggio qui sotto e segnalalo.
+        Non riesco a preparare Onda. Riprova; se succede ancora, copia il messaggio qui sotto e
+        segnalalo.
       </Text>
 
       <Text style={styles.crashError} selectable accessibilityLabel={`Errore: ${error}`}>
@@ -121,7 +122,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     let alive = true;
-    setupPlayer()
+    prepareArtworkCache()
+      .then(() => setupPlayer())
       .then(() => {
         if (!alive) return;
         setError(null);

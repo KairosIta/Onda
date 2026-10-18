@@ -90,6 +90,7 @@ export default function AlbumScreen() {
                     {/* Priorita' alta: e' l'unica immagine della pagina e
                         sta in testa, prima delle copertine delle righe. */}
                     <Artwork
+                      source={music?.id}
                       uri={info.data.imageUrl}
                       size={180}
                       radius={radius.md}

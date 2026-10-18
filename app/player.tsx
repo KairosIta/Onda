@@ -348,6 +348,7 @@ export default function PlayerScreen() {
                 {/* Qui l'immagine e' larga quanto lo schermo: la misura da lista
                   ci arriverebbe sgranata. */}
                 <Artwork
+                  source={track.source}
                   uri={track.artworkLargeUrl ?? track.artworkUrl}
                   radius={radius.lg}
                   priority="high"

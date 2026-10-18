@@ -30,6 +30,7 @@ import { usePlaybackPrefs } from '@/store/playback';
 import { colors, formatTime, motion, spacing, touch, type } from '@/theme';
 import { describeQueue } from '@/utils/queueSummary';
 import { dropIndex, rowShift } from '@/utils/reorder';
+import { parseUid } from '@/types/track';
 
 /** Copertina da 44 piu' 8 di padding sopra e sotto: fissa, cosi' il riordino e' aritmetica. */
 const ROW_HEIGHT = 44 + spacing.sm * 2;
@@ -141,6 +142,7 @@ const QueueRow = memo(function QueueRow({
         onAccessibilityAction={onAction}
       >
         <Artwork
+          source={parseUid(item.mediaId)?.source}
           uri={item.artworkUrl}
           size={44}
           recyclingKey={item.mediaId + ':' + index}

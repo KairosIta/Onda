@@ -3,9 +3,13 @@ import { Image, type ImageTransition } from 'expo-image';
 import { memo, useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { colors, radius as radii } from '@/theme';
+import { artworkCacheKey, artworkCachePolicy } from '@/services/artworkCachePolicy';
+import type { SourceId } from '@/types/track';
 
 interface Props {
   uri?: string;
+  /** Senza provenienza si usa soltanto la memoria, come per Audius. */
+  source?: SourceId;
   /** Lato in dp. Omesso, le misure arrivano da `style` (es. larghezza piena). */
   size?: number;
   radius?: number;
@@ -45,7 +49,7 @@ const decorative = {
 } as const;
 
 /**
- * Copertina con dissolvenza, cache su disco e un segnaposto vero.
+ * Copertina con dissolvenza, cache per sorgente e un segnaposto vero.
  *
  * Prima ogni schermata usava `Image` di React Native: la copertina
  * compariva di colpo, senza una politica di cache dichiarata, e in
@@ -62,6 +66,7 @@ const decorative = {
  */
 export const Artwork = memo(function Artwork({
   uri,
+  source,
   size,
   radius = radii.sm,
   recyclingKey,
@@ -83,13 +88,13 @@ export const Artwork = memo(function Artwork({
       ]}
       {...decorative}
     >
-      {showImage ? (
+      {uri && showImage ? (
         <Image
-          source={{ uri }}
+          source={{ uri, cacheKey: artworkCacheKey(source, uri) }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           transition={fade ? TRANSITION : null}
-          cachePolicy="memory-disk"
+          cachePolicy={artworkCachePolicy(source)}
           recyclingKey={recyclingKey}
           priority={priority}
           onError={() => setFailedUri(uri)}

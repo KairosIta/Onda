@@ -67,7 +67,13 @@ export const TrackRow = memo(function TrackRow({
       }
     >
       <View style={unavailable && styles.off}>
-        <Artwork uri={track.artworkUrl} size={48} recyclingKey={track.uid} fade={false} />
+        <Artwork
+          source={track.source}
+          uri={track.artworkUrl}
+          size={48}
+          recyclingKey={track.uid}
+          fade={false}
+        />
       </View>
 
       <View style={[styles.meta, unavailable && styles.off]}>

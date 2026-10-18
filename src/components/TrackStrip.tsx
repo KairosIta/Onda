@@ -71,6 +71,7 @@ export function TrackStrip({ title, tracks, loading = false, more, onPlay }: Pro
               accessibilityLabel={`Riproduci ${item.title} di ${item.artist}`}
             >
               <Artwork
+                source={item.source}
                 uri={item.artworkUrl}
                 size={128}
                 radius={radius.md}

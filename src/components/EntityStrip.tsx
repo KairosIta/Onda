@@ -60,6 +60,7 @@ export function EntityStrip({ title, items, shape, loading = false }: Props) {
               accessibilityLabel={`${item.title}, ${SOURCE_META[item.source].label}`}
             >
               <Artwork
+                source={item.source}
                 uri={item.imageUrl}
                 size={SIZE}
                 radius={shape === 'circle' ? radius.pill : radius.md}

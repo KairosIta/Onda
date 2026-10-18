@@ -19,6 +19,7 @@ import { useProgress } from '@/store/progress';
 import { colors, motion, spacing, touch, type } from '@/theme';
 import { Artwork } from './Artwork';
 import { PressableScale } from './PressableScale';
+import { parseUid } from '@/types/track';
 
 const ENTERING = FadeInDown.duration(220).reduceMotion(ReduceMotion.System);
 const EXITING = FadeOutDown.duration(160).reduceMotion(ReduceMotion.System);
@@ -117,7 +118,12 @@ export function MiniPlayer() {
         accessibilityRole="button"
         accessibilityLabel={`Apri il player: ${track.title} di ${track.artist}`}
       >
-        <Artwork uri={track.artworkUrl} size={40} recyclingKey={track.mediaId} />
+        <Artwork
+          source={parseUid(track.mediaId)?.source}
+          uri={track.artworkUrl}
+          size={40}
+          recyclingKey={track.mediaId}
+        />
 
         <View style={styles.meta}>
           <Text numberOfLines={1} style={styles.title}>

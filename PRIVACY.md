@@ -1,12 +1,13 @@
 # Informativa privacy di Onda
 
-**Versione:** 1.4 — **in vigore dal 10 ottobre 2026**
+**Versione:** 1.5 — **in vigore dal 15 ottobre 2026**
 
 Questa informativa descrive il funzionamento delle copie personali dell'app
 Android Onda compilate dal progetto
 [KairosIta/Onda](https://github.com/KairosIta/Onda). Il progetto pubblica il
-sorgente, non un APK ufficiale. Il codice originale Onda è sotto MIT; il player
-nativo usa una licenza separata. L'app non ha account proprietario, backend,
+sorgente, non un APK ufficiale. Il codice originale Onda, compreso il modulo
+player, è sotto MIT; il motore AndroidX Media3 è sotto Apache 2.0.
+L'app non ha account proprietario, backend,
 pubblicità o sistemi di profilazione gestiti dal progetto.
 
 ## Dati conservati sul dispositivo
@@ -22,6 +23,9 @@ Onda salva nello spazio privato dell'app:
   pagine artista e album), per aprire l'app senza attendere la rete. I
   cataloghi Audius restano solo in memoria finché l'app è aperta, come
   richiedono i termini API di Audius;
+- una cache delle copertine Jamendo; le immagini Audius o senza una sorgente
+  riconosciuta restano solo in memoria. La prima apertura dopo questo
+  aggiornamento elimina la precedente cache mista delle immagini;
 - le ultime ricerche digitate, per rifarle con un tocco;
 - le scelte sulle sorgenti (quali sono accese) e le credenziali che inserisci:
   il tuo Client ID Jamendo e, se la aggiungi, la tua API key Audius.
