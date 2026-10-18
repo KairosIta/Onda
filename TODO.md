@@ -1,6 +1,6 @@
 # Roadmap di Onda
 
-Stato aggiornato il **10 ottobre 2026** confrontando codice, configurazione e
+Stato aggiornato il **15 ottobre 2026** confrontando codice, configurazione e
 documentazione con le prove già raccolte su device e con i controlli automatici,
 di release e da clone pulito.
 
@@ -88,23 +88,34 @@ passa nel registro dei collaudi con la sua prova.
 
 ### Riproduzione
 
+Il primo collaudo del backend Media3, il 13 ottobre 2026, conferma upgrade
+con Libreria conservata, ripristino della coda, play/pausa, seek, cambio
+traccia, comandi media Android in background, apertura del player dal
+tap sulla notifica, recupero automatico della rete a schermo spento,
+esaurimento dei tre retry, Riprova manuale e pausa durante il recupero
+(registro dei collaudi).
+Le prove storiche di timer in Doze, Bluetooth, continuità, operazioni sulla
+coda, shuffle e repeat del backend precedente restano da ripetere sul modulo
+nuovo. Android Auto non è ancora stato collaudato su un'unità o sul Desktop
+Head Unit.
+
 - [x] Player nativo Android con play/pausa, seek, precedente e successivo.
 - [x] Riproduzione in background, media session, notifica, lock screen e
       comandi media.
 - [x] Coda unica fra le sorgenti: riproduci elenco, riproduci dopo, accoda,
       passa a una traccia, rimuovi e svuota i successivi.
 - [x] Repeat off/traccia/coda persistito.
-- [x] Shuffle nativo sulla coda corrente. **Collaudato il 30 agosto 2026** su
-      Android 16: il toggle attiva davvero l'ordine casuale — dopo _Peak_ il
+- [x] Shuffle nativo sulla coda corrente. **Collaudato il 30 agosto 2026 sul
+      backend precedente**, Android 16: il toggle attiva davvero l'ordine casuale — dopo _Peak_ il
       player è passato all'indice 8, non all'1 — la traccia corrente resta al suo
       posto e la preferenza sopravvive a `force-stop`.
       La schermata **In coda** mentiva: mostrava l'ordine della timeline
       dichiarando «31 brani dopo questo» e attenuando 8 brani come già ascoltati
       quando ne era stato riprodotto uno solo, cioè inventando una cronologia mai
       avvenuta. Chiuso lo stesso giorno con la seconda alternativa del criterio:
-      mostrare l'ordine vero non è possibile, perché RNTP tiene la permutazione
-      in un `playOrder` privato e non espone alcun accessore su nessun backend —
-      `isShuffleEnabled` dice soltanto se è attivo. Quindi la schermata lo
+      mostrare l'ordine vero non era possibile, perché RNTP teneva la permutazione
+      in un `playOrder` privato e non esponeva alcun accessore su nessun backend —
+      `isShuffleEnabled` diceva soltanto se era attivo. Quindi la schermata lo
       dichiara: sottotitolo «N brani in coda · ordine casuale», riga in accento
       «L'elenco è l'ordine originale: il prossimo brano non è quello sotto»,
       nessuna attenuazione delle righe sopra quella attiva, e l'azione passa da
@@ -128,7 +139,7 @@ passa nel registro dei collaudi con la sua prova.
       **Done:** con lo shuffle acceso la Coda elenca i brani nell'ordine in
       cui suoneranno e «Prossimo» nomina quello giusto, provati su device.
 - [x] Timer di spegnimento nativo da 15 a 90 minuti. **Collaudato il 30 agosto
-      2026** su Android 16 in Doze profondo (`deviceidle force-idle`, batteria
+      2026 sul backend precedente**, Android 16 in Doze profondo (`deviceidle force-idle`, batteria
       simulata scollegata, schermo spento): armato alle 11:36:19 su 15 minuti, un
       campionamento ogni 30 secondi ha visto `PLAYING` con `doze=IDLE` per
       ventinove volte di fila e `PAUSED` alle 11:51:19, cioè a 15:00 esatti. La
@@ -138,10 +149,6 @@ passa nel registro dei collaudi con la sua prova.
       `endsAt` lo azzera un `setTimeout` JS che il sistema differisce: a schermo
       spento però non c'è UI da leggere, e al risveglio i timer vengono smaltiti
       prima che la schermata torni visibile.
-- [ ] Apertura del player dal tap sulla notifica. **Implementato l'11 ottobre
-      2026, da collaudare**: la sessione del modulo Media3 apre l'app con
-      `onda://notification.click`, che `app/+native-intent.ts` porta al player.
-      Con `@rntp/player` 5.8 il tap riportava Onda in primo piano dov'era.
 - [ ] Ripresa da Bluetooth o dalla scheda multimediale di sistema dopo la
       chiusura del processo. Media3 la offre con un `MediaButtonReceiver` e
       `onPlaybackResumption`, che restituisce coda e posizione salvate; oggi
@@ -228,7 +235,9 @@ passa nel registro dei collaudi con la sua prova.
       disponibile come seconda strada, dichiarata.
 - [x] Schema MMKV versionato, con migrazioni, backup e quarantena dei dati
       illeggibili (chiuso il 10 settembre 2026, registro dei collaudi); oggi
-      alla versione 3.
+      alla versione 5: la 4 (10 ottobre 2026) rimuove il catalogo Audius
+      persistito anche dai backup interni, la 5 (18 ottobre 2026) toglie il
+      Client ID Jamendo dagli URL di stream salvati.
 
 ### Progetto e distribuzione
 
@@ -248,9 +257,21 @@ passa nel registro dei collaudi con la sua prova.
       catalogo e dalla riproduzione, mentre i suoi brani restano in Libreria.
       **Collaudato il 10 ottobre 2026** su Motorola Edge 50 Neo, Android 16
       (registro dei collaudi).
-- [x] Workflow CI Ubuntu/Windows e build personale manuale configurati ed
-      eseguiti su GitHub: la build personale completa è passata su Ubuntu e
-      Windows il 22 agosto 2026, la CI gira a ogni push su `main` e a ogni PR.
+      Dal 13 ottobre 2026 la rimozione attende il Keystore e un fallimento
+      conserva lo stato precedente, con errore e possibilità di riprovare.
+      Quattro test in Node; la verifica dopo un riavvio sul telefono resta
+      nella checklist device.
+- [x] Workflow CI Ubuntu/Windows e build personale manuale configurati. La
+      build personale completa è passata su GitHub su Ubuntu e Windows il
+      22 agosto 2026, con il backend precedente. La CI è configurata per ogni
+      push su `main` e ogni PR.
+      Il 13 ottobre 2026 il workflow manuale è stato allineato alla build
+      senza credenziali e il controllo dell'APK passa da Bash a Node.
+      Configurazione verificata localmente; resta una nuova esecuzione
+      completa su GitHub con il modulo Media3.
+      Il job `native-player` della CI ordinaria compila il Kotlin ed esegue
+      i test JVM su Ubuntu e Windows, con il comando condiviso
+      `npm run android:test:player` usato anche dalla build personale.
 - [ ] Font di brand Manrope incorporato nel pacchetto nativo, copertine con
       dissolvenza e cache, feedback tattile di sistema, bottoni che si
       ritraggono, sagome di caricamento e chiusura del player col
@@ -288,35 +309,30 @@ passa nel registro dei collaudi con la sua prova.
       quota Jamendo confermati; decisione documentata su Client ID/proxy per una
       distribuzione pubblica.
 
-- [ ] **Sostituire il player RNTP.** `@rntp/player` è gratuito solo per uso
-      personale non professionale e non consente di distribuire un APK che lo
-      incorpora: finché resta, Onda può pubblicare soltanto il sorgente. Serve
-      un player open source con una licenza compatibile con la distribuzione,
-      oppure un modulo nativo proprio su AndroidX Media3. I candidati vanno
-      confrontati con ciò che Onda usa oggi: coda nativa con riordino, controlli
-      in notifica e lock screen anche con JS sospeso, servizio in foreground,
-      salvataggio periodico della posizione, sleep timer, shuffle e repeat,
-      stati di buffering ed errore, Android Auto.
-      La strada scelta è un modulo Expo proprio su Media3. Primo passo:
-      l'app usa il player soltanto da `src/player/`, dietro un contratto che
-      fa da specifica del modulo; nei test in Node lo segue un player finto,
-      su cui si provano le regole dell'app (`docs/DEVELOPMENT.md`, «Il player
-      dietro una facciata»), **collaudato l'11 ottobre 2026** su Motorola
-      Edge 50 Neo, Android 16 (registro dei collaudi).
-      **Implementato l'11 ottobre 2026, da collaudare**: `modules/onda-player`,
-      modulo Expo nostro su Media3 1.11.1 (Apache 2.0), scritto senza
-      consultare l'implementazione di RNTP; `@rntp/player` è uscito da
-      dipendenze, lockfile e APK (`docs/DEVELOPMENT.md`, «Il modulo
-      Media3»). `THIRD_PARTY_CONTENT.md` e `docs/RELEASE_COMPLIANCE.md` sono
-      aggiornati.
-      **Done:** player scelto con le ragioni scritte; nessuna dipendenza con
-      licenza che vieti la distribuzione; riproduzione in background, notifica,
-      coda, ripresa della sessione, sleep timer e Android Auto collaudati su
-      device; `THIRD_PARTY_CONTENT.md` e `docs/RELEASE_COMPLIANCE.md` aggiornati.
+- [ ] **Completare il collaudo del modulo Media3.** La sostituzione è
+      implementata dall'11 ottobre 2026: `modules/onda-player` è un modulo
+      Expo originale Onda sotto MIT, su Media3 1.11.1 (Apache 2.0), scritto
+      senza consultare l'implementazione di RNTP. `@rntp/player` è uscito da
+      dipendenze, lockfile e APK. Contratto, scelta e architettura sono in
+      `docs/DEVELOPMENT.md`; le note di licenza sono aggiornate.
+      **Collaudato in parte il 13 ottobre 2026** su Motorola Edge 50 Neo,
+      Android 16: Libreria conservata, ripristino della coda, play/pausa,
+      seek, precedente/successivo, comandi Android in background e tap sulla
+      notifica. Verificati anche recupero automatico della rete a schermo
+      spento, esaurimento dei retry, Riprova manuale e rispetto della pausa
+      durante il recupero. Build personale Linux, compilazione Kotlin e
+      18 test JVM superati; i nuovi job Ubuntu/Windows su GitHub restano
+      da eseguire.
+      Restano timer in Doze, Bluetooth/cuffie e focus audio, Android Auto,
+      regressioni complete di coda, shuffle, repeat e ripresa della sessione,
+      oltre all'HTTP 416 dopo un seek avanzato su Audius.
+      **Done:** questi casi superati sul backend Media3 con prove nel registro;
+      nuova CI nativa verde su Ubuntu e Windows. Licenze e avvisi incorporati
+      nell'APK restano nel gate legale separato sopra.
 
 - [ ] **Definire privacy e backup Android.** La libreria è locale, ma una
       release Android può includere MMKV nel backup di sistema. Backup disabilitato
-      nel manifest, esclusioni complete cloud/D2D, policy v1.0 e schermata in-app
+      nel manifest, esclusioni complete cloud/D2D, policy v1.5 e schermata in-app
       sono implementati. La release su Android 16 risponde `Backup is not allowed`;
       backup e restore negativi sono provati anche su AVD Android 11. Resta un
       trasferimento D2D reale su Android 12+, che richiede due dispositivi e può
@@ -329,6 +345,33 @@ passa nel registro dei collaudi con la sua prova.
 
 ## P1 — Affidabilità del prodotto
 
+- [ ] **Collaudare su Android le correzioni dell'audit del 18 ottobre.**
+      Implementate con regressioni automatiche (registro dei collaudi):
+      il Client ID Jamendo non entra piu' negli URL di stream salvati in
+      libreria, coda, cache ed export, e il player lo riceve con il valore
+      corrente (migrazione dello storage 4 → 5); una lettura fallita del
+      Keystore all'avvio non cancella piu' la credenziale; la libreria di
+      Android Auto si sfoglia solo da Onda, Auto e Automotive, mentre i
+      controller fidati del sistema comandano soltanto il trasporto; le
+      risposte di Audius e Jamendo si leggono campo per campo e gli id nei
+      percorsi Audius sono codificati; dal player si aprono solo URL web.
+      **Done:** aggiornamento da una build precedente con libreria e coda
+      Jamendo: brani ancora riproducibili, export senza Client ID, log della
+      migrazione 4 → 5; Android Auto o Desktop Head Unit che sfoglia la
+      libreria mentre la schermata di blocco comanda ancora; cambio del
+      Client ID da Sorgenti seguito da una riproduzione Jamendo.
+- [ ] **Collaudare su Android le protezioni dell'audit del 15 ottobre.**
+      Implementate con regressioni automatiche: connessione e letture della
+      libreria negate ai controller non autorizzati; recupero degli errori
+      atomico che rispetta la pausa; controllo di tutti i file `.env.*` e
+      loro esclusione da Git; artwork Audius solo in memoria con rimozione
+      una tantum della vecchia cache mista prima delle schermate.
+      **Done:** app chiamante non fidata respinta anche con id noti,
+      controller di sistema e Android Auto ancora funzionanti; errore 404
+      tardivo dopo pausa senza ripartenza; aggiornamento da una build con
+      immagini gia' in cache, senza residui Audius su disco, con immagini
+      Jamendo ancora disponibili. Verifiche automatiche nel registro.
+
 ### Riproduzione e rete
 
 - [ ] **Unificare gli stati del player e gestire i comandi in volo.** Dal
@@ -336,14 +379,22 @@ passa nel registro dei collaudi con la sua prova.
       ended, error), ricavato in `src/services/playbackStatus.ts` e usato da
       entrambi i tasti play: il caricamento mostra uno spinner, l'errore un
       avviso con Riprova (`retry()` seguito da play) e la coda finita riparte
-      dal brano corrente. Restano i comandi serializzati o disabilitati quando
-      serve e la verifica delle rejection nei log.
+      dal brano corrente. Il modulo Media3 accoda già i comandi su un
+      `Handler` del main thread. Restano le prove di tocchi rapidi e comandi
+      concorrenti da UI e controller Android, con controlli disabilitati
+      quando necessario e verifica delle rejection nei log.
       Collaudo del 9 settembre 2026 su Motorola Edge 50 Neo: RNTP su Android
       non emette mai lo stato `error` (dopo un errore ExoPlayer torna `idle`),
       quindi l'avviso non compariva; ora lo alza `store/playbackFault` sull'evento
       di errore. Il salto automatico dopo uno stream 404 spostava l'indice senza
       ripreparare il player e la riproduzione moriva in silenzio: aggiunto
       `retry()` fra skip e play.
+      Dal 13 ottobre 2026 anche il gestore in background elabora i cambi di
+      stato: un retry sullo stesso brano pulisce l'avviso quando riprende il
+      caricamento, come in primo piano. Test di regressione in Node e prova
+      su Media3 reale il 13 ottobre: dati mobili interrotti fino all'errore,
+      ripresa automatica dello stesso brano a schermo spento e ritorno al
+      player senza un avviso Riprova residuo (registro dei collaudi).
       **Done:** comandi serializzati o disabilitati quando necessario e zero
       rejection non gestite nei log, provati su device.
 
@@ -442,7 +493,7 @@ passa nel registro dei collaudi con la sua prova.
 ### Test e toolchain
 
 - [ ] Estendere i test unitari a mutazioni degli store, `formatTime`, shuffle e
-      migrazioni complete. Coperti oggi (149 test): validazione, repeat,
+      migrazioni complete. Coperti oggi (213 test Node e 24 test JVM): validazione, repeat,
       cursore per sorgente e paginazione federata con sorgenti finte,
       composizione della federazione (anche di artisti e album), annullamento
       delle richieste e tentativi Jamendo, entità HTML Jamendo, budget di
@@ -553,6 +604,10 @@ passa nel registro dei collaudi con la sua prova.
 
 ## Checklist device ancora aperta
 
+- [ ] Sorgenti: rimuovere una credenziale dall'app, verificare l'esito e
+      riavviare Onda; il valore rimosso non deve ricomparire. Il fallimento
+      del Keystore e il nuovo tentativo sono coperti in Node, con valori
+      finti. Le credenziali reali le gestisce la persona nell'app.
 - [ ] Shuffle attivato/disattivato durante una coda: traccia e posizione
       correnti restano stabili e la schermata Coda si aggiorna.
 - [ ] Timer da 90 minuti sotto Doze e timer mentre il player è in pausa.
@@ -566,6 +621,15 @@ passa nel registro dei collaudi con la sua prova.
       telefono usa la navigazione a tre pulsanti, resta quella a gesti.
 - [ ] Rete rimossa a metà brano, rete lenta, captive portal, cambio Wi-Fi/5G e
       singola sorgente che cade durante la terza pagina.
+      Il recupero automatico a schermo spento, i tre retry esauriti,
+      Riprova manuale e pausa durante il recupero (sia nel caricamento
+      sia fra due tentativi) sono verificati su Media3 il 13 ottobre 2026.
+      Restano gli altri casi indicati.
+- [ ] Ripresa dopo un seek avanzato nei brani Audius lunghi. Nel collaudo
+      del 13 ottobre 2026, su un mix da 1:26:48 la ripresa a 1:07:00
+      riceve HTTP 416 e il player passa al brano seguente. Ripetere con
+      uno stream fresco e verificare durata, posizione richiesta e
+      risposta del server prima di attribuire la causa.
 - [ ] Chiamata in arrivo, audio focus di un'altra app, cuffie scollegate,
       Bluetooth e Android Auto.
 - [ ] Un'ora di riproduzione: batteria, temperatura, memoria, coda da 100 e
@@ -583,8 +647,8 @@ passa nel registro dei collaudi con la sua prova.
       dp il 10 settembre. Restano: chiusura con uno strappo, lo slider che non
       muove il foglio, la schermata precedente scurita sotto il foglio,
       chevron e tasto back senza fasce scure, copertina a 0,92 in pausa.
-      L'apertura dalla notifica ad app chiusa si prova con il modulo Media3
-      (vedi «Apertura del player dal tap sulla notifica»).
+      Il tap sulla notifica con l'app in background è verificato sul modulo
+      Media3 il 13 ottobre 2026 (registro dei collaudi).
 - [ ] Coda in attesa: trascinare lo slider e poi premere play; «Riproduci
       dopo» e «Accoda» dal menu di un brano; apertura della Coda dal player.
       In ogni caso il mini-player non deve sparire e il player non deve
@@ -596,9 +660,10 @@ passa nel registro dei collaudi con la sua prova.
       modalità aereo a metà brano, con l'avviso e Riprova che riparte dallo
       stesso punto, è verificata il 9 settembre 2026.
 - [ ] Cache: aprire Scopri, un artista e un album, chiudere, togliere la rete
-      e riaprire: gli elenchi compaiono senza sagome; con la rete tornano a
-      rinfrescarsi e nessun brano risulta duplicato o mancante nelle prime due
-      pagine.
+      e riaprire: i dati Jamendo conservati compaiono senza sagome, quelli
+      Audius non devono tornare da disco dopo la chiusura del processo.
+      Con la rete gli elenchi si rinfrescano e nessun brano risulta duplicato
+      o mancante nelle prime due pagine.
 - [ ] Sprint «scoperta e coda» del 9 settembre 2026. Scopri a sezioni,
       vetrine con entrambe le sorgenti che partono al tocco, griglia dei
       generi e «Riproduci»/«Casuale» sono verificati il 9 settembre 2026;

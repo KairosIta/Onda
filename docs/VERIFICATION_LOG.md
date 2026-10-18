@@ -7,10 +7,344 @@ stato verificato si perde e si sa che cosa non deve regredire.
 
 Le voci sono riportate come erano nella roadmap al momento della chiusura:
 date, misure, conteggi di test e nomi di file si riferiscono a quel momento.
+Anche eventuali limiti e passi successivi citati nelle prove storiche
+descrivono quella build: per lo stato corrente vale la roadmap. Le prove
+RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ---
 
 ## Baseline verificata
+
+### Verificato il 18 ottobre 2026: audit del repository, senza device
+
+Audit a tutto campo del worktree `feat/media3-player` (stato, architettura,
+qualita' statica, test, sicurezza operativa, coerenza della documentazione),
+con due revisioni indipendenti del modulo Media3 e del flusso credenziali e
+dati. Correzioni ai rilievi, tutte con regressioni automatiche.
+
+- [x] Client ID Jamendo negli URL di stream. Jamendo restituisce lo stream
+      con `from=app-<client_id>`, e Onda lo salvava cosi' com'era in
+      libreria, coda, cache di React Query ed export. Ora l'adapter toglie
+      il parametro (`sources/jamendoStream`), `mediaItems.playbackUrl`
+      rimette il Client ID corrente solo nell'URL dato al player e all'albero
+      di Android Auto, `parseTrack` ripulisce in lettura e la migrazione
+      dello storage 4 → 5 ripulisce i dati gia' scritti, backup compreso.
+      Sette test in `scripts/stream-urls.test.ts`: adapter, player, ritorno
+      dal player, export, albero di Auto, migrazione e assenza del valore
+      in tutto cio' che si salva. Conferma del formato dell'URL dalla
+      documentazione Jamendo e da client pubblici; una risposta reale
+      resta da osservare con `npm run smoke`.
+- [x] Lettura delle credenziali: un'eccezione del Keystore all'avvio non
+      cancella piu' la voce. Le chiavi invalidate o fuori sincrono le
+      gestisce gia' expo-secure-store, verificato nel suo sorgente Android.
+- [x] Sessione Media3: `isTrusted` comprende ogni app con un servizio di
+      ascolto delle notifiche attivo, non solo il sistema. Il commento lo
+      dice e la libreria privata si sfoglia solo da Onda, Android Auto e
+      Automotive (`canBrowse`); i controller fidati comandano il trasporto.
+- [x] Risposte API lette campo per campo: una voce senza id, titolo o
+      stream si salta senza far cadere la pagina; gli id nei percorsi
+      Audius sono codificati; dal player si aprono solo URL `http(s)`.
+- [x] `npm test` 213 verdi (7 nuovi), typecheck, ESLint e Prettier puliti;
+      compilazione Kotlin e 24 test JVM rieseguiti da zero, 0 falliti;
+      Expo Doctor 21/21; `check:audit` verde con le due eccezioni note.
+- [x] Rilevato e lasciato aperto: la CI di `main` fallisce dal 17 ottobre
+      sul passo `expo-doctor` delle PR Dependabot, perche' `main` ha ancora
+      le sei patch Expo precedenti. Il riallineamento e' in questo branch.
+
+Queste sono prove automatiche locali. Restano su device l'aggiornamento da
+una build precedente con libreria Jamendo, la navigazione da Android Auto
+con la libreria ristretta e il cambio del Client ID seguito da una
+riproduzione Jamendo (roadmap, P1).
+
+### Verificato il 15 ottobre 2026: riallineamento Expo, senza device
+
+Aggiornate soltanto le sei dipendenze dirette segnalate da Expo Doctor:
+`expo` 57.0.27 → 57.0.30, `expo-constants` 57.0.21 → 57.0.22,
+`expo-linking` 57.0.12 → 57.0.13, `expo-router` 57.0.25 → 57.0.28,
+`expo-sharing` 57.0.22 → 57.0.23 e `expo-splash-screen` 57.0.9 → 57.0.10.
+Il lockfile aggiorna anche le 13 dipendenze transitive richieste dalle nuove
+versioni; conserva tutte le altre versioni e la struttura dell'albero.
+Le modifiche locali precedenti, incluse le quattro correzioni P1, sono
+preservate: il confronto degli hash dei file conferma cambiamenti soltanto
+nei due manifest npm e in questo registro.
+
+- [x] `npm ci --no-audit --no-fund`, `npm ls --all`, doctor Onda ed Expo
+      Doctor completati: **21/21 controlli Expo superati**, senza esclusioni
+      o modifiche alla configurazione dei controlli.
+- [x] Pipeline `npm run build:personal` completa con Node 24.21.0, JDK 17,
+      SDK 36 e Build-Tools 36.0.0: 206 test JavaScript e 24 test JVM passati,
+      nessuno fallito o saltato; typecheck, ESLint e Prettier superati.
+      Prebuild Android pulito, Android Lint con zero segnalazioni e le due
+      esclusioni gia' documentate per worklets/reanimated, R8 e APK standalone
+      completati. Firma debug personale verificata, identica alla precedente
+      e distinta da quella ufficiale; nessuna installazione o pubblicazione.
+- [x] APK `dist/personal/Onda-personal.apk`, SHA-256
+      `91dbd35ceea1d38d081bbc4317354ff27618e2c01127cb42e2c3a68ad1ec6b8c`,
+      con manifest locale di provenienza. Non ridistribuibile.
+- [x] `npm run check:audit` passato con le due eccezioni gia' dichiarate
+      (`braces`, `node-forge`), da riesaminare entro il 15 gennaio 2027.
+
+Restano i collaudi su device e Windows descritti nelle voci precedenti;
+questa verifica non li sostituisce e non esegue nuovi job GitHub.
+
+### Verificato il 15 ottobre 2026, senza device
+
+Correzioni dei quattro P1 dell'audit sul worktree `feat/media3-player`,
+preservando le modifiche locali gia' presenti.
+
+- [x] Accesso alla libreria: il test JVM con un chiamante non autorizzato
+      e id noti di preferiti, cronologia e playlist fallisce con il solo
+      controllo della radice e passa con `LibraryAccess` su tutte le letture.
+      La sessione rifiuta anche connessioni non autorizzate. Navigazione,
+      metadati e paginazione dei chiamanti autorizzati restano coperti.
+- [x] Errori tardivi dopo la pausa: sei regressioni JS (source, renderer,
+      unknown; primo piano e background) falliscono prima e passano dopo il
+      recupero atomico `skipToNextAfterError`. Il nativo controlla sul main
+      thread intenzione di play, errore ancora presente e brano successivo;
+      solo un recupero eseguito consuma il budget. Coperti anche buffering e
+      assenza di un errore ancora valido nei test JVM.
+- [x] Credenziali: regressioni su otto varianti dotenv, valori oscurati da
+      precedenze, valori multilinea e ambiente esplicito. `doctor` provato
+      in un progetto interamente temporaneo con una credenziale fittizia in
+      `.env.production`: ora rifiuta il file e non stampa il valore. Git
+      ignora tutte le varianti; la stessa lettura serve build e release.
+- [x] Artwork: policy Audius/provenienza sconosciuta solo memoria, Jamendo
+      memoria e disco, chiavi distinte anche a URL uguale. Test sulla policy,
+      sul componente reale renderizzato in Node con il bordo nativo finto,
+      e sulla migrazione della cache: cancellazione attesa prima di confermare
+      la versione, fallimento recuperabile e nessuna nuova pulizia dopo il
+      successo. Le regressioni della policy falliscono prima della correzione.
+- [x] `npm ci --offline --no-audit` completato; lockfile invariato.
+      Pipeline `npm run build:personal` completa con Node 24.21.0, JDK 17,
+      SDK 36 e Build-Tools 36.0.0: 206 test Node, typecheck, ESLint,
+      Prettier, prebuild pulito, compilazione Kotlin, 24 test JVM, Android
+      Lint, R8 e APK standalone con firma personale verificata. Nessun test
+      fallito o saltato. APK non installato e non pubblicato, SHA-256
+      `1388397859a1a32aed982b426d762addaaabd2e94673ece3efb15dea333444b9`.
+- [x] `doctor` e `check:audit` passano; restano le due eccezioni dichiarate
+      (`braces`, `node-forge`) fino al 15 gennaio 2027. Expo Doctor resta a
+      20/21: sei patch Expo da riallineare, gia' segnalate nell'audit e fuori
+      dalle quattro correzioni. La privacy passa alla versione 1.5 per
+      descrivere la cache degli artwork.
+
+Queste sono prove automatiche locali. Restano il collaudo tra app Android
+reali dei permessi, compatibilita' dei controller/Android Auto, errore
+tardivo dopo una pausa su device e aggiornamento da una build con immagini
+gia' in cache. Non sono stati eseguiti nuovi job GitHub o collaudi Windows.
+
+### Verificato il 13 ottobre 2026 su Motorola Edge 50 Neo, Android 16
+
+Build personale del branch `feat/media3-player`, versione
+`0.2.0+45ecaaa.dirty`: comprende le modifiche locali al recupero della rete,
+alla cancellazione delle credenziali e alla CI del modulo nativo. L'APK
+usato per queste prove aveva l'hash SHA-256
+`4deaea512985d5e205aac2c99337e739dd43c0535a825f2a18bf98923f4ddc0d`.
+
+- [x] `npm ci`, doctor e pipeline `npm run install:personal` completati:
+      189 test JavaScript, typecheck, ESLint, Prettier, prebuild pulito,
+      compilazione Kotlin, 18 test JVM e Android Lint superati. Un primo
+      processo è terminato con SIGTERM durante l'assemblaggio, prima
+      dell'installazione; il secondo ha prodotto e verificato l'APK
+      standalone con firma personale, poi `adb install -r` ha risposto
+      `Success`. `npm run check:installed` conferma la versione indicata.
+- [x] Firma confrontata con la copia precedente prima dell'aggiornamento.
+      Conteggi e contenuto visibile della Libreria e dei Preferiti identici
+      subito dopo l'installazione: 1 preferito, 42 ascolti recenti, nessuna
+      playlist. Durante il collaudo i recenti salgono a 43 per un nuovo
+      ascolto; il preferito resta presente.
+- [x] Coda ripristinata in pausa, sul brano Audius precedente a 27:40;
+      nessuna sessione media Onda prima del play. Al play la sessione
+      Media3 passa a `PLAYING` dalla posizione salvata e conserva 47 brani.
+      Audio regolare confermato dall'utente. Questa prova non misura i
+      byte di rete prima del play.
+- [x] Play/pausa e seek sulla build reale: in pausa la posizione resta
+      a 1.729.671 ms fra due letture; il trascinamento dello slider la
+      porta a 528.961 ms mantenendo `PAUSED`, e il play riparte da lì.
+      Successivo passa al brano seguente senza alterare la coda;
+      precedente riavvolge un brano oltre i primi tre secondi e, premuto
+      di nuovo a posizione zero, torna alla traccia precedente in pausa.
+- [x] Comandi media di sistema via ADB: play con Onda sulla Home porta
+      la sessione a `PLAYING`; la posizione avanza da zero a 60.834 ms
+      con l'app in background. Pausa la ferma a 61.696 ms sullo stesso
+      brano, con 47 elementi in coda e nessun errore della sessione.
+      La prova usa i comandi Android, senza cuffie Bluetooth collegate.
+- [x] Apertura del player dal tap sulla notifica, implementata l'11 ottobre
+      2026 con `onda://notification.click` e `app/+native-intent.ts`.
+      Onda portata sulla Libreria, poi sulla Home e rimessa in riproduzione;
+      l'utente conferma che il tap sulla scheda multimediale nel pannello
+      notifiche apre direttamente il player con il brano corrente.
+      Prova con l'app in background e il processo attivo.
+- [x] Recupero automatico della rete a schermo spento sulla stessa build,
+      alle 13:32–13:37 (Europe/Rome). Wi-Fi già spento e dati mobili
+      interrotti via ADB; Android conferma nessuna rete predefinita attiva.
+      Onda resta sulla Home con `mWakefulness=Asleep`; dopo l'esaurimento
+      dell'audio già ricevuto, la sessione passa a `ERROR` a 506.696 ms
+      e il gestore registra un errore `network`. Riattivati i dati al primo
+      errore, senza premere play né Riprova: `BUFFERING`, poi la prima
+      lettura `PLAYING` circa 6,5 secondi dopo, a 506.708 ms. Le letture
+      successive confermano che la posizione avanza. Stesso brano Audius
+      e stessa coda di 47 elementi, schermo ancora spento.
+- [x] Ritorno al player dopo quel retry: sessione `PLAYING`, tempo che
+      avanza, pulsante pausa e nessun avviso Riprova residuo nella
+      schermata catturata via ADB. Connessioni ripristinate allo stato
+      iniziale (Wi-Fi spento, dati mobili attivi, modalità aereo spenta);
+      Onda rimessa in pausa al termine, come prima della prova.
+- [x] Interruzione prolungata dei dati mobili a schermo spento sulla stessa
+      build, alle 14:42–14:46 (Europe/Rome). Dopo l'audio già ricevuto,
+      un errore iniziale e tre retry producono quattro errori `network`;
+      i tentativi successivi rispettano le attese di 2, 5 e 10 secondi,
+      più il tempo del caricamento fallito. La sessione resta in `ERROR`
+      a 1.082.861 ms sullo stesso brano e con 47 elementi in coda.
+      Nessun quinto tentativo per oltre 16 secondi senza rete e per
+      altri 16 dopo la riattivazione dei dati mobili.
+- [x] Riprova manuale dopo l'esaurimento dei retry, alle 14:51–14:52.
+      Il player mostra l'avviso di rete e i pulsanti Riprova; il tocco
+      sul comando principale porta la sessione a `BUFFERING` dalla
+      posizione ferma, poi a `PLAYING` con la posizione che avanza.
+      Restano il brano corrente e la coda di 47 elementi.
+
+È il primo collaudo del backend Media3. La pausa durante un tentativo è
+verificata sulla build successiva dello stesso giorno, riportata sotto.
+Restano cambio Wi-Fi/dati mobili, timer in Doze, Android Auto e comandi
+Bluetooth; le prove storiche del backend precedente non le sostituiscono.
+
+### Verificato il 13 ottobre 2026: pausa durante il recupero, su Media3
+
+Sulla build precedente, alle 15:11 (Europe/Rome), la pausa Android durante
+il caricamento del primo retry viene accettata: la sessione passa da
+`BUFFERING` a `PAUSED`. Il caricamento poi fallisce e il retry successivo
+fa ripartire la musica al ritorno della rete, senza un nuovo comando play.
+Il difetto è riprodotto sul telefono prima della correzione.
+
+`PlaybackCore` ora annulla il retry quando `playWhenReady` diventa falso,
+anche per una pausa dai controller Android. Controlla la stessa intenzione
+quando arma il timer e quando lo esegue: un errore arrivato dopo la pausa
+non può programmare una ripartenza.
+
+Nuova build personale `0.2.0+45ecaaa.dirty`, compilata alle 15:17 e
+installata sullo stesso Motorola Edge 50 Neo, Android 16. Il nome di
+versione è uguale perché entrambe le build hanno modifiche locali; l'APK
+aggiornato è distinto dall'hash SHA-256
+`2bf30415d04fe963adbeb0d95402913e3990af525a8aaf6a4fbe28b2f6ec80ca`,
+nel manifest locale `dist/personal/Onda-personal.json`.
+
+- [x] `npm ci`, doctor e `npm run install:personal` completati: suite
+      JavaScript, typecheck, ESLint, Prettier, prebuild, compilazione Kotlin,
+      18 test JVM e Android Lint superati. Bundle standalone e firma
+      personale verificati; stesso certificato locale della build precedente,
+      aggiornamento con `adb install -r` concluso con `Success`.
+- [x] Dopo l'aggiornamento la Libreria conserva 1 preferito, 43 ascolti
+      recenti e nessuna playlist. Il player ritrova il brano precedente
+      a 48:16; il primo play consegna la coda di 47 elementi, prima
+      assente dalla sessione media.
+- [x] Pausa con il secondo retry in attesa, alle 15:57–15:58. Dopo il
+      primo tentativo fallito, comando Android pausa prima dei cinque
+      secondi previsti per il successivo. Dati mobili riattivati e rete
+      predefinita attiva confermata da Android: per oltre 25 secondi la
+      posizione resta a 8.358 ms, nessun terzo errore `network` e nessuna
+      ripartenza. Stesso brano, stessa coda di 47 elementi, schermo spento.
+- [x] Pausa durante il caricamento del primo retry, alle 15:59–16:00,
+      ripetuta senza seek: buffer svuotato con stop e nuova preparazione
+      sulla posizione corrente. Pausa accettata con passaggio da
+      `BUFFERING` a `PAUSED`; il caricamento già avviato produce ancora
+      un errore di rete, ma non arma un nuovo tentativo. Dopo il ritorno
+      della rete, confermata attiva da Android, oltre 25 secondi senza
+      ripartenze né altri errori: posizione ferma a 15.705 ms, stesso
+      brano e 47 elementi in coda, schermo spento.
+- [x] Riprova nell'app dopo la pausa durante il recupero, alle 16:02–16:03.
+      Tocco sull'avviso Riprova: `BUFFERING`, poi `PLAYING` dallo stesso
+      punto; la posizione avanza fino a 22.895 ms sullo stesso brano.
+      Pausa finale stabile a 24.039 ms, coda di 47 elementi, nessun errore
+      della sessione. Il player mostra Riprendi e non conserva l'avviso
+      Riprova. Dati mobili attivi, Wi-Fi e modalità aereo spenti, come
+      prima della prova.
+
+Anomalia da approfondire: nella prima ripetizione, dopo un seek avanzato
+sul mix Audius da 1:26:48, la pausa resta rispettata a 1:07:00; alla
+successiva ripresa esplicita lo stream risponde HTTP 416. Onda classifica
+l'errore come `source` e passa al brano seguente, conservando i 47 elementi
+in coda. Questo non verifica la ripresa sulla posizione avanzata: va
+ripetuto su uno stream fresco e confrontato con durata e risposta del
+server. Le due prove di pausa senza seek usano il brano seguente.
+
+### Verificato il 13 ottobre 2026, senza device
+
+Recupero della rete in background con il modulo Media3: il gestore di
+`playbackService` elabora `playbackStateChanged` con la stessa regola del
+primo piano. Prima ignorava l'evento e, dopo un retry sullo stesso brano,
+il flag di errore poteva lasciare Riprova visibile mentre la musica suonava.
+
+- [x] Test di regressione in `scripts/playback-errors.test.ts`: fallisce
+      prima della correzione e passa dopo. L'errore resta in `idle`, si
+      pulisce al buffering e lo stato visibile torna `playing` alla
+      ripresa; nessun salto di brano e un nuovo errore riparte dal primo
+      tentativo.
+
+Cancellazione delle credenziali: `saveCredential` e i moduli di Sorgenti
+attendono il Keystore prima di confermare la rimozione. Un fallimento
+conserva lo stato precedente e mostra un errore specifico; durante
+l'operazione il pulsante mostra l'attesa e i controlli del modulo sono
+disabilitati.
+
+- [x] Quattro test di regressione in `scripts/credentials.test.ts`, tutti
+      falliti prima della correzione e superati dopo: Client ID Jamendo e
+      API key Audius con cancellazione differita o rifiutata. Nessun
+      aggiornamento anticipato delle sorgenti, nessuna notifica di
+      successo sul fallimento, valore assente dal Keystore al completamento
+      e nuovo tentativo riuscito dopo un errore.
+
+Workflow manuale della build personale: rimosse le variabili
+`EXPO_PUBLIC_JAMENDO_CLIENT_ID` e `EXPO_PUBLIC_AUDIUS_APP_NAME` rimaste dal
+modello precedente. La prima faceva fallire il controllo sulle credenziali
+prima della compilazione. Il controllo del file APK usa Node, già presente
+su entrambi i runner, con la shell predefinita di Ubuntu e Windows.
+
+- [x] YAML letto e ambiente del workflow verificato con
+      `embeddedCredentialErrors`: segnalava la credenziale prima della
+      correzione e non ne segnala dopo. Restano entrambi i runner, `npm ci`
+      e `npm run build:personal`; nessun caricamento dell'APK.
+
+La compilazione del workflow aggiornato su GitHub non è stata eseguita:
+le prove di build Ubuntu/Windows già registrate sono quelle storiche.
+
+CI ordinaria del player nativo: il job `native-player` del workflow Quality
+prepara JDK 17 e Android SDK su Ubuntu e Windows, rigenera Android e lancia
+`npm run android:test:player`. Il comando, condiviso con la build personale,
+controlla l'ambiente con doctor e richiede a Gradle compilazione Kotlin e
+test JVM del modulo; un errore termina il job. Firma debug forzata e nessun
+APK assemblato dal controllo.
+
+- [x] Su Linux locale, `npm ci`, prebuild Android pulito e il nuovo comando
+      completati con JDK 17, Platform 36 e Build-Tools 36.0.0 già presenti.
+      `:onda-player:compileReleaseKotlin` e
+      `:onda-player:testReleaseUnitTest` eseguiti: 18 test JVM superati,
+      zero errori e zero test saltati (albero di Auto 6, categorie d'errore
+      4, comandi esterni 3, timer 5).
+- [x] YAML della CI verificato: PR e push su `main`, entrambi i runner,
+      prebuild prima dei test, nessuna credenziale e nessun
+      `continue-on-error` nel job nativo. Passano anche `npm test`,
+      typecheck, ESLint e Prettier.
+
+I nuovi job su GitHub restano da eseguire. Le prove di recupero della rete
+e cancellazione riguardano la logica JS con player e Keystore finti; i test
+JVM coprono le parti pure del modulo. Il recupero della rete a schermo
+spento e il ritorno al player sono verificati nella prova device dello
+stesso giorno riportata sopra; la rimozione delle credenziali seguita da
+un riavvio resta da collaudare su device nella roadmap.
+
+Allineamento della documentazione del 13 ottobre 2026:
+
+- [x] README, roadmap e guide aggiornati al modulo Media3 e alle prove
+      raccolte oggi, distinguendole da quelle del backend precedente.
+      Corrette versione dello storage (4), privacy policy (1.4), stato
+      dei nuovi job CI e lista delle eccezioni della policy di audit.
+- [x] Esplicitati i limiti dello smoke sui primi byte dello stream e del
+      confronto di `check:installed` fra build con lo stesso commit `.dirty`.
+      HTTP 416 ancora aperto, senza attribuirgli una causa non verificata.
+      La nota di conformità distingue compatibilità del player e gate
+      ancora aperti per distribuire l'app completa.
+- [x] Dopo le modifiche documentali passano `npm test`,
+      `npm run typecheck`, `npm run lint` e `npm run format:check`.
 
 ### Verificato l'11 ottobre 2026 su Motorola Edge 50 Neo, Android 16
 

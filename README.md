@@ -28,7 +28,7 @@ Onda riunisce [Audius](https://audius.co/) e
 [Jamendo](https://www.jamendo.com/) senza account Onda e senza un backend
 proprietario. Offre una home a sezioni e una ricerca federata di brani,
 artisti e album, riproduzione in background con ripresa dell'ascolto,
-controlli dalla schermata di blocco e da Android Auto, coda riordinabile,
+controlli dalla schermata di blocco, integrazione Android Auto, coda riordinabile,
 preferiti, cronologia, playlist e timer di spegnimento. La libreria resta sul
 dispositivo.
 
@@ -106,15 +106,20 @@ PowerShell, debug USB ed errori comuni, è in
   senza credenziali.
 - Gli album sono disponibili solo per i brani Jamendo.
 - Nessun ascolto offline.
-- Le novità di settembre 2026 (home a sezioni, ricerca di artisti e album,
-  ripresa dell'ascolto, riordino della coda) sono collaudate nel loro
-  funzionamento principale su un Motorola Edge 50 Neo con Android 16. Android
-  Auto è dichiarato nell'APK ma non ancora provato con un'unità o con il
-  Desktop Head Unit. Le prove che mancano sono in [TODO.md](TODO.md), quelle
-  fatte nel [registro dei collaudi](docs/VERIFICATION_LOG.md).
-- Il player nativo è nostro (`modules/onda-player`, MIT) e usa AndroidX Media3,
-  sotto Apache 2.0. Fino all'11 ottobre 2026 era `@rntp/player`, la cui licenza
-  non permetteva di distribuire un APK che lo incorporasse.
+- Il modulo nativo è codice Onda (`modules/onda-player`, MIT); il motore di
+  riproduzione è AndroidX Media3 1.11.1, sotto Apache 2.0. Dall'11 ottobre
+  2026 sostituisce `@rntp/player`, rimosso da dipendenze, lockfile e APK.
+- Il 13 ottobre 2026 il player Media3 è stato collaudato su Motorola Edge 50
+  Neo, Android 16: aggiornamento con Libreria conservata, coda ripristinata,
+  play/pausa, seek, cambio traccia, comandi Android in background, tap sulla
+  notifica e recupero della rete, inclusa la pausa durante i retry. Resta da
+  approfondire un HTTP 416 dopo un seek avanzato su un lungo mix Audius.
+- Timer in Doze, Bluetooth e focus audio, operazioni complete sulla coda,
+  shuffle e repeat richiedono ancora prove sul nuovo backend. Android Auto
+  è implementato ma non ancora provato con un'unità o con il Desktop Head
+  Unit. Le prove storiche del player precedente non sostituiscono questi
+  collaudi; dettagli in [TODO.md](TODO.md) e nel
+  [registro dei collaudi](docs/VERIFICATION_LOG.md).
 
 La roadmap è in [TODO.md](TODO.md) e le prove già fatte nel
 [registro dei collaudi](docs/VERIFICATION_LOG.md); architettura e procedure di

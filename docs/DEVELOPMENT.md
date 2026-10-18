@@ -23,7 +23,7 @@ Le sezioni sotto spiegano l'ambiente di sviluppo e la pipeline del maintainer.
 
 ### Cosa serve
 
-- [Node.js](https://nodejs.org/) e npm
+- [Node.js](https://nodejs.org/) 22.15 o successivo e npm
 - **JDK 17** (non JDK 21)
 - **Android SDK 36** con build-tools 36.0.0
 - un dispositivo Android con debug USB, oppure un emulatore
@@ -74,9 +74,20 @@ avvio o da Libreria › Sorgenti.
   nell'URL.
 
 Le credenziali stanno in expo-secure-store, cifrate con una chiave del Keystore
-(`services/credentials`). Non usare variabili `EXPO_PUBLIC_*` per credenziali:
+(`services/credentials`). Una lettura che fallisce all'avvio non cancella
+niente: le chiavi invalidate le gestisce gia' expo-secure-store, e per il
+resto si riparte senza la credenziale e la si reinserisce da Sorgenti.
+Jamendo mette il Client ID anche negli URL di stream (`from=app-<client_id>`):
+l'adapter lo toglie prima di salvare il brano (`sources/jamendoStream`) e
+`mediaItems.playbackUrl` rimette quello corrente solo nell'URL dato al player,
+cosi' libreria, coda salvata, cache ed export non lo contengono; la migrazione
+dello storage 4 → 5 ripulisce i dati scritti prima.
+Non usare variabili `EXPO_PUBLIC_*` per credenziali:
 finirebbero in chiaro nel bundle, e doctor e release si fermano se ne trovano
-una. Per `npm run smoke` il Client ID si passa come `JAMENDO_CLIENT_ID`,
+una nell'ambiente o in qualunque file `.env`/`.env.*`, anche se oscurata da
+una precedenza. `scripts/build-environment.ts` applica la precedenza Expo
+production e restituisce diagnostica senza valori; tutti questi file sono
+ignorati da Git. Per `npm run smoke` il Client ID si passa come `JAMENDO_CLIENT_ID`,
 nell'ambiente o in `.env`.
 
 ## Architettura
@@ -199,11 +210,12 @@ sessione a cui i termini di Audius limitano i loro dati. Una versione piu' nuova
 della nostra non si tocca. Un valore che non si riesce nemmeno a parsare non
 si cancella: finisce in `quarantine.*`. Una migrazione nuova e' una voce in
 `MIGRATIONS` con la sua versione di arrivo e un test da versione vecchia.
-Oggi sono tre: 1 → 2 porta il repeat numerico a `off/one/all`, 2 → 3 toglie
-dalla cache di React Query gli elenchi a scorrimento salvati con l'offset
-unico, che non sapevano dire da dove riprendere, e 3 → 4 toglie dalla cache
-i dati Audius scritti prima della regola di sessione, insieme alla loro
-copia in `backup.*`.
+Oggi sono quattro: 1 → 2 porta il repeat numerico a `off/one/all`, 2 → 3
+toglie dalla cache di React Query gli elenchi a scorrimento salvati con
+l'offset unico, che non sapevano dire da dove riprendere, 3 → 4 toglie dalla
+cache i dati Audius scritti prima della regola di sessione, insieme alla loro
+copia in `backup.*`, e 4 → 5 toglie il Client ID Jamendo dagli URL di stream
+salvati in libreria, coda e cache, backup compreso.
 
 La coda invece non e' in uno store nostro: vive nel player nativo, che resta
 l'unica fonte di verita' anche quando i comandi arrivano dalla notifica.
@@ -223,12 +235,20 @@ torna `idle`, che per la tabella e' una pausa. `store/playbackFault` tiene
 quindi un flag che `playbackService` alza quando un errore ferma il player e
 che il primo caricamento o cambio brano abbassa; e' quel flag che fa comparire
 l'avviso con Riprova. Per lo stesso motivo il salto automatico dopo un brano
-morto chiama `retry()` dopo `skipToNext()`: il contratto non promette che
-`play()` riprepari un player fermo dopo un errore. Un errore di rete invece non
+morto usa `skipToNextAfterError()`: sul main thread verifica che ci siano
+ancora un errore, un brano successivo e un play richiesto, poi salta,
+riprepara e riparte in un solo comando. Una pausa arrivata da UI o da un
+controller Android revoca anche questo recupero; il silenzio durante il
+buffering non equivale a una pausa. Un errore di rete invece non
 consuma il budget di salti: `playbackService` riprova da solo tre volte a
 distanze crescenti (`NETWORK_RETRY_DELAYS_MS` in `playbackPolicy`), e solo
 dopo resta all'utente il Riprova. L'attesa la conta il player
 (`scheduleRetry`), perche' con l'app in background i timer JS sono fermi.
+La pausa revoca anche il recupero: `PlaybackCore` osserva
+`onPlayWhenReadyChanged`, perche' i controller Android chiamano ExoPlayer
+direttamente e durante il buffering `isPlaying` e' gia' falso. Il timer
+controlla `playWhenReady` sia quando si arma sia quando scatta, cosi' un
+errore arrivato dopo la pausa non fa ripartire la musica.
 
 La cronologia non si aggiorna al cambio di brano ma al tick di progresso:
 `services/historyPolicy` dice quando un brano conta come ascoltato (trenta
@@ -254,6 +274,13 @@ Audius e la query si segna da rinfrescare (`isInvalidated`), cosi' alla
 riapertura mostra subito il resto e torna completa appena risponde la rete.
 L'elenco delle sorgenti di sola sessione e' `SESSION_ONLY_SOURCES`.
 
+Anche gli artwork seguono la sorgente (`artworkCachePolicy`): Audius e
+provenienza sconosciuta usano solo memoria, Jamendo memoria e disco, con
+chiavi distinte anche a URL uguale. Prima di montare le schermate,
+`prepareArtworkCache` elimina una volta la vecchia cache mista; conferma la
+versione della policy soltanto se la cancellazione riesce. Un fallimento
+lascia disponibile Riprova e non monta immagini con dati residui.
+
 Le sorgenti dichiarano le funzioni opzionali (`spotlight`, `searchArtists`,
 `searchAlbums`, gli album) e la federazione salta chi non le ha senza
 contarlo come caduta: Audius non cerca album, e la vetrina di Cerca resta
@@ -266,6 +293,17 @@ libreria persistita — preferiti, playlist, ascolti recenti — e
 accorpando quelle ravvicinate. Il manifest lo dichiara tramite
 `plugins/with-android-auto.js`; il servizio media e il suo intent filter li
 dichiara il modulo del player.
+
+La sessione rifiuta i controller non autorizzati. Chi puo' collegarsi e
+comandare la riproduzione sono Onda, la sua notifica, Android Auto,
+Automotive e i controller che Media3 dichiara fidati: oltre al sistema,
+qualunque app con un servizio di ascolto delle notifiche attivo (smartwatch,
+widget multimediali). La libreria privata la sfogliano invece soltanto Onda,
+Android Auto e Automotive. Radice, figli ed elementi passano tutti da
+`LibraryAccess`, che verifica il permesso prima di leggere l'albero:
+conoscere un id di playlist o cronologia non concede accesso. I test JVM
+coprono anche richieste dirette con id noti e la paginazione dei controller
+autorizzati; resta il collaudo tra app Android reali.
 
 Quel descrittore accende in Android Lint due controlli in piu', entrambi
 errori ed entrambi letti sul solo manifest sorgente dell'app. Il plugin li
@@ -369,6 +407,12 @@ il sorgente di Media3. Chi lo modifica tiene la stessa regola.
 1.11.1 (`media3-exoplayer` e `media3-session`, Apache 2.0); una versione nuova
 va provata su device prima di entrare.
 
+Il modulo, il contratto e le regole di Onda sono codice originale del
+progetto. Motore ExoPlayer, lettura dei formati e gestione degli stream
+provengono da Media3; la decodifica usa anche i componenti Android. Dire
+«player nostro» si riferisce al modulo e all'integrazione, non a un motore
+audio scritto interamente da Onda.
+
 - **Un player per processo, sul main thread** (`PlaybackCore`). Nasce al
   primo comando di coda o di play, oppure quando Android Auto avvia il
   servizio a freddo. Solo `play()` lo prepara e apre sessione, servizio e
@@ -389,7 +433,7 @@ va provata su device prima di entrare.
   ci resta legato con un `MediaController`; Media3 ne fa un foreground
   service con la notifica. I tasti di `setup` vanno al controller della
   notifica, ad Android Auto e ai controller fidati del sistema; ogni altra
-  app legge soltanto. Il tocco sulla notifica apre
+  app e' respinta alla connessione. Il tocco sulla notifica apre
   `onda://notification.click`, che `app/+native-intent.ts` porta al player.
 - **Recenti.** Tolta dai recenti, Onda si ferma e il servizio si chiude, ma
   coda e posizione restano nel player: se processo e JS sopravvivono,
@@ -402,6 +446,10 @@ va provata su device prima di entrare.
   (`scheduleRetry`). Con l'app in background React Native ferma i timer JS
   (`JavaTimerManager`, se non gira un task headless): un `setTimeout` per
   riprovare dopo un tunnel a schermo spento non partirebbe mai.
+  Dal 13 ottobre 2026 una pausa (`playWhenReady=false`) annulla il retry;
+  l'intenzione di riprodurre viene controllata anche quando si programma
+  e quando si esegue il tentativo. Un errore tardivo dopo la pausa non
+  deve far ripartire l'audio. Entrambi i casi sono collaudati su device.
 - **Eventi.** Il modulo manda un solo evento, `onPlayerEvent`, con `type` e i
   campi del contratto. `media3Backend` lo consegna una volta sola: ai
   listener se l'app e' `active`, al gestore in background altrimenti, in fila
@@ -425,15 +473,22 @@ va provata su device prima di entrare.
   della stessa cartella, a partire da lui. In coda torna l'uid nudo.
 
 Le parti pure (categorie d'errore, tasti, timer di spegnimento, albero di
-Auto) hanno test JVM in `modules/onda-player/android/src/test`. Li esegue
-`npm run build:personal` prima dell'Android Lint; da soli, dopo un prebuild:
+Auto) hanno test JVM in `modules/onda-player/android/src/test`. Il job
+`native-player` del workflow Quality è configurato per compilare il Kotlin
+ed eseguirli su Ubuntu e Windows a ogni PR e push su `main`. Il 13 ottobre
+2026 il comando è passato su Linux locale con 18 test JVM; i nuovi job su
+GitHub restano da eseguire. Lo stesso controllo gira in
+`npm run build:personal` prima dell'Android Lint. Per eseguirlo da solo:
 
 ```bash
-cd android
-./gradlew :onda-player:testReleaseUnitTest
+npm run prebuild
+npm run android:test:player
 ```
 
-Su Windows il comando e' `gradlew.bat`.
+Il comando richiede JDK 17, Platform 36 e Build-Tools 36.0.0, controllati
+da doctor, e usa il wrapper Gradle della piattaforma: `gradlew` su Linux,
+`gradlew.bat` su Windows. Esegue `:onda-player:compileReleaseKotlin` e
+`:onda-player:testReleaseUnitTest`; non assembla un APK.
 
 ---
 
@@ -456,7 +511,8 @@ una che cade e torna, un artista con una richiesta fallita. Sopra il player
 finto coprono anche la sessione di ascolto, il guardiano delle sorgenti e la
 reazione agli errori di riproduzione. L'adattatore sul modulo Media3 ha i suoi,
 con un modulo nativo finto (`scripts/media3-backend.test.ts`); il Kotlin ha i
-test JVM che girano nella build personale ([Il modulo Media3](#il-modulo-media3)).
+test JVM che girano in CI e nella build personale
+([Il modulo Media3](#il-modulo-media3)).
 
 `npm run check:audit` e' il controllo delle dipendenze che gira in CI:
 `npm audit` alla soglia alta, con le sole eccezioni dichiarate in
@@ -521,8 +577,11 @@ cosi' come sono, contro le API vere. Il Client ID Jamendo arriva da
 `JAMENDO_CLIENT_ID`, nell'ambiente o in `.env`; senza, Jamendo si salta e lo
 script lo dice. Lo script controlla
 per ogni sorgente ricerca, trending, paginazione, pagine artista e album,
-la federazione, tutti i generi, e chiede agli stream un `Range` per verificare
-che il seek sia possibile.
+la federazione, tutti i generi, e campiona gli stream con
+`Range: bytes=0-1023` per verificarne la raggiungibilità e il supporto di
+base alle richieste parziali. Un `206` sui primi byte non prova il seek
+temporale avanzato: quello dipende anche dal formato, dalla durata e dal
+calcolo dell'offset del player, e richiede un collaudo nativo.
 
 Serve perche' il typecheck non puo' vedere niente di tutto questo: al primo
 giro ha trovato tre bug reali in Jamendo (parametro `order` rifiutato sugli
@@ -539,23 +598,27 @@ porta `uuid` alla versione corretta 11.1.1 e rimuove le segnalazioni moderate
 GHSA-w5hq-g745-h8pq. Non va sostituito con `npm audit fix --force`: npm propone
 un downgrade incompatibile a Expo 53 e React Native 0.72.
 
-Restano segnalazioni alte propagate da un'unica dipendenza di Metro,
-`image-size@1.2.1` (GHSA-w3rx-r6r6-pgpr e GHSA-5p2g-fcmc-qvqq). Alla data
-della verifica non esiste una versione corretta. Il rischio riguarda un DoS
-del processo Node quando il bundler analizza file ICNS, JXL o HEIF costruiti
-appositamente; non e' codice eseguito nell'APK. Onda usa soltanto asset locali
-revisionati e non accetta asset di build da utenti o dalla rete.
+L'elenco corrente delle eccezioni è in
+[`scripts/audit-policy.ts`](../scripts/audit-policy.ts): `braces`
+(GHSA-vfj7-8cjw-p6xm, watcher Metro) e `node-forge`
+(GHSA-86w9-cpqp-85rv, strumenti Expo per firma iOS e manifest expo-updates),
+con revisione entro il 15 gennaio 2027. La policy registra il motivo
+dell'accettazione e il fatto che questi strumenti non entrano nell'APK
+Android. Gli avvisi `image-size` riportati nell'audit storico di agosto
+non sono più nell'elenco delle eccezioni.
 
 Rieseguire periodicamente:
 
 ```bash
-npm audit
+npm run check:audit
 npx expo install --check
 npx expo-doctor
 ```
 
-Rimuovere l'eccezione non appena Metro/Expo pubblica una dipendenza corretta
-compatibile con SDK 57.
+Il rapporto aggiornato viene scaricato da `check:audit`: questa descrizione
+documenta la policy del repository, non sostituisce una nuova verifica del
+registro npm. Rimuovere ogni eccezione quando esiste una correzione
+compatibile; eccezioni scadute o non più necessarie fanno fallire il controllo.
 
 ---
 
@@ -590,8 +653,9 @@ checklist device di [TODO.md](../TODO.md).
 12. Con la rete lenta il tasto play mostra uno spinner e la barra sotto il
     mini-player ha tre toni: suonato, scaricato, da scaricare. In modalita'
     aereo a meta' brano il player dice "Il brano non risponde" e offre Riprova.
-13. Chiudi l'app, togli la rete e riaprila: Scopri mostra l'ultimo trending
-    invece delle sagome.
+13. Chiudi l'app, togli la rete e riaprila: Scopri mostra i dati Jamendo
+    conservati nella cache. Il catalogo Audius resta solo in memoria e non
+    deve ricomparire da disco dopo la chiusura del processo.
 14. Scopri ha le vetrine "In ascesa questa settimana" e "Voci nuove" con
     brani di entrambe le sorgenti, e un genere dalla griglia apre la sua
     pagina con Riproduci e Casuale.
@@ -601,14 +665,18 @@ checklist device di [TODO.md](../TODO.md).
 16. Nella Coda trascina una riga dalla maniglia a destra: le altre si
     spostano per farle posto e all'arrivo il brano suona nell'ordine nuovo.
     "Svuota da qui in giu'" mostra un avviso con Annulla che rimette i brani.
-17. Nel player, sotto i controlli, la riga "Prossimo" dice il brano che
-    viene dopo e cambia con shuffle e ripetizione.
+17. Nel player, sotto i controlli, la riga "Prossimo" rispetta la
+    ripetizione. Con lo shuffle nativo la UI dichiara che l'ordine non è
+    disponibile: esporre la permutazione Media3 è ancora una voce in TODO.md.
 
 Il punto 3 e' quello che rompe piu' spesso, ed e' anche quello che fallisce
 in silenzio.
 
-Tutti e otto sono stati percorsi su un Motorola Edge 50 Neo con Android 16
-(SDK 36). Se ti servono prove misurabili invece che a occhio:
+Le prove raccolte su Motorola Edge 50 Neo, Android 16 (SDK 36), sono datate
+nel registro: i casi del backend precedente non certificano automaticamente
+Media3. I controlli di base e il recupero della rete sono verificati sul
+nuovo modulo il 13 ottobre 2026; la checklist completa resta nella roadmap.
+Se ti servono prove misurabili invece che a occhio:
 
 ```bash
 adb shell dumpsys media_session | grep -A12 "package=com.onda.player"
@@ -853,6 +921,13 @@ il nome di versione che una build fatta adesso produrrebbe e dice se
 combaciano. Esce 0 se il telefono e' allineato, 2 se e' indietro o se Onda
 non c'e'.
 
+L'allineamento riguarda soltanto il nome di versione. Modifiche locali
+diverse sullo stesso commit producono tutte il suffisso `.dirty`: il comando
+non distingue questi APK e non confronta i loro byte. Per identificare
+l'artefatto usa l'hash SHA-256 di `dist/personal/Onda-personal.json`; dopo
+ulteriori modifiche locali ricompila e installa. È il caso delle due build
+del 13 ottobre 2026, con lo stesso nome e hash diversi nel registro.
+
 Il commit finisce nel nome di versione solo per le build personali, quelle
 con `ONDA_FORCE_DEBUG_RELEASE=1`. La release ufficiale tiene il suo numero
 pulito: e' quello che deve leggersi in un negozio o in una segnalazione.
@@ -901,9 +976,11 @@ conferme della [nota di conformità](RELEASE_COMPLIANCE.md).
 
 ## Gotcha Android
 
-**La notifica non compare.** Permesso `POST_NOTIFICATIONS` non concesso
-(obbligatorio da Android 13). L'app lo chiede al primo play; se hai negato,
-riabilitalo dalle impostazioni di sistema.
+**La notifica non compare.** L'app chiede `POST_NOTIFICATIONS` al primo play
+su Android 13+, ma le notifiche legate a una media session sono
+[esenti dal permesso](https://developer.android.com/develop/ui/compose/notifications/notification-permission#media-sessions).
+Controlla anche che la sessione e il servizio Media3 siano attivi: il
+rifiuto del permesso da solo non spiega l'assenza dei controlli multimediali.
 
 **L'audio si ferma andando in background.** Manca il servizio o il suo
 `foregroundServiceType`. Il manifest del modulo
@@ -918,10 +995,20 @@ in due secondi a una lettura del JS: qualcosa lo tiene occupato o lo blocca, e
 intanto la lettura ha restituito un valore neutro. E' un guasto da cercare
 (vedi [Il modulo Media3](#il-modulo-media3)).
 
+**HTTP 416 dopo un seek avanzato.** Il 13 ottobre 2026 è successo alla
+ripresa di un lungo mix Audius dopo un seek a circa 1:07:00. Onda classifica
+la risposta come `source` e passa al brano successivo. La causa non è
+ancora accertata: un `206` sui primi byte nello smoke non esclude il
+problema. Ripetere con uno stream fresco, confrontando durata dichiarata,
+dimensione del file, `Range` richiesto dal player e `Content-Range` della
+risposta, senza registrare credenziali. La prova e l'anomalia aperta sono
+nel [registro dei collaudi](VERIFICATION_LOG.md).
+
 **Una sorgente non risponde.** L'errore compare come banner senza bloccare
 l'altra sorgente: e' voluto. Il banner ora si accende anche se la sorgente
 cade a meta' scroll, non solo sulla prima pagina. Per spegnerne una del
-tutto, metti `enabled: false` in `src/services/sources/index.ts`.
+tutto, usa gli interruttori in Libreria › Sorgenti. La disponibilità passa
+da `src/services/sources/access.ts` e dalle preferenze in `src/store/sources.ts`.
 
 **Non risponde nessuna sorgente.** Caso diverso, e va tenuto diverso: la
 federazione lancia invece di tornare una lista vuota. Una lista vuota
@@ -978,10 +1065,9 @@ distanze crescenti e anche a schermo spento, e poi resta Riprova.
 
 **Il player e' un modulo nostro su Media3.** Fino all'11 ottobre 2026 era
 `@rntp/player` 5.8.0, la cui licenza non permette di distribuire un APK che lo
-incorpora. Fra i player open source per React Native non ce n'era uno con
-quello che serve a Onda (coda nativa con riordino, controlli con il JS
-sospeso, Android Auto) e una licenza adatta: `modules/onda-player` e' scritto
-qui, su AndroidX Media3, dietro la
+incorpora. Onda ha scelto di mantenere qui il modulo nativo per controllare
+coda con riordino, comandi con il JS sospeso, timer, recupero della rete e
+integrazione Android Auto. `modules/onda-player` usa AndroidX Media3 dietro la
 [facciata `src/player/`](#il-player-dietro-una-facciata). La versione di
 Media3 e' esatta e si aggiorna solo insieme al collaudo su device di coda,
 notifica, background e Android Auto.
@@ -1095,9 +1181,11 @@ riavvio metterebbe in pausa la musica senza che nessuno capisca perche'.
   suggerimento della ricerca vuota. Infine lo smoke (`scripts/smoke.ts`).
 - **Comportamento senza rete** — il catalogo e' coperto a livello di
   adapter (caduta totale e parziale, ripresa con il cursore per sorgente,
-  annullamento), la riproduzione su device: la modalita' aereo a meta' brano
-  mostra l'avviso con Riprova e la rete che torna riparte da sola entro i
-  tre tentativi automatici (registro dei collaudi, 9 e 10 settembre 2026).
+  annullamento). Su Media3 reale, il 13 ottobre 2026, sono verificati
+  recupero automatico a schermo spento, esaurimento dei tre retry e Riprova
+  manuale. La pausa durante l'attesa o il caricamento cancella il recupero
+  automatico anche se un errore arriva dopo; al ritorno della rete l'audio
+  resta fermo finché non si preme play o Riprova (registro dei collaudi).
   Restano rete lenta, captive portal e cambio Wi-Fi/5G, nella checklist
   device. Per un player musicale l'aereo e la metropolitana sono normalita',
   non casi limite.

@@ -62,13 +62,14 @@ compilare e installare Onda, PowerShell nativo ha meno punti di rottura.
 
 ## Comandi
 
-| Comando                    | Effetto                                                                         |
-| -------------------------- | ------------------------------------------------------------------------------- |
-| `npm run setup:personal`   | Segnala credenziali rimaste in `.env`: non c'è altro da preparare.              |
-| `npm run doctor`           | Controlla versioni, SDK, dipendenze e che nessuna credenziale entri nel bundle. |
-| `npm run build:personal`   | Esegue qualità, prebuild, Android Lint e crea l'APK standalone.                 |
-| `npm run install:personal` | Ricompila e installa su un unico dispositivo/emulatore autorizzato.             |
-| `npm run check:installed`  | Dice se il telefono collegato ha gia' questo commit, senza compilare.           |
+| Comando                       | Effetto                                                                                             |
+| ----------------------------- | --------------------------------------------------------------------------------------------------- |
+| `npm run setup:personal`      | Segnala credenziali rimaste in `.env`/`.env.*`: non c'è altro da preparare.                         |
+| `npm run doctor`              | Controlla versioni, SDK, dipendenze e che nessuna credenziale entri nel bundle.                     |
+| `npm run build:personal`      | Esegue qualità, prebuild, compilazione e test JVM del player, Android Lint e crea l'APK standalone. |
+| `npm run android:test:player` | Dopo il prebuild, compila il Kotlin del player ed esegue i suoi test JVM.                           |
+| `npm run install:personal`    | Ricompila e installa su un unico dispositivo/emulatore autorizzato.                                 |
+| `npm run check:installed`     | Confronta il nome di versione installato con commit e stato `.dirty` attuali, senza compilare.      |
 
 Gli output sono `dist/personal/Onda-personal.apk` e il manifest con hash
 `dist/personal/Onda-personal.json`; entrambi sono ignorati da Git. La pipeline
@@ -80,6 +81,13 @@ L'APK personale porta il commit nel nome di versione, per esempio
 leggi dalla schermata Informazioni dell'app, oppure da fuori con
 `npm run check:installed`, che confronta il telefono con il repository e non
 compila niente.
+
+Questo confronto non identifica il contenuto esatto dell'APK: due build dallo
+stesso commit con modifiche locali diverse possono avere lo stesso nome
+`0.2.0+68d225e.dirty`. L'hash SHA-256 nel manifest identifica l'artefatto
+prodotto; `check:installed` non confronta l'hash dell'APK sul telefono. Dopo
+nuove modifiche locali serve ricompilare e installare anche se il comando
+segnala un nome di versione allineato.
 
 La prima build crea `.onda/personal-debug.keystore` e le successive riusano la
 stessa chiave, così Android può installare gli aggiornamenti senza cancellare i
@@ -105,10 +113,13 @@ si cancellano disinstallando l'app.
 
 ## Problemi comuni
 
-**`Credenziali nel bundle` fallisce.** `.env` contiene ancora una variabile come
+**`Credenziali nel bundle` fallisce.** Un file `.env` o `.env.*` contiene ancora una variabile come
 `EXPO_PUBLIC_JAMENDO_CLIENT_ID`, che le versioni precedenti usavano per la
 build. Inserisci il Client ID nell'app (Libreria › Sorgenti), poi togli la riga
-o l'intero `.env`: le variabili `EXPO_PUBLIC_*` finirebbero in chiaro nell'APK.
+o il file indicato: le variabili `EXPO_PUBLIC_*` finirebbero in chiaro nell'APK.
+Il controllo copre anche le varianti production, development e test, perfino
+se una precedenza le nasconde. Mostra solo file e nomi delle variabili, mai
+i valori. Questi file sono tutti ignorati da Git.
 
 **Jamendo rifiuta il Client ID.** Controlla sul
 [portale Jamendo](https://devportal.jamendo.com/) di aver copiato il Client ID

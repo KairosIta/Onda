@@ -1,8 +1,10 @@
 # Nota di conformità della release
 
 Revisione tecnica del **22 agosto 2026**, aggiornata il **10 ottobre 2026** per
-i termini API di Audius e le credenziali inserite dall'utente, e l'**11 ottobre
-2026** per il player su Media3. Questa nota registra le condizioni verificate
+i termini API di Audius e le credenziali inserite dall'utente, l'**11 ottobre
+2026** per il player su Media3 e il **13 ottobre 2026** per la build e i
+primi collaudi del nuovo modulo e il **15 ottobre 2026** per la cache degli
+artwork. Questa nota registra le condizioni verificate
 per Onda e non sostituisce un parere legale o un'autorizzazione dei fornitori.
 
 ## Decisione corrente
@@ -18,9 +20,10 @@ conservati cifrati sul dispositivo. Per leggere il catalogo Audius non servono
 credenziali. La build personale e quella di release si fermano se trovano una
 variabile `EXPO_PUBLIC_*` con un nome da credenziale.
 
-Questa scelta elimina la credenziale Jamendo condivisa, ma non trasforma l'APK
-in software liberamente ridistribuibile: una build incorpora dipendenze, API e
-contenuti soggetti a condizioni separate.
+Questa scelta elimina la credenziale Jamendo condivisa. L'APK incorpora
+dipendenze con licenze proprie e accede ad API e contenuti remoti soggetti a
+condizioni separate. La compatibilità della licenza del player non chiude
+da sola i requisiti di distribuzione dell'app completa.
 
 ## Profilo esaminato
 
@@ -48,13 +51,15 @@ era leggibile: «Last Updated: 2 July, 2025», SHA-256
 una release va archiviata quella copia datata con la documentazione privata di
 release, oppure ottenuta conferma scritta dei termini applicabili.
 
-I termini ammettono soltanto una cache di sessione: «you may only use
-session-based caching to the extent necessary for the operation of the API or
-App during that respective session; any cached content or consumer data must
-become inaccessible and unavailable upon termination of the respective
-session». Dal 10 ottobre 2026 Onda tiene i dati di catalogo Audius solo in
+I termini ammettono la cache solo per quanto necessario alla sessione e
+richiedono che contenuti e dati memorizzati diventino inaccessibili alla sua
+fine. Dal 10 ottobre 2026 Onda tiene i dati di catalogo Audius solo in
 memoria: la cache su disco li esclude e la migrazione dello storage 3 → 4
-toglie quelli salvati prima. Resta da chiarire con Audius se la libreria che
+toglie quelli salvati prima. Dal 15 ottobre anche gli artwork Audius sono
+limitati alla memoria; prima di montare le schermate viene eliminata una volta
+la vecchia cache mista delle immagini. La nuova policy e la migrazione hanno
+test automatici; l'aggiornamento da una build con immagini gia' in cache resta
+da provare su device. Resta da chiarire con Audius se la libreria che
 l'utente salva di proposito (preferiti, cronologia, playlist, ultima coda)
 rientra nella clausola.
 
@@ -65,13 +70,19 @@ rientra nella clausola.
 | Audius  | Nome della sorgente, pagina canonica, regime di diritti ricevuto e collegamento esplicito alla Open Music License nel player. Le tracce gated o non riproducibili sono filtrate. I dati di catalogo restano solo in memoria per la sessione. | Il profilo non commerciale resta subordinato alla verifica dei vigenti API Terms. Una release commerciale è bloccata: l'API non fornisce sempre identità del licenziante e avviso di copyright necessari all'attribuzione commerciale prevista dalla OML.                                               |
 | Jamendo | Nome della sorgente, pagina canonica e URL della licenza Creative Commons specifica nel player. Nessuna cache dei brani o modalità offline. Client ID inserito dall'utente in app e verificato con una richiesta prima del salvataggio.      | Ogni persona usa il Client ID della propria applicazione Jamendo, inserito in app. La distribuzione di un APK condiviso resta bloccata finché Jamendo non conferma per iscritto questo modello: applicazioni registrate dai singoli utenti, clausola sulle applicazioni duplicate, quota per Client ID. |
 | Player  | Modulo nostro `modules/onda-player` (MIT) su AndroidX Media3, che Gradle scarica e incorpora nell'APK. `@rntp/player` non è più una dipendenza dall'11 ottobre 2026.                                                                         | Media3 è sotto Apache 2.0, che consente la distribuzione: un APK ufficiale deve portare il testo della licenza e gli avvisi delle dipendenze incorporate (gate di release).                                                                                                                             |
-| Privacy | Policy v1.4 nel repository e accessibile dall'app; nessun advertising, analytics o backend Onda; backup Android disabilitato; credenziali cifrate con il Keystore, fuori da backup ed export.                                                | Coerente con il profilo esaminato; va aggiornata se cambiano servizi, raccolta dati o distribuzione.                                                                                                                                                                                                    |
+| Privacy | Policy v1.5 nel repository e accessibile dall'app; nessun advertising, analytics o backend Onda; backup Android disabilitato; credenziali cifrate con il Keystore, fuori da backup ed export.                                                | Coerente con il profilo esaminato; va aggiornata se cambiano servizi, raccolta dati o distribuzione.                                                                                                                                                                                                    |
 
-Di conseguenza **il sorgente può essere pubblico, ma la build federata Audius +
-Jamendo non è autorizzata alla distribuzione pubblica allo stato attuale**. Non
-allegare APK personali a release, issue o pull request. Un'eventuale variante
-solo Audius è una decisione di prodotto separata e richiede prima la verifica
-degli API Terms vigenti.
+Il 13 ottobre 2026 la build personale Media3 e i primi collaudi su Android 16
+sono passati; il dettaglio è nel [registro dei collaudi](VERIFICATION_LOG.md).
+Questo conferma il comportamento tecnico provato, non costituisce una risposta
+dei fornitori né completa il pacchetto di licenze dell'APK.
+
+La decisione del progetto resta quindi: **sorgente pubblico, pubblicazione
+dell'APK federato sospesa fino alla chiusura dei gate sotto**. È una decisione
+di release di Onda basata sulle conferme ancora mancanti, non un divieto
+generale di distribuire qualsiasi app che usa queste API. Non allegare APK
+personali a release, issue o pull request. Un'eventuale variante solo Audius
+richiede una valutazione separata.
 
 ## Conferme da ottenere
 
@@ -94,7 +105,7 @@ personali nel repository.
 > 2. Would many user registrations referring to Onda count as duplicated
 >    applications? How should users fill in the name and description (for
 >    example "Onda – personal installation" with a link to the repository)?
-> 3. Does the quota of 35,000 requests per month apply to each Client ID?
+> 3. Which plan and request quota apply to each Client ID in this model?
 > 4. Should the maintainer also register Onda, even though the app uses no
 >    maintainer Client ID?
 > 5. Onda keeps catalog metadata on the device for up to three days, so the
@@ -130,7 +141,7 @@ Prima di distribuire un APK ufficiale devono essere presenti:
 3. eventuali modifiche di attribuzione richieste dai fornitori, verificate su
    una release reale;
 4. aggiornamento coordinato di questa nota, `THIRD_PARTY_CONTENT.md`, privacy e
-   schermata Informazioni.
+   schermata Informazioni;
 5. licenza Apache 2.0 e avvisi delle dipendenze incorporate (AndroidX Media3 e
    le altre) consultabili dall'APK, per esempio dalla schermata Informazioni;
 6. nessuna credenziale nell'APK e nessuna credenziale in log, export o backup,

@@ -13,7 +13,12 @@ importante, apri una issue per concordare comportamento e compatibilità.
 4. Esegui `npm test`, `npm run typecheck`, `npm run lint` e
    `npm run format:check`.
 5. Per modifiche native esegui anche `npm run build:personal` e descrivi
-   dispositivo/API Android e risultato del collaudo.
+   dispositivo/API Android e risultato del collaudo. La build include
+   compilazione Kotlin, test JVM del modulo player e Android Lint.
+   Dopo il prebuild puoi eseguire soltanto compilazione e test JVM con
+   `npm run android:test:player`, il comando configurato anche nella CI
+   ordinaria Ubuntu/Windows. I test JVM coprono le parti pure del modulo;
+   il comportamento di riproduzione va verificato su device.
 
 Non allegare APK personali alle issue o alle pull request. Non includere musica,
 artwork, marchi o dati personali di terzi nei fixture e negli screenshot.
