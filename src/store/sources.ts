@@ -87,7 +87,7 @@ export function dismissJamendoInvite(): void {
   commit({ ...settings, jamendoInviteDismissed: true });
 }
 
-/** Lancia se il Keystore rifiuta la scrittura (vedi `saveCredential`). */
-export function setCredential(name: keyof Credentials, value: string): void {
-  saveCredential(name, value);
+/** Da attendere: un fallimento del Keystore non cambia lo stato delle sorgenti. */
+export function setCredential(name: keyof Credentials, value: string): Promise<void> {
+  return saveCredential(name, value);
 }

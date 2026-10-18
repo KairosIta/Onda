@@ -1,7 +1,7 @@
 /// <reference types="node" />
 
 import assert from 'node:assert/strict';
-import test, { afterEach } from 'node:test';
+import test, { afterEach, before } from 'node:test';
 import { player } from '@/player';
 import { toMediaItem } from '@/services/mediaItems';
 import { startSourceGuard } from '@/services/sourceGuard';
@@ -32,7 +32,7 @@ const track = (source: SourceId, id: string): Track => ({
 });
 
 // Jamendo lavora solo con un Client ID: uno finto, nel Keystore in memoria.
-setCredential('jamendoClientId', 'client-id-di-prova');
+before(() => setCredential('jamendoClientId', 'client-id-di-prova'));
 startSessionPersistence();
 
 // Ogni test si chiude consegnando gli eventi rimasti: al test dopo non arriva

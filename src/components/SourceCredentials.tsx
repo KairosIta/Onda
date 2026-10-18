@@ -41,6 +41,7 @@ const TONE: Record<JamendoCheck, Tone> = {
 };
 
 const SAVE_FAILED = 'Non riesco a salvarlo sul telefono. Riprova.';
+const REMOVE_FAILED = 'Non riesco a rimuoverlo dal telefono. Riprova.';
 
 function Button({
   label,
@@ -115,16 +116,20 @@ export function JamendoCredentialForm({ onSaved }: { onSaved?: () => void }) {
   const refresh = useRefreshCatalog();
   const saved = credentials.jamendoClientId;
   const [draft, setDraft] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [operation, setOperation] = useState<'verify' | 'save' | 'remove' | null>(null);
+  const busy = operation !== null;
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [unverified, setUnverified] = useState<string | null>(null);
 
-  const store = (value: string, message: Feedback): void => {
+  const store = async (value: string, message: Feedback): Promise<void> => {
+    setOperation(value ? 'save' : 'remove');
     try {
-      setCredential('jamendoClientId', value);
+      await setCredential('jamendoClientId', value);
     } catch {
-      setFeedback({ tone: 'error', text: SAVE_FAILED });
+      setFeedback({ tone: 'error', text: value ? SAVE_FAILED : REMOVE_FAILED });
       return;
+    } finally {
+      setOperation(null);
     }
     setDraft('');
     setUnverified(null);
@@ -134,11 +139,11 @@ export function JamendoCredentialForm({ onSaved }: { onSaved?: () => void }) {
   };
 
   const verify = async (value: string): Promise<JamendoCheck> => {
-    setBusy(true);
+    setOperation('verify');
     try {
       return await checkJamendoClientId(value);
     } finally {
-      setBusy(false);
+      setOperation(null);
     }
   };
 
@@ -152,7 +157,7 @@ export function JamendoCredentialForm({ onSaved }: { onSaved?: () => void }) {
     const check = await verify(value);
     const message = { tone: TONE[check], text: JAMENDO_CHECK_MESSAGES[check] };
     const next = afterJamendoCheck(check);
-    if (next === 'save') store(value, message);
+    if (next === 'save') await store(value, message);
     else {
       setFeedback(message);
       setUnverified(next === 'ask' ? value : null);
@@ -164,9 +169,8 @@ export function JamendoCredentialForm({ onSaved }: { onSaved?: () => void }) {
     setFeedback({ tone: TONE[check], text: JAMENDO_CHECK_MESSAGES[check] });
   };
 
-  const remove = (): void => {
+  const remove = (): Promise<void> =>
     store('', { tone: 'ok', text: 'Client ID rimosso: Jamendo è spento.' });
-  };
 
   if (saved) {
     return (
@@ -175,8 +179,13 @@ export function JamendoCredentialForm({ onSaved }: { onSaved?: () => void }) {
           Client ID {maskCredential(saved)}
         </Text>
         <View style={styles.row}>
-          <Button label="Verifica" onPress={recheck} busy={busy} />
-          <Button label="Rimuovi" onPress={remove} disabled={busy} />
+          <Button
+            label="Verifica"
+            onPress={recheck}
+            busy={operation === 'verify'}
+            disabled={busy}
+          />
+          <Button label="Rimuovi" onPress={remove} busy={operation === 'remove'} disabled={busy} />
         </View>
         <Message feedback={feedback} />
       </View>
@@ -210,6 +219,8 @@ export function JamendoCredentialForm({ onSaved }: { onSaved?: () => void }) {
         {unverified ? (
           <Button
             label="Salva comunque"
+            busy={operation === 'save'}
+            disabled={busy}
             onPress={() =>
               store(unverified, {
                 tone: 'warn',
@@ -258,27 +269,31 @@ export function AudiusKeyForm() {
   const refresh = useRefreshCatalog();
   const saved = credentials.audiusApiKey;
   const [draft, setDraft] = useState('');
+  const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
 
-  const store = (value: string, text: string): void => {
+  const store = async (value: string, text: string): Promise<void> => {
+    setBusy(true);
     try {
-      setCredential('audiusApiKey', value);
+      await setCredential('audiusApiKey', value);
     } catch {
-      setFeedback({ tone: 'error', text: SAVE_FAILED });
+      setFeedback({ tone: 'error', text: value ? SAVE_FAILED : REMOVE_FAILED });
       return;
+    } finally {
+      setBusy(false);
     }
     setDraft('');
     setFeedback({ tone: 'ok', text });
     refresh();
   };
 
-  const submit = (): void => {
+  const submit = async (): Promise<void> => {
     const problem = audiusApiKeyProblem(draft);
     if (problem) {
       setFeedback({ tone: 'error', text: problem });
       return;
     }
-    store(normalizeCredential(draft), 'API key salvata.');
+    await store(normalizeCredential(draft), 'API key salvata.');
   };
 
   return (
@@ -293,7 +308,7 @@ export function AudiusKeyForm() {
             API key {maskCredential(saved)}
           </Text>
           <View style={styles.row}>
-            <Button label="Rimuovi" onPress={() => store('', 'API key rimossa.')} />
+            <Button label="Rimuovi" onPress={() => store('', 'API key rimossa.')} busy={busy} />
           </View>
         </>
       ) : (
@@ -307,9 +322,10 @@ export function AudiusKeyForm() {
             style={styles.input}
             returnKeyType="done"
             onSubmitEditing={submit}
+            editable={!busy}
           />
           <View style={styles.row}>
-            <Button label="Salva" onPress={submit} disabled={!draft.trim()} />
+            <Button label="Salva" onPress={submit} busy={busy} disabled={!draft.trim()} />
           </View>
         </>
       )}

@@ -24,15 +24,17 @@ const KEYS: Record<keyof Credentials, string> = {
 };
 
 /**
- * Una chiave del Keystore invalidata (per esempio dopo un cambio del blocco
- * schermo su alcuni telefoni) rende il valore illeggibile: si scarta, e la
- * schermata Sorgenti chiede di reinserirlo.
+ * Una chiave del Keystore invalidata, o una voce rimasta fuori sincrono
+ * dopo una reinstallazione, la gestisce gia' expo-secure-store: toglie la
+ * voce e risponde `null`. Un'eccezione che arriva fin qui e' un altro
+ * guasto, anche passeggero, e non e' un motivo per cancellare: si parte
+ * senza la credenziale e la schermata Sorgenti chiede di reinserirla. Il
+ * nuovo valore sovrascrive quello che non si leggeva.
  */
 function readOne(name: keyof Credentials): string {
   try {
     return SecureStore.getItem(KEYS[name]) ?? '';
   } catch {
-    SecureStore.deleteItemAsync(KEYS[name]).catch(() => {});
     return '';
   }
 }
@@ -52,14 +54,15 @@ export const subscribeCredentials = (listener: () => void): (() => void) => {
 };
 
 /**
- * Salva o, con un valore vuoto, cancella. Lancia se il Keystore rifiuta la
- * scrittura: chi chiama lo dice a schermo invece di fingere un salvataggio.
+ * Salva o, con un valore vuoto, cancella. Aggiorna memoria e listener solo
+ * dopo il completamento: se il Keystore rifiuta l'operazione, la promise
+ * fallisce e chi chiama lo dice a schermo senza confermare un cambiamento.
  */
-export function saveCredential(name: keyof Credentials, value: string): void {
+export async function saveCredential(name: keyof Credentials, value: string): Promise<void> {
   if (value) {
     SecureStore.setItem(KEYS[name], value);
   } else {
-    SecureStore.deleteItemAsync(KEYS[name]).catch(() => {});
+    await SecureStore.deleteItemAsync(KEYS[name]);
   }
   current = { ...current, [name]: value };
   listeners.forEach((l) => l());
