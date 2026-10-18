@@ -35,8 +35,10 @@ credenziali e non cambiare la visibilità del repository.
 
 ## Vincoli del repository
 
-- `.env`, `.onda/`, `credentials/`, `android/`, `ios/`, `dist/`, APK e AAB
-  restano fuori da Git.
+- `.env` e `.env.*`, `.onda/`, `credentials/`, le cartelle generate da
+  prebuild `/android/` e `/ios/`, `dist/`, APK e AAB restano fuori da Git.
+  Il modulo nativo in `modules/onda-player/android/` è sorgente e si
+  versiona; resta fuori solo la sua `build/`.
 - Non sostituire `npm ci` con aggiornamenti indiscriminati delle dipendenze.
 - Non usare `npm run release:android`: è la pipeline separata per una futura
   distribuzione ufficiale e richiede identità e firma del maintainer.

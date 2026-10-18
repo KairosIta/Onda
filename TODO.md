@@ -358,8 +358,11 @@ Head Unit.
       **Done:** aggiornamento da una build precedente con libreria e coda
       Jamendo: brani ancora riproducibili, export senza Client ID, log della
       migrazione 4 → 5; Android Auto o Desktop Head Unit che sfoglia la
-      libreria mentre la schermata di blocco comanda ancora; cambio del
-      Client ID da Sorgenti seguito da una riproduzione Jamendo.
+      libreria mentre la schermata di blocco comanda ancora, anche a freddo
+      con un brano Jamendo, e file dell'albero senza Client ID; cambio del
+      Client ID da Sorgenti seguito da una riproduzione Jamendo; dopo lo
+      swipe dai recenti, play da Bluetooth o Auto e poi un 404 che salta
+      al brano seguente.
 - [ ] **Collaudare su Android le protezioni dell'audit del 15 ottobre.**
       Implementate con regressioni automatiche: connessione e letture della
       libreria negate ai controller non autorizzati; recupero degli errori

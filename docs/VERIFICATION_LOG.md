@@ -47,6 +47,18 @@ dati. Correzioni ai rilievi, tutte con regressioni automatiche.
 - [x] `npm test` 213 verdi (7 nuovi), typecheck, ESLint e Prettier puliti;
       compilazione Kotlin e 24 test JVM rieseguiti da zero, 0 falliti;
       Expo Doctor 21/21; `check:audit` verde con le due eccezioni note.
+- [x] Review indipendente della PR #47, nove rilievi, cinque corretti qui:
+      l'albero di Android Auto va su disco senza il Client ID Jamendo
+      (`BrowseTree.withoutStreamCredentials`, due test JVM); un fallimento
+      della pulizia della cache artwork non ferma piu' l'avvio, tiene le
+      copertine in memoria e si ritenta al prossimo avvio; le chiavi degli
+      elementi del player portano un prefisso per istanza, cosi' una
+      ricarica del solo JS non sovrascrive un brano ancora in coda (test di
+      regressione, fallito prima); un play da un controller esterno dopo lo
+      swipe dai recenti riapre il recupero automatico degli errori; AGENTS.md
+      distingue le cartelle generate da `modules/*/android/`. Restano per una
+      PR successiva il watchdog del gestore in background, le letture
+      ripetute della coda sul bridge e qualche duplicazione di helper.
 - [x] Primo giro su GitHub del job `native-player` (PR #47): i runner Ubuntu e
       Windows si fermavano in `android-actions/setup-android@v3`, che chiede
       di default il pacchetto `tools`, non piu' servito da Google. Entrambi i

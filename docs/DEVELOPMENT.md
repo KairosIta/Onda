@@ -278,8 +278,10 @@ Anche gli artwork seguono la sorgente (`artworkCachePolicy`): Audius e
 provenienza sconosciuta usano solo memoria, Jamendo memoria e disco, con
 chiavi distinte anche a URL uguale. Prima di montare le schermate,
 `prepareArtworkCache` elimina una volta la vecchia cache mista; conferma la
-versione della policy soltanto se la cancellazione riesce. Un fallimento
-lascia disponibile Riprova e non monta immagini con dati residui.
+versione della policy soltanto se la cancellazione riesce. Un fallimento non
+ferma l'app: per quella sessione tutte le copertine restano in memoria
+(`setArtworkDiskReady`) e si ritenta al prossimo avvio. expo-image risponde
+«non riuscito» anche solo quando non ha un'Activity sotto mano.
 
 Le sorgenti dichiarano le funzioni opzionali (`spotlight`, `searchArtists`,
 `searchAlbums`, gli album) e la federazione salta chi non le ha senza
@@ -438,7 +440,8 @@ audio scritto interamente da Onda.
 - **Recenti.** Tolta dai recenti, Onda si ferma e il servizio si chiude, ma
   coda e posizione restano nel player: se processo e JS sopravvivono,
   riaprendo l'app il mini-player le mostra in pausa. Finche' l'app non torna
-  in primo piano un `play()` dal JS viene ignorato, cosi' un tentativo dopo
+  in primo piano, o un controller esterno (notifica, Auto, Bluetooth) non fa
+  ripartire la musica, un `play()` dal JS viene ignorato, cosi' un tentativo dopo
   un errore non fa ripartire la musica appena fermata.
 - **Timer nativi**: posizione (`progressUpdated`, ogni
   `progressIntervalSeconds` e alla pausa), spegnimento (`sleepAfter`, contato
@@ -467,7 +470,11 @@ audio scritto interamente da Onda.
   sono `network`, il resto dell'IO e il parsing `source`, decoder e uscita
   audio `renderer`.
 - **Android Auto.** L'albero di `setBrowseTree` si salva in un file, per il
-  servizio a freddo. Lo stesso brano puo' stare in Preferiti, in una playlist
+  servizio a freddo, senza il Client ID Jamendo negli URL
+  (`BrowseTree.withoutStreamCredentials`): in memoria restano gli URL di
+  riproduzione che manda il JS, e a freddo Jamendo suona senza il tag di
+  attribuzione finche' il JS non rimanda l'albero. Lo stesso brano puo'
+  stare in Preferiti, in una playlist
   e negli ascolti recenti, quindi in macchina il suo id porta anche la
   cartella (`cartella|uid`): scelto un brano, in coda vanno i brani suonabili
   della stessa cartella, a partire da lui. In coda torna l'uid nudo.
