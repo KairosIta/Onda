@@ -56,9 +56,16 @@ dati. Correzioni ai rilievi, tutte con regressioni automatiche.
       ricarica del solo JS non sovrascrive un brano ancora in coda (test di
       regressione, fallito prima); un play da un controller esterno dopo lo
       swipe dai recenti riapre il recupero automatico degli errori; AGENTS.md
-      distingue le cartelle generate da `modules/*/android/`. Restano per una
-      PR successiva il watchdog del gestore in background, le letture
-      ripetute della coda sul bridge e qualche duplicazione di helper.
+      distingue le cartelle generate da `modules/*/android/`. Gli altri tre
+      sono nella PR successiva: il gestore in background diventa sincrono
+      per contratto, senza il timer di guardia che Android non avrebbe fatto
+      scattare (test: eventi consegnati subito e in ordine, un errore non
+      ferma i successivi); `queueChanged` non rilegge piu' la coda intera
+      dal bridge, la potatura della cache viaggia con la prima lettura di chi
+      la chiede (test sul numero di letture); `utils/validate` e
+      `services/appState.onAppActive` tolgono otto copie di `isRecord`, i
+      validatori di stringhe degli adapter e tre cablaggi del ritorno in
+      primo piano. 213 test Node, typecheck, ESLint e Prettier verdi.
 - [x] Primo giro su GitHub del job `native-player` (PR #47): i runner Ubuntu e
       Windows si fermavano in `android-actions/setup-android@v3`, che chiede
       di default il pacchetto `tools`, non piu' servito da Google. Entrambi i

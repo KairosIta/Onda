@@ -454,12 +454,18 @@ audio scritto interamente da Onda.
   e quando si esegue il tentativo. Un errore tardivo dopo la pausa non
   deve far ripartire l'audio. Entrambi i casi sono collaudati su device.
 - **Eventi.** Il modulo manda un solo evento, `onPlayerEvent`, con `type` e i
-  campi del contratto. `media3Backend` lo consegna una volta sola: ai
-  listener se l'app e' `active`, al gestore in background altrimenti, in fila
-  e con dieci secondi al massimo per evento. Gli stessi gestori stanno in
-  entrambi i posti (`playbackService`), e un errore consegnato due volte
-  salterebbe due brani. Per questo la Coda e la riga "Prossimo" rileggono il
-  player anche al ritorno in primo piano.
+  campi del contratto. `media3Backend` lo consegna una volta sola e subito:
+  ai listener se l'app e' `active`, al gestore in background altrimenti.
+  Il gestore e' sincrono per contratto: con l'app in pausa Android ferma i
+  timer JS, quindi un timer di guardia non scatterebbe e un lavoro rimandato
+  non avrebbe nessuno che lo aspetta; le attese le conta il nativo
+  (`scheduleRetry`). Gli stessi gestori stanno in entrambi i posti
+  (`playbackService`), e un errore consegnato due volte salterebbe due
+  brani. Per questo la Coda e la riga "Prossimo" rileggono il player anche
+  al ritorno in primo piano (`services/appState.onAppActive`). La lettura
+  della coda attraversa il bridge con gli `extras` di ogni brano: l'evento
+  `queueChanged` non la provoca da solo, e la cache degli elementi si pota
+  alla prima lettura di chi la chiede.
 - **Elementi.** Gli `extras` e una chiave scelta dal JS viaggiano nel `tag`
   del `MediaItem`, che resta nel processo: in `MediaMetadata.extras`
   arriverebbero a ogni controller. Con la chiave, `media3Backend` restituisce
