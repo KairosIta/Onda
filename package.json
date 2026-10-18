@@ -27,6 +27,7 @@
     "build:personal": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/personal.ts build",
     "install:personal": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/personal.ts install",
     "android:lint": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/personal.ts android-lint",
+    "android:test:player": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/personal.ts player-test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "expo customize tsconfig.json && tsc --noEmit",

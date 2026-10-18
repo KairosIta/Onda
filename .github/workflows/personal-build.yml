@@ -16,10 +16,6 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
 
-    env:
-      EXPO_PUBLIC_JAMENDO_CLIENT_ID: ci-validation-only
-      EXPO_PUBLIC_AUDIUS_APP_NAME: Onda-CI
-
     steps:
       - uses: actions/checkout@v7
         with:
@@ -39,5 +35,4 @@ jobs:
       # L'APK resta nel runner e non viene caricato da nessuna parte: qui
       # si verifica soltanto che la build lo abbia davvero prodotto.
       - name: Assert that the personal APK was produced
-        shell: bash
-        run: test -f dist/personal/Onda-personal.apk
+        run: node -e "if (!require('node:fs').statSync('dist/personal/Onda-personal.apk').isFile()) process.exit(1)"

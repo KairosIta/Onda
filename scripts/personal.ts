@@ -11,13 +11,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
-import {
-  normalizeCertificateSha256,
-  parseKeyValueFile,
-  resolveReleaseEnvironment,
-  embeddedCredentialErrors,
-  type ReleaseIdentity,
-} from './release-policy.ts';
+import { normalizeCertificateSha256, type ReleaseIdentity } from './release-policy.ts';
 import {
   MINIMUM_NODE_VERSION,
   androidExecutable,
@@ -31,9 +25,9 @@ import {
   parseJavaMajor,
 } from './personal-policy.ts';
 import { versionName } from './build-provenance.cjs';
+import { readBuildEnvironment } from './build-environment.ts';
 
 const root = resolve(import.meta.dirname, '..');
-const envPath = join(root, '.env');
 const apkPath = join(
   root,
   'android',
@@ -78,21 +72,30 @@ function run(label: string, command: string, args: string[], env: NodeJS.Process
   if (result.status !== 0) fail(`${label} non riuscito (exit ${result.status ?? 'sconosciuto'}).`);
 }
 
-function loadPersonalEnvironment(): NodeJS.ProcessEnv {
-  const fileValues = existsSync(envPath) ? parseKeyValueFile(readFileSync(envPath, 'utf8')) : {};
+function personalEnvironment() {
+  const loaded = readBuildEnvironment(root, process.env);
   return {
-    ...resolveReleaseEnvironment(fileValues, process.env),
-    ONDA_ALLOW_DEBUG_RELEASE: '1',
-    ONDA_FORCE_DEBUG_RELEASE: '1',
-    CI: '1',
+    env: {
+      ...loaded.environment,
+      ONDA_ALLOW_DEBUG_RELEASE: '1',
+      ONDA_FORCE_DEBUG_RELEASE: '1',
+      CI: '1',
+    },
+    credentialErrors: loaded.credentialErrors,
   };
+}
+
+function loadPersonalEnvironment(): NodeJS.ProcessEnv {
+  const { env, credentialErrors } = personalEnvironment();
+  if (credentialErrors.length) fail(credentialErrors.join('\n'));
+  return env;
 }
 
 function findAndroidSdk(env: NodeJS.ProcessEnv): string | undefined {
   return androidSdkCandidates(env).find((candidate) => existsSync(candidate));
 }
 
-function collectChecks(env: NodeJS.ProcessEnv): Check[] {
+function collectChecks(env: NodeJS.ProcessEnv, credentialErrors: string[]): Check[] {
   const checks: Check[] = [];
   const node = checkNodeVersion();
   checks.push({
@@ -142,7 +145,6 @@ function collectChecks(env: NodeJS.ProcessEnv): Check[] {
   });
 
   // Il Client ID Jamendo non si mette piu' qui: si inserisce nell'app.
-  const credentialErrors = embeddedCredentialErrors(env);
   checks.push({
     label: 'Credenziali nel bundle',
     ok: credentialErrors.length === 0,
@@ -153,8 +155,8 @@ function collectChecks(env: NodeJS.ProcessEnv): Check[] {
 }
 
 function doctor(): { checks: Check[]; sdk?: string } {
-  const env = loadPersonalEnvironment();
-  const checks = collectChecks(env);
+  const { env, credentialErrors } = personalEnvironment();
+  const checks = collectChecks(env, credentialErrors);
   console.log('\nDiagnosi ambiente Onda\n');
   for (const check of checks) {
     const optional = check.required === false ? ' (serve solo per installare)' : '';
@@ -176,7 +178,7 @@ function doctor(): { checks: Check[]; sdk?: string } {
  * istruzioni di prima, e per accorgersi di un Client ID rimasto in .env.
  */
 function setup(): void {
-  const leftovers = embeddedCredentialErrors(loadPersonalEnvironment());
+  const leftovers = personalEnvironment().credentialErrors;
   if (leftovers.length) {
     console.log(`Da sistemare prima della build:\n- ${leftovers.join('\n- ')}`);
   } else {
@@ -188,23 +190,34 @@ function setup(): void {
   );
 }
 
-function gradleArgs(task: string): string[] {
-  const lintExclusions =
-    task === ':app:lintRelease'
-      ? [
-          '-x',
-          ':react-native-worklets:lintAnalyzeRelease',
-          '-x',
-          ':react-native-reanimated:lintAnalyzeRelease',
-        ]
-      : [];
-  return ['-p', 'android', task, ...lintExclusions, '--no-daemon'];
+function gradleArgs(...tasks: string[]): string[] {
+  const lintExclusions = tasks.includes(':app:lintRelease')
+    ? [
+        '-x',
+        ':react-native-worklets:lintAnalyzeRelease',
+        '-x',
+        ':react-native-reanimated:lintAnalyzeRelease',
+      ]
+    : [];
+  return ['-p', 'android', ...tasks, ...lintExclusions, '--no-daemon'];
 }
 
 function runAndroidLint(env = loadPersonalEnvironment()): void {
   const wrapper = gradleWrapper(root);
   if (!existsSync(wrapper)) fail('android/ non esiste: esegui prima npm run prebuild.');
   run('Android Lint', wrapper, gradleArgs(':app:lintRelease'), env);
+}
+
+/** La stessa compilazione e gli stessi test JVM in CI e nella build personale. */
+function runPlayerTests(env = loadPersonalEnvironment()): void {
+  const wrapper = gradleWrapper(root);
+  if (!existsSync(wrapper)) fail('android/ non esiste: esegui prima npm run prebuild.');
+  run(
+    'Compilazione e test JVM del player',
+    wrapper,
+    gradleArgs(':onda-player:compileReleaseKotlin', ':onda-player:testReleaseUnitTest'),
+    env,
+  );
 }
 
 function javaTool(name: string, env: NodeJS.ProcessEnv): string {
@@ -281,14 +294,7 @@ function build(): string {
     env,
   );
   preparePersonalDebugKeystore(env);
-  // Le parti pure del player nativo (modules/onda-player) hanno test JVM:
-  // girano qui, perche' la CI non compila con Gradle.
-  run(
-    'Test JVM del player',
-    gradleWrapper(root),
-    gradleArgs(':onda-player:testReleaseUnitTest'),
-    env,
-  );
+  runPlayerTests(env);
   runAndroidLint(env);
   run('APK personale standalone', gradleWrapper(root), gradleArgs('assembleRelease'), env);
 
@@ -409,6 +415,10 @@ switch (action) {
   case 'android-lint':
     runAndroidLint();
     break;
+  case 'player-test':
+    doctor();
+    runPlayerTests();
+    break;
   default:
-    fail('azione non valida. Usa setup, doctor, build, install o android-lint.');
+    fail('azione non valida. Usa setup, doctor, build, install, android-lint o player-test.');
 }

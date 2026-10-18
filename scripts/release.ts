@@ -14,17 +14,15 @@ import { basename, join, resolve } from 'node:path';
 import {
   parseKeyValueFile,
   normalizeCertificateSha256,
-  resolveReleaseEnvironment,
-  embeddedCredentialErrors,
   validateReleaseIdentity,
   validateSigningProperties,
   type ReleaseIdentity,
 } from './release-policy.ts';
+import { readBuildEnvironment } from './build-environment.ts';
 
 const root = resolve(import.meta.dirname, '..');
 const credentialsDir = join(root, 'credentials');
 const propertiesPath = join(credentialsDir, 'keystore.properties');
-const envPath = join(root, '.env');
 const appConfigPath = join(root, 'app.json');
 const releaseIdentityPath = join(root, 'release/identity.json');
 const apkPath = join(root, 'android/app/build/outputs/apk/release/app-release.apk');
@@ -60,16 +58,17 @@ const appConfig = JSON.parse(readFileSync(appConfigPath, 'utf8')) as {
 };
 const releaseIdentity = JSON.parse(readFileSync(releaseIdentityPath, 'utf8')) as ReleaseIdentity;
 
-// .env non serve piu': se c'e' si legge, per accorgersi di credenziali rimaste.
-const fileEnvironment = existsSync(envPath) ? parseKeyValueFile(readFileSync(envPath, 'utf8')) : {};
-const releaseEnvironment = resolveReleaseEnvironment(fileEnvironment, process.env);
+const { environment: releaseEnvironment, credentialErrors } = readBuildEnvironment(
+  root,
+  process.env,
+);
 delete releaseEnvironment.ONDA_ALLOW_DEBUG_RELEASE;
 delete releaseEnvironment.ONDA_FORCE_DEBUG_RELEASE;
 releaseEnvironment.CI = '1';
 
 const signingProperties = parseKeyValueFile(readFileSync(propertiesPath, 'utf8'));
 const configErrors = [
-  ...embeddedCredentialErrors(releaseEnvironment),
+  ...credentialErrors,
   ...validateSigningProperties(signingProperties, credentialsDir),
   ...validateReleaseIdentity(releaseIdentity, appConfig.expo.android.package),
 ];
