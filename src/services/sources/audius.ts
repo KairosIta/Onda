@@ -8,6 +8,7 @@ import {
   type Track,
   type TrendingParams,
 } from '@/types/track';
+import { nonEmptyString } from '@/utils/validate';
 import { currentCredentials } from './access';
 import { fetchJSON as httpJSON } from './http';
 import { SOURCE_META } from './meta';
@@ -120,7 +121,7 @@ const playable = (t: AudiusTrack): boolean => !t.is_stream_gated && t.is_streama
  * brano, e le altre della stessa pagina restano leggibili.
  */
 const usable = (t: AudiusTrack | null | undefined): t is AudiusTrack =>
-  typeof t?.id === 'string' && t.id !== '' && typeof t.title === 'string';
+  nonEmptyString(t?.id) && typeof t?.title === 'string';
 
 /** Gli id arrivano anche dai deep link: nel percorso vanno codificati. */
 const segment = (id: string): string => encodeURIComponent(id);
@@ -169,7 +170,7 @@ export const audiusSource: MusicSource = {
   async artistInfo(artistId: string): Promise<ArtistInfo> {
     const json = await fetchJSON<{ data?: AudiusUser }>(withAppName(`/users/${segment(artistId)}`));
     const u = json.data;
-    if (typeof u?.id !== 'string') throw new Error('Artista non trovato su Audius');
+    if (!nonEmptyString(u?.id)) throw new Error('Artista non trovato su Audius');
     return { ...mapUser(u), id: artistId };
   },
 
@@ -194,6 +195,6 @@ export const audiusSource: MusicSource = {
       rest.signal,
     );
     const data = Array.isArray(json.data) ? json.data : [];
-    return data.filter((u) => typeof u?.id === 'string' && u.id !== '').map(mapUser);
+    return data.filter((u) => nonEmptyString(u?.id)).map(mapUser);
   },
 };

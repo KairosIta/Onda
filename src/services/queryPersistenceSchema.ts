@@ -9,6 +9,7 @@
  */
 
 import type { SourceId } from '@/types/track';
+import { isRecord } from '@/utils/validate';
 
 /**
  * Tre giorni: il trending cambia ogni giorno, ma un elenco di ieri
@@ -85,9 +86,6 @@ export interface PruneOptions {
   maxQueries?: number;
   maxPages?: number;
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** La forma minima di una query letta da disco, quella che la potatura legge. */
 export const isPersistedQuery = (q: unknown): q is PersistedQuery =>

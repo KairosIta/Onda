@@ -1,5 +1,6 @@
 import type { Track } from '@/types/track';
 import { parseTrack } from './librarySchema';
+import { isRecord } from '@/utils/validate';
 
 /**
  * Forma su disco della sessione di ascolto: la coda e la posizione nel
@@ -41,9 +42,6 @@ export interface SavedPosition {
   position: number;
   savedAt: number;
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
  * Riduce una coda lunga a una finestra di `max` brani che contiene quello

@@ -18,6 +18,7 @@
 
 import { isPersistedQuery, withoutSessionOnly } from './queryPersistenceSchema';
 import { stripJamendoAppTag } from './sources/jamendoStream';
+import { isRecord } from '@/utils/validate';
 
 export interface KeyValue {
   get(key: string): string | undefined;
@@ -54,9 +55,6 @@ interface Migration {
   describe: string;
   run(kv: KeyValue): void;
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 function readValue(kv: KeyValue, key: string): unknown {
   const raw = kv.get(key);

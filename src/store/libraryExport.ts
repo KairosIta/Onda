@@ -1,5 +1,6 @@
 import { HISTORY_MAX, loadLibrary, type LibraryState, type Playlist } from './librarySchema';
 import type { Track } from '@/types/track';
+import { isRecord } from '@/utils/validate';
 
 /**
  * Export e import della libreria: l'unica via di recupero che esiste.
@@ -45,9 +46,6 @@ export function buildExport(state: LibraryState, now = Date.now()): LibraryExpor
 }
 
 export type ParseResult = { ok: true; library: LibraryState } | { ok: false; reason: string };
-
-const isRecord = (v: unknown): v is Record<string, unknown> =>
-  typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /**
  * Legge un file di export.

@@ -1,5 +1,6 @@
 import { stripJamendoAppTag } from '@/services/sources/jamendoStream';
 import { isSourceId, type Track } from '@/types/track';
+import { isRecord, optionalString } from '@/utils/validate';
 
 export interface Playlist {
   id: string;
@@ -19,12 +20,6 @@ export interface LibraryState {
 export const HISTORY_MAX = 100;
 
 const empty = (): LibraryState => ({ tracks: {}, favorites: [], playlists: [], history: [] });
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const optionalString = (value: unknown): string | undefined =>
-  typeof value === 'string' && value.length > 0 ? value : undefined;
 
 export function parseTrack(value: unknown): Track | undefined {
   if (!isRecord(value)) return undefined;

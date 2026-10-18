@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { AppState } from 'react-native';
 import { player } from '@/player';
+import { onAppActive } from '@/services/appState';
 import { usePlaybackPrefs } from '@/store/playback';
 import { getPendingQueue, useNowPlaying } from '@/store/session';
 import { describeUpNext, type UpNext, type UpNextInput } from '@/utils/upNext';
@@ -36,13 +36,11 @@ export function useUpNext(): UpNext {
     load();
     const stopQueue = player.subscribe('queueChanged', load);
     const stopTrack = player.subscribe('mediaItemTransition', load);
-    const appState = AppState.addEventListener('change', (status) => {
-      if (status === 'active') load();
-    });
+    const stopForeground = onAppActive(load);
     return () => {
       stopQueue();
       stopTrack();
-      appState.remove();
+      stopForeground();
     };
   }, [item, pending]);
 

@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   type AccessibilityActionEvent,
-  AppState,
   FlatList,
   Pressable,
   StyleSheet,
@@ -25,6 +24,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { type Snack, Snackbar } from '@/components/Snackbar';
 import { Empty } from '@/components/StateViews';
 import { type MediaItem, player } from '@/player';
+import { onAppActive } from '@/services/appState';
 import { haptics } from '@/services/haptics';
 import { usePlaybackPrefs } from '@/store/playback';
 import { colors, formatTime, motion, spacing, touch, type } from '@/theme';
@@ -228,13 +228,11 @@ export default function QueueScreen() {
   useEffect(() => {
     const stopQueue = player.subscribe('queueChanged', load);
     const stopTrack = player.subscribe('mediaItemTransition', load);
-    const appState = AppState.addEventListener('change', (status) => {
-      if (status === 'active') load();
-    });
+    const stopForeground = onAppActive(load);
     return () => {
       stopQueue();
       stopTrack();
-      appState.remove();
+      stopForeground();
     };
   }, [load]);
 

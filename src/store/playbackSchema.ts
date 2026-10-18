@@ -1,12 +1,10 @@
 import type { RepeatMode } from '@/player';
+import { isRecord } from '@/utils/validate';
 
 export interface PlaybackPrefs {
   shuffle: boolean;
   repeat: RepeatMode;
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** Valida il formato corrente e migra i vecchi valori numerici di repeat. */
 export function loadPlaybackPrefs(value: unknown): PlaybackPrefs {

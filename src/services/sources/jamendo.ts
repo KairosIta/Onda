@@ -14,6 +14,7 @@ import {
   type Track,
   type TrendingParams,
 } from '@/types/track';
+import { nonEmptyString, optionalString } from '@/utils/validate';
 import { currentCredentials } from './access';
 import { fetchJSON } from './http';
 import { stripJamendoAppTag } from './jamendoStream';
@@ -197,20 +198,17 @@ export function creativeCommonsLabel(licenseUrl: string | undefined): string {
  * testo mancante o non stringa prende il suo rimpiazzo.
  */
 const text = (value: unknown, fallback: string): string =>
-  typeof value === 'string' && value ? decodeEntities(value) : fallback;
+  nonEmptyString(value) ? decodeEntities(value) : fallback;
 
 const optionalText = (value: unknown): string | undefined =>
-  typeof value === 'string' && value ? decodeEntities(value) : undefined;
-
-const optionalString = (value: unknown): string | undefined =>
-  typeof value === 'string' && value ? value : undefined;
+  nonEmptyString(value) ? decodeEntities(value) : undefined;
 
 /** Una voce senza id o senza stream non e' un brano: si salta, e le altre restano. */
 const usable = (t: JamendoTrack | null | undefined): t is JamendoTrack =>
-  typeof t?.id === 'string' && t.id !== '' && typeof t.audio === 'string' && t.audio !== '';
+  nonEmptyString(t?.id) && nonEmptyString(t?.audio);
 
 const hasId = <T extends { id?: unknown }>(entity: T | null | undefined): entity is T =>
-  typeof entity?.id === 'string' && entity.id !== '';
+  nonEmptyString(entity?.id);
 
 function mapTrack(t: JamendoTrack): Track {
   const image = optionalString(t.image) ?? optionalString(t.album_image);

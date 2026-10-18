@@ -1,4 +1,5 @@
 import type { SourceId, Track } from '@/types/track';
+import { isRecord } from '@/utils/validate';
 
 /**
  * Regole di composizione della federazione, separate dal registro delle
@@ -113,9 +114,6 @@ export type SourceCursor = Partial<Record<SourceId, number>>;
 export interface FederatedPage<T = Track> extends FederatedResult<T> {
   next?: SourceCursor;
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const isOffset = (value: unknown): value is number =>
   typeof value === 'number' && Number.isInteger(value) && value >= 0;

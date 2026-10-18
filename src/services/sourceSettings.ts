@@ -10,6 +10,7 @@
  */
 
 import { SOURCE_IDS, type SourceId } from '@/types/track';
+import { isRecord } from '@/utils/validate';
 
 export interface Credentials {
   /** Client ID dell'applicazione registrata dall'utente sul portale Jamendo. */
@@ -43,9 +44,6 @@ export const DEFAULT_SOURCE_SETTINGS: SourceSettings = {
   welcomeDone: false,
   jamendoInviteDismissed: false,
 };
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** Rilegge da MMKV con tolleranza: un campo mancante o rotto vale il suo default. */
 export function loadSourceSettings(value: unknown): SourceSettings {

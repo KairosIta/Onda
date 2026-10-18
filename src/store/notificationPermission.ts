@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import { AppState, Linking, PermissionsAndroid, Platform } from 'react-native';
+import { Linking, PermissionsAndroid, Platform } from 'react-native';
+import { onAppActive } from '@/services/appState';
 import {
   type NotificationPermission,
   type RequestResult,
@@ -86,8 +87,5 @@ export function resolveNotificationPermission(): void {
 export function startNotificationPermissionWatch(): () => void {
   if (status === 'unnecessary') return () => {};
   refreshNotificationPermission();
-  const sub = AppState.addEventListener('change', (state) => {
-    if (state === 'active') refreshNotificationPermission();
-  });
-  return () => sub.remove();
+  return onAppActive(refreshNotificationPermission);
 }
