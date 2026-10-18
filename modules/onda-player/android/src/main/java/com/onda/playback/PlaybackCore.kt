@@ -204,6 +204,12 @@ internal object PlaybackCore {
     player?.stop()
   }
 
+  /**
+   * Riapre la porta ai comandi del JS. Succede anche quando un controller
+   * esterno (notifica, Android Auto, Bluetooth) fa ripartire la musica, vedi
+   * `onPlayWhenReadyChanged`: chi ascolta di nuovo vuole anche il recupero
+   * automatico degli errori.
+   */
   fun onAppForeground() {
     stoppedByUser = false
   }
@@ -372,13 +378,15 @@ internal object PlaybackCore {
   /**
    * Salva l'albero per il servizio a freddo e lo ritorna gia' letto. Gira sul
    * thread del JS: il file e' piccolo, e un JSON sbagliato fallisce qui,
-   * davanti a chi lo ha mandato.
+   * davanti a chi lo ha mandato. Su disco va senza il Client ID Jamendo
+   * negli URL: in memoria resta l'albero come arriva, con gli URL di
+   * riproduzione.
    */
   fun storeBrowseTree(json: String): BrowseTree {
     val parsed = BrowseTree.parse(json)
     val file = File(context.filesDir, TREE_FILE)
     val partial = File(context.filesDir, "$TREE_FILE.tmp")
-    partial.writeText(json)
+    partial.writeText(BrowseTree.withoutStreamCredentials(json))
     if (!partial.renameTo(file)) Log.w(TAG, "Albero di Android Auto non salvato")
     return parsed
   }
@@ -442,7 +450,9 @@ internal object PlaybackCore {
       override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
         // Notifica e controller chiamano ExoPlayer direttamente, anche quando
         // non suona gia' piu': onIsPlayingChanged non annuncerebbe la pausa.
-        if (!playWhenReady) cancelRetry()
+        // Un play da fuori, dopo lo swipe dai recenti, vale come un ritorno:
+        // il JS non puo' arrivare qui da solo, perche' `play()` lo ferma.
+        if (playWhenReady) stoppedByUser = false else cancelRetry()
       }
 
       override fun onIsPlayingChanged(isPlaying: Boolean) {

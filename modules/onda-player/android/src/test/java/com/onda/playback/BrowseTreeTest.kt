@@ -79,3 +79,45 @@ class BrowseTreeTest {
     assertEquals(setOf("onda:favorites", "onda:playlists", "onda:playlist:p1"), tree.folderIds())
   }
 }
+
+class BrowseTreeCredentialsTest {
+  private val tagged = "https://prod-1.storage.jamendo.com/?trackid=1&format=mp32&from=app-id-di-prova"
+  private val clean = "https://prod-1.storage.jamendo.com/?trackid=1&format=mp32"
+
+  @Test
+  fun `il parametro from si toglie solo dagli URL Jamendo`() {
+    assertEquals(clean, BrowseTree.stripJamendoAppTag(tagged))
+    assertEquals("https://mp3l.jamendo.com/", BrowseTree.stripJamendoAppTag("https://mp3l.jamendo.com/?from=app-x"))
+    assertEquals(clean, BrowseTree.stripJamendoAppTag(clean))
+    assertEquals("https://x.test/a?from=app-x", BrowseTree.stripJamendoAppTag("https://x.test/a?from=app-x"))
+    assertEquals("https://evil.test/jamendo.com/?from=app-x", BrowseTree.stripJamendoAppTag("https://evil.test/jamendo.com/?from=app-x"))
+  }
+
+  @Test
+  fun `su disco l'albero non porta il Client ID e conserva struttura e brani`() {
+    val json =
+      """
+      [
+        {"mediaId": "onda:favorites", "title": "Preferiti", "items": [
+          {"mediaId": "jamendo:1", "title": "Uno", "url": "$tagged", "duration": 120},
+          {"mediaId": "audius:a", "title": "A", "url": "https://x.test/a?from=app-x", "artist": null}
+        ]},
+        {"mediaId": "onda:playlists", "title": "Playlist", "items": [
+          {"mediaId": "onda:playlist:p1", "title": "Corsa", "children": [
+            {"mediaId": "jamendo:1", "title": "Uno", "url": "$tagged"},
+            {"mediaId": "audius:c", "title": "C", "url": null}
+          ]}
+        ]}
+      ]
+      """
+    val stored = BrowseTree.withoutStreamCredentials(json)
+    assertTrue("nessun Client ID su disco", !stored.contains("id-di-prova"))
+    val tree = BrowseTree.parse(stored)
+    assertEquals(clean, tree.item("onda:favorites|jamendo:1")?.url)
+    assertEquals(clean, tree.item("onda:playlist:p1|jamendo:1")?.url)
+    assertEquals("https://x.test/a?from=app-x", tree.item("onda:favorites|audius:a")?.url)
+    assertNull(tree.item("onda:playlist:p1|audius:c")?.url)
+    assertEquals(120.0, tree.item("onda:favorites|jamendo:1")?.durationSec)
+    assertEquals(2, tree.children("onda:playlist:p1")?.size)
+  }
+}

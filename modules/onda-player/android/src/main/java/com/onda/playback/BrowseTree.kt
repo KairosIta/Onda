@@ -130,5 +130,39 @@ internal class BrowseTree(val categories: List<BrowseNode>) {
       )
 
     private fun JSONObject.stringOrNull(key: String): String? = if (isNull(key)) null else getString(key)
+
+    /**
+     * Lo stesso JSON senza il Client ID Jamendo negli URL di stream: e' la
+     * forma che va su disco. In memoria l'albero tiene gli URL di
+     * riproduzione, che il JS manda con il Client ID corrente; a freddo, da
+     * questo file, Jamendo suona senza il tag di attribuzione finche' il JS
+     * non rimanda l'albero. Stessa regola di `sources/jamendoStream` lato app.
+     */
+    fun withoutStreamCredentials(json: String): String {
+      val array = JSONArray(json)
+      scrub(array)
+      return array.toString()
+    }
+
+    private fun scrub(array: JSONArray) {
+      for (i in 0 until array.length()) (array.opt(i) as? JSONObject)?.let(::scrub)
+    }
+
+    private fun scrub(node: JSONObject) {
+      node.stringOrNull("url")?.let { node.put("url", stripJamendoAppTag(it)) }
+      node.optJSONArray("items")?.let(::scrub)
+      node.optJSONArray("children")?.let(::scrub)
+    }
+
+    private val JAMENDO_HOST = Regex("^https?://(?:[^/?#]*\\.)?jamendo\\.com(?=[/?#]|$)", RegexOption.IGNORE_CASE)
+
+    /** L'URL senza il parametro `from` (`from=app-<client_id>`), solo sugli host Jamendo. */
+    fun stripJamendoAppTag(url: String): String {
+      if (!JAMENDO_HOST.containsMatchIn(url)) return url
+      val at = url.indexOf('?')
+      if (at < 0) return url
+      val kept = url.substring(at + 1).split('&').filter { it.isNotEmpty() && !it.startsWith("from=", ignoreCase = true) }
+      return url.substring(0, at) + if (kept.isEmpty()) "" else "?" + kept.joinToString("&")
+    }
   }
 }
