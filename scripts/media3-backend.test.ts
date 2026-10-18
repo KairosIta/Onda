@@ -68,7 +68,10 @@ function fakeNative() {
       queue = items.map((i) => ({ ...i }));
       active = items.length > 0 ? startIndex : null;
     },
-    addMediaItem: record('addMediaItem'),
+    addMediaItem(item) {
+      record('addMediaItem')(item);
+      queue.push({ ...item });
+    },
     insertMediaItems: record('insertMediaItems'),
     removeMediaItems: record('removeMediaItems'),
     moveMediaItem: record('moveMediaItem'),
@@ -136,6 +139,28 @@ test('un elemento torna come lo stesso oggetto, con gli extras intatti', () => {
   assert.strictEqual(backend.getQueue()[0], a);
   assert.strictEqual(backend.getActiveMediaItem(), b);
   assert.equal(backend.getActiveIndex(), 1);
+});
+
+test('dopo una ricarica del JS le chiavi nuove non scavalcano gli elementi gia in coda', () => {
+  const first = setup();
+  first.backend.setMediaItems([item('a'), item('b')], 0);
+
+  // Il servizio e' lo stesso, il JS no: la coda porta le chiavi di prima.
+  const reloaded = createMedia3Backend(first.native, first.appState as AppStateLike);
+  const before = reloaded.getQueue();
+  assert.deepEqual(
+    before.map((i) => i.mediaId),
+    ['audius:a', 'audius:b'],
+  );
+  reloaded.addMediaItem(item('c'));
+
+  const after = reloaded.getQueue();
+  assert.deepEqual(
+    after.map((i) => i.mediaId),
+    ['audius:a', 'audius:b', 'audius:c'],
+  );
+  assert.strictEqual(after[0], before[0], "l'elemento ricostruito resta lo stesso oggetto");
+  assert.equal(after[0].title, 'Titolo a');
 });
 
 test('un elemento che non viene dal JS si ricostruisce, e poi resta lo stesso', () => {

@@ -85,11 +85,15 @@ export function createMedia3Backend(native: NativePlayer, appState: AppStateLike
   const byKey = new Map<string, MediaItem>();
   const keyOf = new WeakMap<MediaItem, string>();
   let nextKey = 0;
+  // Il servizio puo' sopravvivere a una ricarica del solo JS con la coda
+  // piena di chiavi dell'istanza precedente: un prefisso per istanza evita
+  // che una chiave nuova sovrascriva nella cache un elemento ancora in coda.
+  const instance = Math.random().toString(36).slice(2, 8);
 
   function toNative(item: MediaItem): NativeMediaItemInput {
     let key = keyOf.get(item);
     if (!key) {
-      key = `k${++nextKey}`;
+      key = `${instance}:${++nextKey}`;
       keyOf.set(item, key);
     }
     byKey.set(key, item);
