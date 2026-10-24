@@ -134,6 +134,8 @@ src/
   services/genres.ts        unica tabella di traduzione dei generi tra le due API
   services/storage.ts       istanza MMKV + lettura JSON sicura e scrittura
   services/storageSchema.ts versione dello schema, migrazioni con backup, quarantena (puro)
+  services/libraryBackup.ts export e import della libreria su file: selettori di sistema e condivisione
+  services/pickerErrors.ts  l'annullamento del selettore di cartelle, in ogni forma in cui Expo lo segnala (puro)
   services/setupPlayer.ts   configurazione del player (una volta per processo)
   services/playbackService.ts  eventi del player, anche in background: cambi di brano, progresso, errori
   services/mediaItems.ts    andata e ritorno fra il nostro modello e i MediaItem del player
@@ -147,6 +149,7 @@ src/
   services/queryClient.ts   React Query reidratata da MMKV; potatura in queryPersistenceSchema.ts
   services/browseTree.ts    l'albero per Android Auto dalla libreria (puro); l'invio sta in browseTreeSync.ts
   store/library.ts          preferiti, playlist, cronologia (persistiti)
+  store/libraryExport.ts    formato JSON versionato dell'export e merge additivo (puro)
   store/playback.ts         shuffle e repeat (persistiti)
   store/session.ts          brano attivo + coda e posizione salvate, "in attesa" all'avvio; useNowPlaying (schema in sessionSchema.ts)
   store/progress.ts         l'unico osservatore di progresso dell'app

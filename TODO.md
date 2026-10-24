@@ -609,6 +609,10 @@ Head Unit.
 
 ## Checklist device ancora aperta
 
+- [ ] Salvataggio della libreria: annullare il selettore di cartelle chiude
+      senza avvisi. Il 18 ottobre 2026 l'annullamento, incartato da Expo in
+      un errore generico, era mostrato come guasto; corretto in Node il 24
+      ottobre (`services/pickerErrors`, due test), da riprovare su device.
 - [ ] Sorgenti: rimuovere una credenziale dall'app, verificare l'esito e
       riavviare Onda; il valore rimosso non deve ricomparire. Il fallimento
       del Keystore e il nuovo tentativo sono coperti in Node, con valori

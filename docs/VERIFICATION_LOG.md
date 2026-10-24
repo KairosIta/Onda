@@ -15,6 +15,25 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 24 ottobre 2026: annullamento del selettore di cartelle, senza device
+
+Il 18 ottobre 2026, su device con Android 16 ed expo-file-system 57.0.7,
+annullare il selettore di cartelle di «Salva la libreria» mostrava un
+errore. expo-modules-core incarta `PickerCancelledException` in «Call to
+function 'FileSystem.pickDirectoryAsync' has been rejected. → Caused by: The
+file picker was cancelled by the user», con codice `ERR_FUNCTION_CALL`, e
+`saveLibrary` riconosceva soltanto il codice `ERR_PICKER_CANCELLED`.
+
+- [x] `services/pickerErrors.isPickerCancelled` guarda codice, messaggio e
+      catena delle cause fino a cinque livelli, senza entrare in loop su una
+      catena circolare; `saveLibrary` lo usa. Due test in
+      `scripts/picker-errors.test.ts`: le tre forme dell'annullamento (codice
+      nudo, errore incartato visto su device, codice nella causa) e i guasti
+      veri che restano errori da mostrare.
+- [x] 215 test Node, typecheck, ESLint e Prettier verdi.
+
+Resta la prova su device dopo la correzione, nella checklist della roadmap.
+
 ### Verificato il 24 ottobre 2026: CI riallineata, senza device
 
 La CI di `main` era rossa dal 23 ottobre per tre cause esterne al codice,

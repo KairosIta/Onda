@@ -2,6 +2,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { buildExport, parseExport, type ParseResult } from '@/store/libraryExport';
 import type { LibraryState } from '@/store/librarySchema';
+import { isPickerCancelled } from './pickerErrors';
 
 /**
  * Il lato sporco dell'export: file e intent Android.
@@ -64,23 +65,6 @@ export type SaveOutcome =
   { ok: true; name: string } | { ok: false; canceled: true } | { ok: false; reason: string };
 
 /**
- * Expo ricava il codice dal nome della classe Kotlin: `PickerCancelledException`
- * diventa `ERR_PICKER_CANCELLED`. A differenza del selettore di file, quello di
- * cartelle segnala l'annullamento rigettando, quindi qui l'annullamento va
- * distinto a mano da un guasto vero.
- */
-const PICKER_CANCELLED = 'ERR_PICKER_CANCELLED';
-
-function annullato(e: unknown): boolean {
-  return (
-    typeof e === 'object' &&
-    e !== null &&
-    'code' in e &&
-    (e as { code?: unknown }).code === PICKER_CANCELLED
-  );
-}
-
-/**
  * Scrive l'export nella cartella scelta dall'utente, senza intermediari.
  *
  * E' la strada giusta per un backup: `exportLibrary` chiede «a chi lo mando»
@@ -108,7 +92,9 @@ export async function saveLibrary(state: LibraryState): Promise<SaveOutcome> {
     file.write(JSON.stringify(buildExport(state), null, 2));
     return { ok: true, name: file.name };
   } catch (e) {
-    if (annullato(e)) return { ok: false, canceled: true };
+    // A differenza del selettore di file, quello di cartelle segnala
+    // l'annullamento rigettando: va distinto da un guasto vero.
+    if (isPickerCancelled(e)) return { ok: false, canceled: true };
     return { ok: false, reason: e instanceof Error ? e.message : String(e) };
   }
 }
