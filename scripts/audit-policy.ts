@@ -6,11 +6,13 @@
  * su un rapporto finto, senza rete.
  *
  * Il controllo resta `--audit-level=high`: un avviso alto o critico lo
- * rende rosso. L'unica differenza e' che un avviso senza nessuna versione
- * corretta pubblicata si puo' accettare, ma solo per scritto: con il
- * motivo, il pacchetto e una data entro cui riguardarlo. Senza questa
- * via il controllo resterebbe rosso finche' upstream non pubblica, e un
- * controllo sempre rosso smette di accorgersi degli avvisi nuovi.
+ * rende rosso. L'unica differenza e' che un avviso senza una versione
+ * corretta installabile, perche' non esiste o perche' chi dipende dal
+ * pacchetto ne pretende un'altra major, si puo' accettare, ma solo per
+ * scritto: con il motivo, il pacchetto e una data entro cui riguardarlo.
+ * Senza questa via il controllo resterebbe rosso finche' upstream non
+ * pubblica, e un controllo sempre rosso smette di accorgersi degli avvisi
+ * nuovi.
  *
  * Un'eccezione scaduta non accetta piu' niente, e una che non serve piu'
  * (l'avviso e' sparito) fa fallire il controllo finche' non la si toglie:
@@ -41,21 +43,15 @@ export interface AcceptedAdvisory {
 }
 
 /**
- * Avvisi accettati, ciascuno senza una versione corretta su npm nel
+ * Avvisi accettati, ciascuno senza una versione corretta installabile nel
  * momento in cui e' stato scritto. Prima di aggiungerne uno controlla con
- * `npm view <pacchetto> version` che l'ultima versione sia ancora colpita:
- * se esiste una correzione, la strada e' un override in package.json.
+ * `npm view <pacchetto> version` che l'ultima versione sia ancora colpita e
+ * con `npm ls <pacchetto>` quale intervallo accetta chi lo richiede: se una
+ * correzione rientra in quell'intervallo, la strada e' un override in
+ * package.json. Un avviso ritirato da GitHub sparisce dal rapporto e rende
+ * l'eccezione inutile: il controllo lo segnala e l'eccezione si toglie.
  */
 export const ACCEPTED_ADVISORIES: readonly AcceptedAdvisory[] = [
-  {
-    id: 'GHSA-vfj7-8cjw-p6xm',
-    packageName: 'braces',
-    reviewBy: '2027-01-15',
-    reason:
-      "Nessuna versione corretta (l'ultima, 3.0.3, e' colpita). Arriva da micromatch dentro " +
-      'metro-file-map, il watcher di Metro: i pattern li scrive la configurazione del progetto, ' +
-      "non un input esterno, e il pacchetto non finisce nell'APK.",
-  },
   {
     id: 'GHSA-86w9-cpqp-85rv',
     packageName: 'node-forge',
@@ -64,6 +60,16 @@ export const ACCEPTED_ADVISORIES: readonly AcceptedAdvisory[] = [
       "Nessuna versione corretta (l'ultima, 1.4.0, e' colpita). In @expo/cli serve alla firma " +
       "del codice iOS e dei manifest di expo-updates: Onda e' solo Android, non usa " +
       "expo-updates, e il pacchetto non finisce nell'APK.",
+  },
+  {
+    id: 'GHSA-mrhx-c7xc-m3w5',
+    packageName: 'zod',
+    reviewBy: '2027-01-15',
+    reason:
+      'Corretto solo nella 4.6.6, mentre @expo/cli richiede la 3.x (^3.25.76), che non ha una ' +
+      'versione corretta: un override alla 4 romperebbe la CLI. Durante la build valida la ' +
+      'configurazione del progetto e le risposte dei servizi Expo, non input di utenti, e il ' +
+      "pacchetto non finisce nell'APK.",
   },
 ];
 

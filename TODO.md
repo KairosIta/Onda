@@ -518,10 +518,12 @@ Head Unit.
       delle risposte Audius e Jamendo.
 
 - [ ] Rivedere entro il 15 gennaio 2027 le eccezioni dichiarate in
-      `scripts/audit-policy.ts` (`braces` e `node-forge`, senza versione
-      corretta al 9 ottobre 2026): dopo quella data `npm run check:audit` torna
-      rosso. Se nel frattempo è uscita una correzione, la strada è un override;
-      altrimenti motivo e data si riscrivono.
+      `scripts/audit-policy.ts` (`node-forge` e `zod`, senza versione corretta
+      installabile al 24 ottobre 2026): dopo quella data `npm run check:audit`
+      torna rosso. Se nel frattempo è uscita una correzione compatibile, la
+      strada è un override; altrimenti motivo e data si riscrivono. Un avviso
+      ritirato da GitHub, come `braces` il 23 ottobre 2026, rende l'eccezione
+      inutile e il controllo lo segnala: si toglie.
 
 - [ ] **Valutare il passaggio a `react-native-mmkv` 4.** La 3.x è ferma alla
       3.3.3 del 18 settembre 2025 e le release successive sono tutte della 4

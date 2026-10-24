@@ -15,6 +15,34 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 24 ottobre 2026: CI riallineata, senza device
+
+La CI di `main` era rossa dal 23 ottobre per tre cause esterne al codice,
+tutte visibili sulla PR Dependabot #50: GitHub ha ritirato l'avviso
+`braces` (GHSA-vfj7-8cjw-p6xm) e l'eccezione in `scripts/audit-policy.ts`,
+rimasta senza avviso, faceva fallire `check:audit` come previsto; un nuovo
+avviso alto su `zod` (GHSA-mrhx-c7xc-m3w5) era bloccante; Expo Doctor
+segnalava tre patch dell'SDK 57 non ancora prese.
+
+- [x] Eccezione `braces` tolta; eccezione `zod` aggiunta fino al 15 gennaio
+      2027: la correzione esiste solo nella 4.6.6, `@expo/cli` richiede la
+      3.x e il pacchetto non entra nell'APK. Il commento della policy ora
+      copre anche il caso della versione corretta che chi la richiede non
+      accetta e quello dell'avviso ritirato.
+- [x] `expo` 57.0.30 → 57.0.31, `expo-router` 57.0.28 → 57.0.29,
+      `expo-sharing` 57.0.23 → 57.0.24 con `npx expo install --fix`. Il
+      lockfile e' rigenerato da quello di `main` con `--prefer-dedupe`:
+      cambiano solo le versioni richieste dalle tre patch, e npm sposta
+      `@expo/cli` sotto `expo/node_modules/` senza cambiarne la versione.
+- [x] Da clone riallineato con `npm ci`: 213 test Node del ramo verdi (215
+      in locale, con i due del selettore di cartelle ancora da committare),
+      typecheck, ESLint e Prettier puliti; `check:audit` verde con le due
+      eccezioni dichiarate; Expo Doctor 21/21; `npx expo install --check`
+      senza differenze. Nessun job GitHub eseguito prima della PR.
+
+Queste sono prove automatiche locali: non toccano il codice dell'app e non
+sostituiscono i collaudi su device ancora aperti nella roadmap.
+
 ### Verificato il 18 ottobre 2026: audit del repository, senza device
 
 Audit a tutto campo del worktree `feat/media3-player` (stato, architettura,
