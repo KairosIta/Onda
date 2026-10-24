@@ -15,6 +15,25 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 24 ottobre 2026: smoke con il Client ID personale, senza device
+
+`npm run smoke` eseguito dal maintainer con il proprio Client ID
+nell'ambiente, senza file `.env`: «TUTTO OK» su Audius, Jamendo,
+federazione e tredici generi. Lo script stampa solo conteggi e stati HTTP.
+
+- [x] Osservata la risposta reale di Jamendo lasciata aperta il 18 ottobre:
+      3 URL di stream su 3 portano `from=` nella risposta grezza di
+      `/tracks`; `stripJamendoAppTag` li ripulisce tutti e `playbackUrl`
+      rimette il Client ID corrente. Il primo chilobyte risponde `206` sia
+      con il tag sia senza: il tag serve all'attribuzione degli ascolti, non
+      all'accesso, come gia' misurato il 30 agosto sul parametro `from`.
+- [x] Audius: trending, ricerca, paginazione senza ripetizioni, pagina
+      artista, vetrine, ricerca artisti e 5 stream su 5 vivi con `Range`.
+      Jamendo: le stesse prove piu' album e tracce d'album; 4 stream su 5
+      vivi, coerente con il brano senza file gia' noto nel catalogo.
+      Federazione «jazz» con 11 brani alternati fra le due sorgenti; tutti e
+      tredici i generi con risultati da entrambe.
+
 ### Verificato il 24 ottobre 2026: documentazione riallineata e avviso Media3, senza device
 
 - [x] La schermata Informazioni nomina AndroidX Media3 e collega il progetto
