@@ -13,8 +13,10 @@
  * Senza, Jamendo si salta e lo si dice. `AUDIUS_API_KEY` e' facoltativa.
  */
 import { GENRES, genreFor } from '@/services/genres';
+import { playbackUrl } from '@/services/mediaItems';
 import { SOURCES, searchAll } from '@/services/sources';
 import { setSourceAccess } from '@/services/sources/access';
+import { stripJamendoAppTag } from '@/services/sources/jamendoStream';
 import type { Track } from '@/types/track';
 
 const credentials = {
@@ -180,6 +182,67 @@ for (const source of available) {
   }
 
   if (trending) await probeStreams(trending);
+}
+
+/**
+ * Jamendo mette il Client ID negli URL di stream (`from=app-<client_id>`):
+ * qui si osserva la risposta grezza e si verifica che l'adapter lo tolga e
+ * che il player lo rimetta. Si stampano solo conteggi e stati HTTP, mai un
+ * URL: il Client ID resta fuori dal terminale e da questa conversazione.
+ */
+if (credentials.jamendoClientId) {
+  console.log('\n=== jamendo: Client ID negli URL di stream ===');
+  const clientId = credentials.jamendoClientId;
+  const carries = (url: string): boolean => /[?&]from=/iu.test(url) || url.includes(clientId);
+  await step('tag app nella risposta grezza', async () => {
+    const query = new URLSearchParams({
+      client_id: clientId,
+      format: 'json',
+      audioformat: 'mp32',
+      limit: '3',
+    });
+    const res = await fetch(`https://api.jamendo.com/v3.0/tracks/?${query.toString()}`);
+    const json = (await res.json()) as { results?: { audio?: string }[] };
+    const audios = (json.results ?? []).map((r) => r.audio ?? '').filter(Boolean);
+    if (audios.length === 0) {
+      bad('tag app nella risposta grezza', 'nessun risultato da osservare');
+      return;
+    }
+    const tagged = audios.filter(carries).length;
+    ok(
+      'tag app nella risposta grezza',
+      `${tagged}/${audios.length} URL portano from= o il Client ID`,
+    );
+
+    const clean = audios.map(stripJamendoAppTag);
+    const leaking = clean.filter(carries).length;
+    if (leaking === 0) ok('streamUrl salvato senza Client ID', `${clean.length} URL ripuliti`);
+    else bad('streamUrl salvato senza Client ID', `${leaking} URL portano ancora il tag`);
+
+    const track: Track = {
+      uid: 'jamendo:smoke',
+      source: 'jamendo',
+      id: 'smoke',
+      title: 'smoke',
+      artist: 'smoke',
+      durationSec: 0,
+      streamUrl: clean[0],
+    };
+    const play = playbackUrl(track);
+    if (play.includes(`from=app-${encodeURIComponent(clientId)}`) && play !== clean[0]) {
+      ok('URL di riproduzione con il Client ID corrente');
+    } else bad('URL di riproduzione con il Client ID corrente', 'tag assente');
+
+    for (const [label, url] of [
+      ['stream con tag', play],
+      ['stream senza tag', clean[0]],
+    ] as const) {
+      const r = await fetch(url, { headers: { Range: 'bytes=0-1023' } });
+      await r.arrayBuffer();
+      if (r.ok) ok(label, `HTTP ${r.status}`);
+      else bad(label, `HTTP ${r.status}`);
+    }
+  });
 }
 
 console.log('\n=== federazione ===');

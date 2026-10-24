@@ -597,7 +597,11 @@ la federazione, tutti i generi, e campiona gli stream con
 `Range: bytes=0-1023` per verificarne la raggiungibilità e il supporto di
 base alle richieste parziali. Un `206` sui primi byte non prova il seek
 temporale avanzato: quello dipende anche dal formato, dalla durata e dal
-calcolo dell'offset del player, e richiede un collaudo nativo.
+calcolo dell'offset del player, e richiede un collaudo nativo. Con il Client
+ID osserva anche una risposta grezza di `/tracks`: conta gli URL di stream
+che portano `from=app-…`, verifica che l'adapter li ripulisca e che il player
+rimetta il Client ID corrente, e campiona un chilobyte sia con sia senza il
+tag. Stampa solo conteggi e stati HTTP, mai un URL.
 
 Serve perche' il typecheck non puo' vedere niente di tutto questo: al primo
 giro ha trovato tre bug reali in Jamendo (parametro `order` rifiutato sugli
