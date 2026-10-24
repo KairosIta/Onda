@@ -30,6 +30,24 @@ class ErrorCategoryTest {
   }
 
   @Test
+  fun `un 416 dopo un seek salta il brano e dice dove si era`() {
+    val http = PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS
+    assertEquals("source", ErrorCategory.of(http, ErrorCategory.HTTP_RANGE_NOT_SATISFIABLE))
+    assertEquals(
+      "Source error (HTTP 416 a 4020.5 s di 5208.0 s dichiarati)",
+      ErrorCategory.describe("Source error", "ERROR_CODE_IO_BAD_HTTP_STATUS", 416, 4020.5, 5208.0),
+    )
+    assertEquals(
+      "Source error (HTTP 404)",
+      ErrorCategory.describe("Source error", "ERROR_CODE_IO_BAD_HTTP_STATUS", 404, 12.0, 100.0),
+    )
+    assertEquals(
+      "ERROR_CODE_TIMEOUT",
+      ErrorCategory.describe(null, "ERROR_CODE_TIMEOUT", null, 12.0, 100.0),
+    )
+  }
+
+  @Test
   fun `uno stream illeggibile salta il brano`() {
     assertEquals("source", ErrorCategory.of(PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND))
     assertEquals("source", ErrorCategory.of(PlaybackException.ERROR_CODE_IO_UNSPECIFIED))

@@ -21,31 +21,29 @@ export const MAX_SOURCE_SKIPS = 3;
 export type SkipDecision =
   /** Errore recuperabile: non si salta e non si consuma budget. */
   | 'ignora'
-  /** Brano illeggibile: si passa al successivo. */
+  /** Brano illeggibile: si prova a passare al successivo. */
   | 'salta'
-  /** Budget esaurito, posizione ignota o fine coda: si resta fermi. */
+  /** Budget esaurito: si resta fermi. */
   | 'fermati';
 
 export interface SkipContext {
   code: PlaybackErrorCode;
   /** Salti gia' consumati dall'ultima riproduzione riuscita. */
   skipsUsed: number;
-  /**
-   * Letta pigramente: su un errore di rete il modulo nativo non va
-   * interrogato affatto, ed e' l'ordine che aveva il gestore prima che
-   * questa regola fosse estratta.
-   */
-  queue: () => { index: number | null; length: number };
 }
 
-export function decideSkip({ code, skipsUsed, queue }: SkipContext): SkipDecision {
+/**
+ * Qui si decide solo se vale la pena provare. Se un brano successivo esista
+ * lo sa soltanto il player: con lo shuffle segue il suo ordine e con «ripeti
+ * tutto» torna al primo, quindi l'indice lineare della coda mentiva in
+ * entrambi i casi e fermava la coda con un brano ancora da suonare.
+ * `skipToNextAfterError` da' il verdetto sul main thread, e un salto non
+ * eseguito non consuma budget.
+ */
+export function decideSkip({ code, skipsUsed }: SkipContext): SkipDecision {
   // Una caduta di rete e' recuperabile: non deve divorare la coda.
   if (code === 'network') return 'ignora';
-  if (skipsUsed >= MAX_SOURCE_SKIPS) return 'fermati';
-
-  const { index, length } = queue();
-  if (index === null || index >= length - 1) return 'fermati';
-  return 'salta';
+  return skipsUsed >= MAX_SOURCE_SKIPS ? 'fermati' : 'salta';
 }
 
 /**

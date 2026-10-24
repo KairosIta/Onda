@@ -404,35 +404,24 @@ test('una pagina vuota da tutte le sorgenti resta una fine elenco legittima', ()
   assert.deepEqual(combine([]), { tracks: [], failed: [] });
 });
 
-/** Coda di dieci brani, fermi sul primo: c'e' sempre un successivo. */
+/** Budget pieno, brano illeggibile. */
 const inCoda = (over: Partial<SkipContext> = {}): SkipContext => ({
   code: 'source',
   skipsUsed: 0,
-  queue: () => ({ index: 0, length: 10 }),
   ...over,
 });
 
 test('gli errori recuperabili non consumano il budget di salti', () => {
-  // Non basta che non si salti: il modulo nativo non va nemmeno interrogato,
-  // ed e' l'ordine che il gestore aveva prima dell'estrazione.
-  let letture = 0;
-  const queue = () => {
-    letture++;
-    return { index: 0, length: 10 };
-  };
-  assert.equal(decideSkip(inCoda({ code: 'network', queue })), 'ignora');
-  assert.equal(letture, 0);
+  assert.equal(decideSkip(inCoda({ code: 'network' })), 'ignora');
 });
 
-test('un brano illeggibile si salta, ma non oltre la fine della coda', () => {
+test('un brano illeggibile si prova a saltare: se ci sia un dopo lo decide il player', () => {
   assert.equal(decideSkip(inCoda()), 'salta');
   assert.equal(decideSkip(inCoda({ code: 'renderer' })), 'salta');
   assert.equal(decideSkip(inCoda({ code: 'unknown' })), 'salta');
-
-  // Ultimo elemento: non c'e' un successivo a cui passare.
-  assert.equal(decideSkip(inCoda({ queue: () => ({ index: 9, length: 10 }) })), 'fermati');
-  // Posizione ignota: meglio fermarsi che saltare alla cieca.
-  assert.equal(decideSkip(inCoda({ queue: () => ({ index: null, length: 10 }) })), 'fermati');
+  // La regola non guarda l'indice della coda: con lo shuffle e «ripeti
+  // tutto» non direbbe niente. Il verdetto sull'ultimo brano e' di
+  // `skipToNextAfterError` (scripts/playback-errors.test.ts).
 });
 
 test('il budget di salti si esaurisce dopo tre brani rotti di fila', () => {

@@ -131,8 +131,11 @@ export const backend: PlayerBackend = {
   },
   skipToNextAfterError() {
     record('skipToNextAfterError');
-    if (!playRequested || active === null || active >= queue.length - 1) return false;
-    jumpTo(active + 1);
+    if (!playRequested || active === null) return false;
+    // Come `hasNextMediaItem` di Media3: sull'ultimo c'e' un dopo solo con «ripeti tutto».
+    if (active < queue.length - 1) jumpTo(active + 1);
+    else if (repeat === 'all') jumpTo(0);
+    else return false;
     return true;
   },
   skipToPrevious() {

@@ -117,11 +117,34 @@ test('basta un brano che suona per ricaricare il budget', () => {
   assert.deepEqual(fakePlayer.calls(), ['skipToNextAfterError']);
 });
 
-test("l'ultimo brano della coda non si salta", () => {
+test("l'ultimo brano della coda non si salta: lo dice il player, e il budget resta", () => {
   playQueue(3, 2);
   fakePlayer.emit(brokenTrack);
-  assert.deepEqual(fakePlayer.calls(), []);
+  // La regola non guarda l'indice: chiede al player, che risponde di no.
+  assert.deepEqual(fakePlayer.calls(), ['skipToNextAfterError']);
+  assert.equal(player.getActiveIndex(), 2);
   assert.equal(hasPlaybackFault(), true);
+
+  // Il salto non eseguito non ha consumato budget: su una coda nuova si
+  // salta ancora tre volte.
+  playQueue(10);
+  for (let i = 0; i < MAX_SOURCE_SKIPS; i++) {
+    fakePlayer.emit(brokenTrack);
+    fakePlayer.flush();
+  }
+  assert.equal(player.getActiveIndex(), MAX_SOURCE_SKIPS);
+});
+
+test("con «ripeti tutto» l'ultimo brano rotto passa al primo", () => {
+  playQueue(3, 2);
+  player.setRepeatMode('all');
+  fakePlayer.clearCalls();
+  fakePlayer.emit(brokenTrack);
+  fakePlayer.flush();
+  assert.deepEqual(fakePlayer.calls().slice(0, 1), ['skipToNextAfterError']);
+  assert.equal(player.getActiveIndex(), 0, 'come hasNextMediaItem di Media3 con ripeti tutto');
+  assert.equal(hasPlaybackFault(), false);
+  player.setRepeatMode('off');
 });
 
 test('dopo un errore di rete si riprova da soli, a distanze crescenti', () => {

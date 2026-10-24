@@ -631,7 +631,9 @@ Head Unit.
       del Keystore e il nuovo tentativo sono coperti in Node, con valori
       finti. Le credenziali reali le gestisce la persona nell'app.
 - [ ] Shuffle attivato/disattivato durante una coda: traccia e posizione
-      correnti restano stabili e la schermata Coda si aggiorna.
+      correnti restano stabili e la schermata Coda si aggiorna. Con lo
+      shuffle acceso un brano rotto in coda si salta anche quando il suo
+      indice lineare e' l'ultimo (regola corretta il 24 ottobre 2026).
 - [ ] Timer da 90 minuti sotto Doze e timer mentre il player è in pausa.
 - [ ] Percorso completo con TalkBack: tab, righe, menu, slider, modali,
       playlist, toast ed errori.
@@ -651,7 +653,10 @@ Head Unit.
       del 13 ottobre 2026, su un mix da 1:26:48 la ripresa a 1:07:00
       riceve HTTP 416 e il player passa al brano seguente. Ripetere con
       uno stream fresco e verificare durata, posizione richiesta e
-      risposta del server prima di attribuire la causa.
+      risposta del server prima di attribuire la causa; dal 24 ottobre il
+      log dell'errore porta stato HTTP, posizione e durata dichiarata. Se
+      il file reale è più corto della durata, il passo seguente è trattare
+      il 416 come fine del brano, senza consumare il budget di salti.
 - [ ] Chiamata in arrivo, audio focus di un'altra app, cuffie scollegate,
       Bluetooth e Android Auto.
 - [ ] Un'ora di riproduzione: batteria, temperatura, memoria, coda da 100 e

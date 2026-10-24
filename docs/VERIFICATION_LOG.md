@@ -15,6 +15,34 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 24 ottobre 2026: salto dopo errore con shuffle e ripeti tutto, e 416 leggibile, senza device
+
+Gli ultimi due rilievi, bassi, delle revisioni dell'audit del 24 ottobre.
+
+- [x] `playbackPolicy.decideSkip` guardava l'indice lineare della coda per
+      decidere se esistesse un brano dopo: con lo shuffle, che segue il suo
+      ordine, e con «ripeti tutto», che torna al primo, fermava la coda con
+      un brano ancora da suonare. Ora decide solo rete e budget; se ci sia
+      un dopo lo dice `skipToNextAfterError` sul main thread, e un salto non
+      eseguito non consuma budget. Il player finto segue `hasNextMediaItem`
+      di Media3 anche con «ripeti tutto». Regressioni: l'ultimo brano rotto
+      si ferma senza consumare budget; con «ripeti tutto» passa al primo.
+- [x] HTTP 416 dopo un seek: il brano si salta come prima, ma il messaggio
+      dell'errore porta stato HTTP, posizione e durata dichiarata
+      (`ErrorCategory.describe`), cosi' il prossimo collaudo attribuisce la
+      causa. Il comportamento resta invariato finche' la causa non e'
+      accertata: se il file reale e' piu' corto della durata, il passo
+      seguente e' trattare il 416 come fine del brano. Un test JVM nuovo.
+- [x] `npm run build:personal` completa con Node 24.21.0, JDK 17, SDK 36 e
+      Build-Tools 36.0.0: 227 test Node, typecheck, ESLint, Prettier,
+      prebuild pulito, compilazione Kotlin, 28 test JVM, Android Lint, R8 e
+      APK standalone con firma personale verificata. APK non installato ne'
+      pubblicato, SHA-256
+      `573eccebe3f63a4207cf4f33ad67f01ece23143aa2274edd2b32766d8d42e737`.
+
+Restano su device la ripresa dopo un seek avanzato su un brano Audius lungo
+e il salto di un brano rotto con lo shuffle acceso (checklist della roadmap).
+
 ### Verificato il 24 ottobre 2026: smoke con il Client ID personale, senza device
 
 `npm run smoke` eseguito dal maintainer con il proprio Client ID

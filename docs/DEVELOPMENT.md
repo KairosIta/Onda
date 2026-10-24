@@ -251,9 +251,13 @@ che il primo caricamento o cambio brano abbassa; e' quel flag che fa comparire
 l'avviso con Riprova. Per lo stesso motivo il salto automatico dopo un brano
 morto usa `skipToNextAfterError()`: sul main thread verifica che ci siano
 ancora un errore, un brano successivo e un play richiesto, poi salta,
-riprepara e riparte in un solo comando. Una pausa arrivata da UI o da un
-controller Android revoca anche questo recupero; il silenzio durante il
-buffering non equivale a una pausa. Un errore di rete invece non
+riprepara e riparte in un solo comando. Se un brano successivo esista lo sa
+solo il player: con lo shuffle segue il suo ordine e con «ripeti tutto»
+torna al primo, quindi dal 24 ottobre 2026 `playbackPolicy.decideSkip` non
+guarda più l'indice lineare della coda, che in quei casi fermava la coda con
+un brano ancora da suonare; un salto non eseguito non consuma budget. Una
+pausa arrivata da UI o da un controller Android revoca anche questo
+recupero; il silenzio durante il buffering non equivale a una pausa. Un errore di rete invece non
 consuma il budget di salti: `playbackService` riprova da solo tre volte a
 distanze crescenti (`NETWORK_RETRY_DELAYS_MS` in `playbackPolicy`), e solo
 dopo resta all'utente il Riprova. L'attesa la conta il player
@@ -1046,7 +1050,15 @@ ancora accertata: un `206` sui primi byte nello smoke non esclude il
 problema. Ripetere con uno stream fresco, confrontando durata dichiarata,
 dimensione del file, `Range` richiesto dal player e `Content-Range` della
 risposta, senza registrare credenziali. La prova e l'anomalia aperta sono
-nel [registro dei collaudi](VERIFICATION_LOG.md).
+nel [registro dei collaudi](VERIFICATION_LOG.md). Dal 24 ottobre 2026 il
+messaggio dell'errore porta stato HTTP, posizione e durata dichiarata
+(`ErrorCategory.describe`), nel log come
+`[player] source: Source error (HTTP 416 a N s di M s dichiarati)`. Media3
+tratta un 416 come fine del brano solo se la posizione coincide con la
+lunghezza del file: un 416 dopo un seek dice quindi che il file reale è più
+corto della durata dichiarata, o che l'offset stimato l'ha superata. Se il
+collaudo conferma la prima ipotesi, il passo seguente è trattarlo come fine
+del brano invece che come errore, senza consumare il budget di salti.
 
 **Una sorgente non risponde.** L'errore compare come banner senza bloccare
 l'altra sorgente: e' voluto. Il banner ora si accende anche se la sorgente

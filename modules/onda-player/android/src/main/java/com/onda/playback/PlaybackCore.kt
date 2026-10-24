@@ -489,10 +489,18 @@ internal object PlaybackCore {
 
       override fun onPlayerError(error: PlaybackException) {
         val status = (error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode
+        val p = player
         emit(
           "playbackError",
           "code" to ErrorCategory.of(error.errorCode, status),
-          "message" to (error.message ?: error.errorCodeName),
+          "message" to
+            ErrorCategory.describe(
+              error.message,
+              error.errorCodeName,
+              status,
+              positionSec = p?.currentPosition?.let { it / 1000.0 } ?: 0.0,
+              durationSec = p?.let(::durationSec) ?: 0.0,
+            ),
         )
       }
     }
