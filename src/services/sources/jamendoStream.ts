@@ -10,7 +10,13 @@
  * per intero, e un URL che non si riesce a leggere resta com'e'.
  */
 
-const JAMENDO_HOST = /^https?:\/\/(?:[^/?#]*\.)?jamendo\.com(?=[/?#]|$)/iu;
+/**
+ * Solo lettere, cifre e trattini nelle etichette dell'host: una barra
+ * rovesciata o una chiocciola davanti a `jamendo.com`, che alcuni parser
+ * leggono come fine dell'host, non devono far passare un host estraneo, a
+ * cui finirebbe il Client ID.
+ */
+const JAMENDO_HOST = /^https?:\/\/(?:[a-z0-9-]+\.)*jamendo\.com(?=[/?#]|$)/iu;
 const APP_TAG = /^from=/iu;
 
 export const isJamendoUrl = (url: string): boolean => JAMENDO_HOST.test(url);

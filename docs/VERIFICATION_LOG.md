@@ -15,6 +15,38 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 24 ottobre 2026: controller fidati e host Jamendo, senza device
+
+Due rilievi delle revisioni indipendenti dell'audit del 24 ottobre,
+corretti con regressioni automatiche.
+
+- [x] La sessione concedeva a ogni controller fidato i comandi predefiniti
+      di Media3 meno i soli tasti non richiesti: restavano quelli che
+      impostano e cambiano gli elementi, quindi un'app con l'accesso alle
+      notifiche poteva far suonare a Onda un URL qualsiasi, con titolo e
+      copertina scelti da lei, o mettere in coda una cartella della libreria
+      indovinandone l'id. `RemoteCommands.withheld` ora toglie
+      `COMMAND_SET_MEDIA_ITEM` e `COMMAND_CHANGE_MEDIA_ITEMS` a chi non
+      sfoglia la libreria, e `onSetMediaItems` e `onAddMediaItems`
+      rifiutano comunque senza toccare il player. Un test JVM nuovo: il
+      controller soltanto fidato tiene il trasporto e perde la coda, chi
+      sfoglia tiene tutto.
+- [x] Il riconoscimento degli host Jamendo (`sources/jamendoStream` e
+      `BrowseTree`) accettava qualunque carattere prima di `jamendo.com`:
+      `https://evil.test\@.jamendo.com/` passava, e un parser che legge la
+      barra rovesciata come fine dell'host avrebbe mandato il Client ID a un
+      estraneo. Le etichette dell'host ammettono solo lettere, cifre e
+      trattini. Regressioni in `scripts/stream-urls.test.ts` (barra
+      rovesciata, chiocciola, host legittimi) e in `BrowseTreeTest`.
+- [x] `npm run build:personal` completa con Node 24.21.0, JDK 17, SDK 36 e
+      Build-Tools 36.0.0: 215 test Node, typecheck, ESLint, Prettier,
+      prebuild pulito, compilazione Kotlin, 27 test JVM, Android Lint, R8 e
+      APK standalone con firma personale verificata. APK non installato ne'
+      pubblicato, SHA-256 `5c60e0a50451c898cfb5f2d4d1e7563c3a80a1237613001eaba5a7bea4305208`.
+
+Resta il collaudo su device con un controller di terzi che ha l'accesso
+alle notifiche (roadmap, P1 del 24 ottobre).
+
 ### Verificato il 24 ottobre 2026: annullamento del selettore di cartelle, senza device
 
 Il 18 ottobre 2026, su device con Android 16 ed expo-file-system 57.0.7,

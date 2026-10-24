@@ -304,7 +304,13 @@ comandare la riproduzione sono Onda, la sua notifica, Android Auto,
 Automotive e i controller che Media3 dichiara fidati: oltre al sistema,
 qualunque app con un servizio di ascolto delle notifiche attivo (smartwatch,
 widget multimediali). La libreria privata la sfogliano invece soltanto Onda,
-Android Auto e Automotive. Radice, figli ed elementi passano tutti da
+Android Auto e Automotive, e soltanto loro possono mandare una coda: a un
+controller soltanto fidato la sessione toglie i comandi che impostano o
+cambiano gli elementi (`RemoteCommands.QUEUE_COMMANDS`), e una richiesta di
+coda che arrivasse comunque fallisce senza toccare il player. Altrimenti
+un'app con l'accesso alle notifiche potrebbe far suonare a Onda un URL
+qualsiasi, con titolo e copertina scelti da lei. Radice, figli ed elementi
+passano tutti da
 `LibraryAccess`, che verifica il permesso prima di leggere l'albero:
 conoscere un id di playlist o cronologia non concede accesso. I test JVM
 coprono anche richieste dirette con id noti e la paginazione dei controller
@@ -437,8 +443,9 @@ audio scritto interamente da Onda.
   manifest del modulo). Quando la musica sta per partire il core lo avvia e
   ci resta legato con un `MediaController`; Media3 ne fa un foreground
   service con la notifica. I tasti di `setup` vanno al controller della
-  notifica, ad Android Auto e ai controller fidati del sistema; ogni altra
-  app e' respinta alla connessione. Il tocco sulla notifica apre
+  notifica, ad Android Auto e ai controller fidati del sistema, che pero'
+  non possono sostituire la coda; ogni altra app e' respinta alla
+  connessione. Il tocco sulla notifica apre
   `onda://notification.click`, che `app/+native-intent.ts` porta al player.
 - **Recenti.** Tolta dai recenti, Onda si ferma e il servizio si chiude, ma
   coda e posizione restano nel player: se processo e JS sopravvivono,

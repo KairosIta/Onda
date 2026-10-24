@@ -88,7 +88,8 @@ class PlaybackService : MediaLibraryService() {
    * `isTrusted` comprende il sistema (schermata di blocco, Bluetooth) ma
    * anche qualunque app con un servizio di ascolto delle notifiche attivo,
    * come un'app per smartwatch o un widget multimediale: comanda il
-   * trasporto come fa la schermata di blocco. Ogni altra app e' respinta.
+   * trasporto come fa la schermata di blocco, ma non sostituisce la coda ne'
+   * legge la libreria (vedi [canBrowse]). Ogni altra app e' respinta.
    */
   private fun isOurs(session: MediaSession, controller: MediaSession.ControllerInfo): Boolean =
     controller.packageName == packageName ||
@@ -99,8 +100,11 @@ class PlaybackService : MediaLibraryService() {
 
   /**
    * La libreria privata (preferiti, playlist, ascolti recenti) la sfogliano
-   * soltanto Onda, Android Auto e Automotive. Un controller fidato comanda
-   * la riproduzione, non legge la libreria.
+   * soltanto Onda, Android Auto e Automotive, e soltanto loro possono mandare
+   * una coda: a un controller soltanto fidato [onConnect] toglie i comandi
+   * che impostano o cambiano gli elementi ([RemoteCommands.QUEUE_COMMANDS])
+   * e [onSetMediaItems] e [onAddMediaItems] rifiutano comunque. Comanda la
+   * riproduzione, non legge la libreria e non le manda una coda sua.
    */
   private fun canBrowse(session: MediaSession, controller: MediaSession.ControllerInfo): Boolean =
     controller.packageName == packageName ||
@@ -115,7 +119,8 @@ class PlaybackService : MediaLibraryService() {
       if (!isOurs(session, controller)) return MediaSession.ConnectionResult.reject()
       val result = MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
       val commands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
-      RemoteCommands.withheld(PlaybackCore.remoteCommands()).forEach { commands.remove(it) }
+      RemoteCommands.withheld(PlaybackCore.remoteCommands(), canBrowse(session, controller))
+        .forEach { commands.remove(it) }
       result.setAvailablePlayerCommands(commands.build())
       return result.build()
     }
@@ -179,6 +184,7 @@ class PlaybackService : MediaLibraryService() {
       startIndex: Int,
       startPositionMs: Long,
     ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+      if (!canBrowse(mediaSession, controller)) return refused()
       val picked = mediaItems.singleOrNull()
       if (picked != null && picked.localConfiguration == null) {
         PlaybackCore.browseTree().resolve(picked.mediaId)?.let { selection ->
@@ -202,8 +208,18 @@ class PlaybackService : MediaLibraryService() {
       mediaSession: MediaSession,
       controller: MediaSession.ControllerInfo,
       mediaItems: MutableList<MediaItem>,
-    ): ListenableFuture<MutableList<MediaItem>> =
-      Futures.immediateFuture(mediaItems.mapNotNull(::resolve).toMutableList())
+    ): ListenableFuture<MutableList<MediaItem>> {
+      if (!canBrowse(mediaSession, controller)) return refused()
+      return Futures.immediateFuture(mediaItems.mapNotNull(::resolve).toMutableList())
+    }
+
+    /**
+     * Seconda barriera dietro ai comandi tolti in [onConnect]: una richiesta
+     * di coda da chi non sfoglia la libreria fallisce, Media3 risponde con un
+     * errore al controller e il player non cambia.
+     */
+    private fun <T> refused(): ListenableFuture<T> =
+      Futures.immediateFailedFuture(SecurityException("Il controller non puo' cambiare la coda"))
 
     /** Un elemento con il suo URL resta com'e'; senza, si cerca nell'albero. */
     private fun resolve(item: MediaItem): MediaItem? {

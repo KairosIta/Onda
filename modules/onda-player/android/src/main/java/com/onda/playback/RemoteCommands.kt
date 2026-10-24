@@ -20,7 +20,23 @@ internal object RemoteCommands {
       "stop" to listOf(Player.COMMAND_STOP),
     )
 
-  /** I comandi da togliere: quelli dei tasti che il JS non ha chiesto. */
-  fun withheld(enabled: Collection<String>): List<Int> =
-    PLAYER_COMMANDS.filterKeys { it !in enabled }.values.flatten()
+  /**
+   * I comandi che sostituiscono o cambiano la coda. Li tiene soltanto chi
+   * puo' anche sfogliare la libreria (Onda, Android Auto, Automotive): un
+   * controller soltanto fidato comanda il trasporto della coda che c'e', non
+   * ne manda una sua. Senza questo confine qualunque app con l'accesso alle
+   * notifiche potrebbe far suonare a Onda un URL qualsiasi, con titolo e
+   * copertina scelti da lei, o mettere in coda una cartella della libreria
+   * indovinandone l'id.
+   */
+  val QUEUE_COMMANDS: List<Int> =
+    listOf(Player.COMMAND_SET_MEDIA_ITEM, Player.COMMAND_CHANGE_MEDIA_ITEMS)
+
+  /**
+   * I comandi da togliere a un controller: quelli dei tasti che il JS non ha
+   * chiesto e, se non puo' sfogliare la libreria, quelli della coda.
+   */
+  fun withheld(enabled: Collection<String>, canBrowse: Boolean): List<Int> =
+    PLAYER_COMMANDS.filterKeys { it !in enabled }.values.flatten() +
+      if (canBrowse) emptyList() else QUEUE_COMMANDS
 }

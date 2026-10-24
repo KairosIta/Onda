@@ -107,6 +107,16 @@ test('jamendo: il parametro from si toglie e si rimette solo sugli URL Jamendo',
   );
   assert.equal(isJamendoUrl('https://evil.test/jamendo.com/?from=app-x'), false);
   assert.equal(isJamendoUrl('https://notjamendo.com/?x'), false);
+  // Una barra rovesciata o una chiocciola davanti all'host: per alcuni parser
+  // l'host finisce prima, e il Client ID andrebbe a un estraneo.
+  assert.equal(isJamendoUrl('https://evil.test\\@.jamendo.com/'), false);
+  assert.equal(isJamendoUrl('https://user@jamendo.com/'), false);
+  assert.equal(
+    tagJamendoStream('https://evil.test\\@.jamendo.com/?trackid=1', CLIENT_ID),
+    'https://evil.test\\@.jamendo.com/?trackid=1',
+  );
+  assert.equal(isJamendoUrl('https://prod-1.storage.jamendo.com/?trackid=1'), true);
+  assert.equal(isJamendoUrl('https://jamendo.com'), true);
 
   assert.equal(tagJamendoStream(STREAM, CLIENT_ID), TAGGED);
   assert.equal(tagJamendoStream(TAGGED.replace(CLIENT_ID, 'vecchio'), CLIENT_ID), TAGGED);

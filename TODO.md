@@ -345,6 +345,15 @@ Head Unit.
 
 ## P1 — Affidabilità del prodotto
 
+- [ ] **Collaudare su Android le correzioni dell'audit del 24 ottobre.**
+      Implementate con regressioni automatiche (registro dei collaudi): un
+      controller soltanto fidato, come un'app con l'accesso alle notifiche,
+      comanda il trasporto ma non può sostituire la coda; gli host Jamendo si
+      riconoscono solo con etichette di lettere, cifre e trattini.
+      **Done:** un controller di terzi con accesso alle notifiche vede
+      rifiutato `setMediaItem`, mentre notifica, schermata di blocco e Android
+      Auto funzionano come prima; un brano Jamendo suona ancora con il tag
+      dell'app.
 - [ ] **Collaudare su Android le correzioni dell'audit del 18 ottobre.**
       Implementate con regressioni automatiche (registro dei collaudi):
       il Client ID Jamendo non entra piu' negli URL di stream salvati in

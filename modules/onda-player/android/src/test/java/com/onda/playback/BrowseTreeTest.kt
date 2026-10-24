@@ -91,6 +91,9 @@ class BrowseTreeCredentialsTest {
     assertEquals(clean, BrowseTree.stripJamendoAppTag(clean))
     assertEquals("https://x.test/a?from=app-x", BrowseTree.stripJamendoAppTag("https://x.test/a?from=app-x"))
     assertEquals("https://evil.test/jamendo.com/?from=app-x", BrowseTree.stripJamendoAppTag("https://evil.test/jamendo.com/?from=app-x"))
+    // Una barra rovesciata o una chiocciola davanti all'host: per alcuni parser l'host finisce prima.
+    assertEquals("https://evil.test\\@.jamendo.com/?from=app-x", BrowseTree.stripJamendoAppTag("https://evil.test\\@.jamendo.com/?from=app-x"))
+    assertEquals("https://user@jamendo.com/?from=app-x", BrowseTree.stripJamendoAppTag("https://user@jamendo.com/?from=app-x"))
   }
 
   @Test

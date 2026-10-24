@@ -154,7 +154,12 @@ internal class BrowseTree(val categories: List<BrowseNode>) {
       node.optJSONArray("children")?.let(::scrub)
     }
 
-    private val JAMENDO_HOST = Regex("^https?://(?:[^/?#]*\\.)?jamendo\\.com(?=[/?#]|$)", RegexOption.IGNORE_CASE)
+    /**
+     * Solo lettere, cifre e trattini nelle etichette dell'host: una barra
+     * rovesciata o una chiocciola davanti a `jamendo.com`, che alcuni parser
+     * leggono come fine dell'host, non devono far passare un host estraneo.
+     */
+    private val JAMENDO_HOST = Regex("^https?://(?:[a-z0-9-]+\\.)*jamendo\\.com(?=[/?#]|$)", RegexOption.IGNORE_CASE)
 
     /** L'URL senza il parametro `from` (`from=app-<client_id>`), solo sugli host Jamendo. */
     fun stripJamendoAppTag(url: String): String {
