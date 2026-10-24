@@ -15,6 +15,19 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 24 ottobre 2026: documentazione riallineata e avviso Media3, senza device
+
+- [x] La schermata Informazioni nomina AndroidX Media3 e collega il progetto
+      e il testo della licenza Apache 2.0 (`src/config/legal.ts`): un passo
+      del gate 5 della nota di conformita'; per un APK ufficiale resta
+      l'elenco completo degli avvisi incorporato nell'app.
+- [x] Guida, roadmap, CONTRIBUTING e nota di conformita' allineate allo
+      stato del 24 ottobre: i job nativi su GitHub sono verdi dal 18 ottobre
+      e obbligatori dal 24, l'albero dei file copre export e import della
+      libreria, informazioni di build, script di audit e di build personale
+      e i plugin di privacy e qualita'; la roadmap porta la data di oggi.
+- [x] Test, typecheck, ESLint e Prettier verdi.
+
 ### Verificato il 24 ottobre 2026: test degli store e tetto all'import, senza device
 
 Le lacune di copertura segnalate dalle revisioni dell'audit del 24 ottobre:
@@ -118,6 +131,11 @@ segnalava tre patch dell'SDK 57 non ancora prese.
       typecheck, ESLint e Prettier puliti; `check:audit` verde con le due
       eccezioni dichiarate; Expo Doctor 21/21; `npx expo install --check`
       senza differenze. Nessun job GitHub eseguito prima della PR.
+
+- [x] Protezione di `main` aggiornata lo stesso giorno: obbligatori tutti e
+      cinque i job del workflow Quality (prima solo i due di qualita'),
+      firme verificate e storia lineare; gli admin restano esenti. I commit
+      recenti, Dependabot compreso, risultavano gia' verificati da GitHub.
 
 Queste sono prove automatiche locali: non toccano il codice dell'app e non
 sostituiscono i collaudi su device ancora aperti nella roadmap.

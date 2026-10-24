@@ -143,6 +143,9 @@ Prima di distribuire un APK ufficiale devono essere presenti:
 4. aggiornamento coordinato di questa nota, `THIRD_PARTY_CONTENT.md`, privacy e
    schermata Informazioni;
 5. licenza Apache 2.0 e avvisi delle dipendenze incorporate (AndroidX Media3 e
-   le altre) consultabili dall'APK, per esempio dalla schermata Informazioni;
+   le altre) consultabili dall'APK. Dal 24 ottobre 2026 la schermata
+   Informazioni nomina Media3 e collega il testo della licenza Apache 2.0;
+   per un APK ufficiale resta l'elenco completo degli avvisi incorporato
+   nell'app, leggibile anche senza rete;
 6. nessuna credenziale nell'APK e nessuna credenziale in log, export o backup,
    verificati su una build di release.

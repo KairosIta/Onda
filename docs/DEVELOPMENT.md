@@ -137,6 +137,7 @@ src/
   services/libraryBackup.ts export e import della libreria su file: selettori di sistema e condivisione
   services/pickerErrors.ts  l'annullamento del selettore di cartelle, in ogni forma in cui Expo lo segnala (puro)
   services/setupPlayer.ts   configurazione del player (una volta per processo)
+  services/buildInfo.ts     commit, canale e data della build per la schermata Informazioni; la lettura pura in buildInfoSchema.ts
   services/playbackService.ts  eventi del player, anche in background: cambi di brano, progresso, errori
   services/mediaItems.ts    andata e ritorno fra il nostro modello e i MediaItem del player
   services/playbackStatus.ts  lo stato unico del tasto play, ricavato dai segnali del player
@@ -148,9 +149,9 @@ src/
   services/progressPolicy.ts  quando, e quanto spesso, leggere la posizione dal player
   services/queryClient.ts   React Query reidratata da MMKV; potatura in queryPersistenceSchema.ts
   services/browseTree.ts    l'albero per Android Auto dalla libreria (puro); l'invio sta in browseTreeSync.ts
-  store/library.ts          preferiti, playlist, cronologia (persistiti)
+  store/library.ts          preferiti, playlist, cronologia (persistiti); validazione e tetto della cronologia in librarySchema.ts (puro)
   store/libraryExport.ts    formato JSON versionato dell'export, merge additivo e tetto di 8 MB all'import (puro)
-  store/playback.ts         shuffle e repeat (persistiti)
+  store/playback.ts         shuffle e repeat (persistiti); la rilettura tollerante in playbackSchema.ts (puro)
   store/session.ts          brano attivo + coda e posizione salvate, "in attesa" all'avvio; useNowPlaying (schema in sessionSchema.ts)
   store/progress.ts         l'unico osservatore di progresso dell'app
   store/playbackFault.ts    "il brano e' morto": su Android lo stato error non arriva mai
@@ -159,6 +160,7 @@ src/
   store/searchHistory.ts    le ultime ricerche (persistite); la regola in utils/recentQueries.ts
   store/sources.ts          interruttori, benvenuto e invito (persistiti) + credenziali; collega le sorgenti
   hooks/useQueue.ts         sostituzione coda, riproduci dopo, accoda
+  hooks/useDebounced.ts     il valore della ricerca con il ritardo del debounce
   hooks/usePlaybackStatus.ts  lo stato del player come hook
   hooks/useUpNext.ts        cosa viene dopo il brano corrente; la regola in utils/upNext.ts
   utils/reorder.ts          geometria del riordino a trascinamento della coda (worklet)
@@ -181,6 +183,13 @@ modules/
 scripts/
   release.ts                pipeline fail-closed per APK di distribuzione
   release-policy.ts         validazione pura di ambiente e credenziali
+  personal.ts               doctor, build e install della copia personale; le regole pure in personal-policy.ts
+  build-environment.ts      i file .env* letti con la precedenza Expo e la diagnostica senza valori
+  build-provenance.cjs      commit e canale nel nome di versione (puro, CommonJS per app.config.ts)
+  audit.ts                  npm audit alla soglia alta con le eccezioni di audit-policy.ts
+  installed.ts              confronta la versione installata sul telefono con il repository (npm run check:installed)
+  verify-signing.ts         verifica keystore, password e identita' di release senza costruire
+  *.test.ts                 i test di npm test, uno per area; unit.test.ts raccoglie le parti pure
   metro-cache-version.cjs   versione della cache di Metro dai valori EXPO_PUBLIC_* (puro)
   smoke.ts                  collaudo degli adapter contro le API vere (npm run smoke)
   node-hook.mjs             risolve l'alias '@/' quando il codice dell'app gira in Node (test e smoke)
@@ -189,6 +198,8 @@ scripts/
 plugins/
   with-release-signing.js   firma e proprieta' Gradle della release (android/ e' rigenerabile)
   with-android-auto.js      descrittore automotive_app_desc e meta-data per Android Auto
+  with-android-privacy.js   backup Android disabilitato ed esclusioni cloud e device-to-device
+  with-android-quality.js   lint.xml, icone e stili generati corretti nel progetto Android
 credentials/                chiave di firma — ignorata da git, non rigenerabile
 ```
 
@@ -498,9 +509,11 @@ audio scritto interamente da Onda.
 Le parti pure (categorie d'errore, tasti, timer di spegnimento, albero di
 Auto) hanno test JVM in `modules/onda-player/android/src/test`. Il job
 `native-player` del workflow Quality è configurato per compilare il Kotlin
-ed eseguirli su Ubuntu e Windows a ogni PR e push su `main`. Il 13 ottobre
-2026 il comando è passato su Linux locale con 18 test JVM; i nuovi job su
-GitHub restano da eseguire. Lo stesso controllo gira in
+ed eseguirli su Ubuntu e Windows a ogni PR e push su `main`. Dal 18 ottobre
+2026 il job è verde su GitHub a ogni PR; il 24 ottobre i test JVM sono 27.
+`main` è protetto: i cinque job del workflow Quality sono tutti
+obbligatori, i commit devono essere firmati e la storia resta lineare, cioè
+solo fast-forward. Lo stesso controllo gira in
 `npm run build:personal` prima dell'Android Lint. Per eseguirlo da solo:
 
 ```bash

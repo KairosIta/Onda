@@ -1,6 +1,6 @@
 # Roadmap di Onda
 
-Stato aggiornato il **15 ottobre 2026** confrontando codice, configurazione e
+Stato aggiornato il **24 ottobre 2026** confrontando codice, configurazione e
 documentazione con le prove già raccolte su device e con i controlli automatici,
 di release e da clone pulito.
 
@@ -321,14 +321,14 @@ Head Unit.
       notifica. Verificati anche recupero automatico della rete a schermo
       spento, esaurimento dei retry, Riprova manuale e rispetto della pausa
       durante il recupero. Build personale Linux, compilazione Kotlin e
-      18 test JVM superati; i nuovi job Ubuntu/Windows su GitHub restano
-      da eseguire.
+      test JVM superati; dal 18 ottobre i job Ubuntu/Windows su GitHub sono
+      verdi a ogni PR e dal 24 ottobre sono obbligatori per fondere.
       Restano timer in Doze, Bluetooth/cuffie e focus audio, Android Auto,
       regressioni complete di coda, shuffle, repeat e ripresa della sessione,
       oltre all'HTTP 416 dopo un seek avanzato su Audius.
-      **Done:** questi casi superati sul backend Media3 con prove nel registro;
-      nuova CI nativa verde su Ubuntu e Windows. Licenze e avvisi incorporati
-      nell'APK restano nel gate legale separato sopra.
+      **Done:** questi casi superati sul backend Media3 con prove nel registro.
+      Licenze e avvisi incorporati nell'APK restano nel gate legale separato
+      sopra.
 
 - [ ] **Definire privacy e backup Android.** La libreria è locale, ma una
       release Android può includere MMKV nel backup di sistema. Backup disabilitato

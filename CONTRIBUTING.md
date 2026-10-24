@@ -11,7 +11,9 @@ importante, apri una issue per concordare comportamento e compatibilità.
 3. Mantieni Linux e Windows compatibili: preferisci script Node.js a comandi
    specifici di Bash o PowerShell.
 4. Esegui `npm test`, `npm run typecheck`, `npm run lint` e
-   `npm run format:check`.
+   `npm run format:check`. `main` è protetto: tutti i job della CI devono
+   passare, i commit devono essere firmati e la storia resta lineare, quindi
+   una PR si fonde in fast-forward dopo un rebase.
 5. Per modifiche native esegui anche `npm run build:personal` e descrivi
    dispositivo/API Android e risultato del collaudo. La build include
    compilazione Kotlin, test JVM del modulo player e Android Lint.

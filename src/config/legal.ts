@@ -11,3 +11,8 @@ export const AUDIUS_PRIVACY_URL = 'https://audius.co/documents/PrivacyPolicy.pdf
 export const JAMENDO_API_TERMS_URL = 'https://devportal.jamendo.com/api_terms_of_use';
 export const JAMENDO_PRIVACY_URL = 'https://licensing.jamendo.com/en/legal/privacypolicy';
 export const JAMENDO_DEVPORTAL_URL = 'https://devportal.jamendo.com/';
+
+// Il motore del player e' AndroidX Media3, sotto Apache 2.0: il testo della
+// licenza va raggiungibile dall'app (nota di conformita', gate 5).
+export const MEDIA3_PROJECT_URL = 'https://github.com/androidx/media';
+export const APACHE_LICENSE_URL = 'https://www.apache.org/licenses/LICENSE-2.0';

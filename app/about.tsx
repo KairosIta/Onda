@@ -3,12 +3,14 @@ import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ExternalLink } from '@/components/ExternalLink';
 import {
+  APACHE_LICENSE_URL,
   AUDIUS_API_TERMS_URL,
   AUDIUS_OPEN_MUSIC_LICENSE_URL,
   AUDIUS_PRIVACY_URL,
   AUDIUS_TERMS_URL,
   JAMENDO_API_TERMS_URL,
   JAMENDO_PRIVACY_URL,
+  MEDIA3_PROJECT_URL,
   PRIVACY_POLICY_URL,
   PROJECT_URL,
   THIRD_PARTY_CONTENT_URL,
@@ -81,6 +83,13 @@ export default function AboutScreen() {
           indicata la sorgente del brano, il regime di diritti dichiarato, il collegamento alla
           pagina originale e, per Jamendo, alla licenza Creative Commons specifica.
         </Text>
+        <Text style={styles.body}>
+          Il player di Onda è codice Onda sotto MIT e usa AndroidX Media3, di The Android Open
+          Source Project, sotto licenza Apache 2.0: il motore viene scaricato e incorporato nell’APK
+          durante la build.
+        </Text>
+        <ExternalLink label="AndroidX Media3" url={MEDIA3_PROJECT_URL} />
+        <ExternalLink label="Licenza Apache 2.0" url={APACHE_LICENSE_URL} />
         <ExternalLink label="Condizioni generali Audius" url={AUDIUS_TERMS_URL} />
         <ExternalLink label="Termini API Audius" url={AUDIUS_API_TERMS_URL} />
         <ExternalLink label="Open Music License Audius" url={AUDIUS_OPEN_MUSIC_LICENSE_URL} />
