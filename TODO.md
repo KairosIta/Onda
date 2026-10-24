@@ -504,8 +504,8 @@ Head Unit.
 
 ### Test e toolchain
 
-- [ ] Estendere i test unitari a mutazioni degli store, `formatTime`, shuffle e
-      migrazioni complete. Coperti oggi (213 test Node e 24 test JVM): validazione, repeat,
+- [ ] Estendere i test unitari a shuffle e migrazioni complete. Coperti oggi
+      (226 test Node e 27 test JVM): validazione, repeat,
       cursore per sorgente e paginazione federata con sorgenti finte,
       composizione della federazione (anche di artisti e album), annullamento
       delle richieste e tentativi Jamendo, entità HTML Jamendo, budget di
@@ -517,7 +517,11 @@ Head Unit.
       versione della cache di Metro, sorgenti accese e credenziali, verifica
       del Client ID Jamendo, API key Audius solo nell'header, brani di una
       sorgente spenta fuori dalla coda e da Android Auto e nessuna variabile
-      `EXPO_PUBLIC_*` letta dal codice dell'app.
+      `EXPO_PUBLIC_*` letta dal codice dell'app. Dal 24 ottobre 2026 anche le
+      mutazioni dello store della libreria con la potatura del catalogo e
+      l'import, le preferenze di riproduzione verso player e disco, il
+      cablaggio della cache di React Query su MMKV e il tetto di 8 MB
+      all'import della libreria.
 
 - [ ] Portare nel repository test deterministici della federazione con fetch
       mockato; la composizione e la propagazione degli errori sono già coperte da

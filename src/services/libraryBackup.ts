@@ -1,6 +1,12 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { buildExport, parseExport, type ParseResult } from '@/store/libraryExport';
+import {
+  EXPORT_MAX_BYTES,
+  buildExport,
+  parseExport,
+  type ParseResult,
+  tooLargeReason,
+} from '@/store/libraryExport';
 import type { LibraryState } from '@/store/librarySchema';
 import { isPickerCancelled } from './pickerErrors';
 
@@ -121,6 +127,10 @@ export async function pickBackup(): Promise<PickOutcome> {
     });
     if (picked.canceled || !picked.result) {
       return { ok: false, canceled: true, reason: 'Nessun file scelto.' };
+    }
+    // Il tetto vale prima di leggere: un file enorme non si carica in memoria.
+    if ((picked.result.size ?? 0) > EXPORT_MAX_BYTES) {
+      return { ok: false, reason: tooLargeReason() };
     }
     return parseExport(await picked.result.text());
   } catch (e) {

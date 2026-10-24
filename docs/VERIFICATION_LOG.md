@@ -15,6 +15,34 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 24 ottobre 2026: test degli store e tetto all'import, senza device
+
+Le lacune di copertura segnalate dalle revisioni dell'audit del 24 ottobre:
+lo store della libreria e il cablaggio della cache di React Query non
+avevano test, e l'import della libreria non aveva un tetto di dimensione.
+
+- [x] `scripts/library-store.test.ts`, sullo store vero con l'MMKV finto:
+      ogni mutazione lascia su disco lo stato che i componenti leggono; il
+      catalogo persistito tiene solo le tracce ancora referenziate; la
+      cronologia entra una volta in testa, si ferma a cento e si svuota; il
+      catalogo di sessione ha un tetto ma una traccia salvata si risolve
+      sempre; le playlist si creano, rinominano, riordinano nei limiti e
+      si ripuliscono; l'import fonde senza togliere, avvisa una volta e a
+      file gia' importato non scrive. Sei test.
+- [x] `scripts/playback-store.test.ts`: shuffle e ripetizione vanno al
+      player e su disco a ogni cambio, il ciclo e' coda, brano, niente, e
+      `applyRepeat` rimanda entrambe le preferenze. Tre test.
+- [x] `scripts/query-client.test.ts`, sul client vero: su disco vanno solo
+      le chiavi persistibili, i brani Audius restano in memoria e l'elenco
+      e' segnato da rinfrescare; all'avvio si rilegge solo cio' che e'
+      ancora fresco. Due test. Le query si tolgono alla fine perche' i timer
+      di garbage collection di tre giorni terrebbero vivo il processo.
+- [x] Tetto di 8 MB all'import (`EXPORT_MAX_BYTES`): `pickBackup` lo
+      controlla sulla dimensione del file prima di leggerlo e `parseExport`
+      sul testo prima di analizzarlo, con un messaggio che dice il limite.
+      Un test.
+- [x] 226 test Node, typecheck, ESLint e Prettier verdi.
+
 ### Verificato il 24 ottobre 2026: controller fidati e host Jamendo, senza device
 
 Due rilievi delle revisioni indipendenti dell'audit del 24 ottobre,

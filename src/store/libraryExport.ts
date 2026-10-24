@@ -28,6 +28,18 @@ export const EXPORT_VERSION = 1;
 /** Marcatore del formato: distingue il nostro file da un JSON qualunque. */
 export const EXPORT_FORMAT = 'onda.library';
 
+/**
+ * Tetto alla dimensione di un file da importare, in byte. Una libreria vera
+ * sta in pochi megabyte (un brano e' circa mezzo chilobyte di JSON); oltre,
+ * il file non e' un export di Onda o e' stato costruito apposta, e leggerlo
+ * per poi riserializzarlo a ogni modifica terrebbe fermo il JS. Il tetto
+ * vale prima di leggere il file (`libraryBackup`) e prima di analizzarlo.
+ */
+export const EXPORT_MAX_BYTES = 8 * 1024 * 1024;
+
+export const tooLargeReason = (): string =>
+  `Il file supera ${EXPORT_MAX_BYTES / (1024 * 1024)} MB: non è un export di Onda.`;
+
 export interface LibraryExport {
   format: typeof EXPORT_FORMAT;
   version: number;
@@ -57,6 +69,7 @@ export type ParseResult = { ok: true; library: LibraryState } | { ok: false; rea
  */
 export function parseExport(value: unknown): ParseResult {
   if (typeof value === 'string') {
+    if (value.length > EXPORT_MAX_BYTES) return { ok: false, reason: tooLargeReason() };
     try {
       return parseExport(JSON.parse(value));
     } catch {

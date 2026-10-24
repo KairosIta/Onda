@@ -149,7 +149,7 @@ src/
   services/queryClient.ts   React Query reidratata da MMKV; potatura in queryPersistenceSchema.ts
   services/browseTree.ts    l'albero per Android Auto dalla libreria (puro); l'invio sta in browseTreeSync.ts
   store/library.ts          preferiti, playlist, cronologia (persistiti)
-  store/libraryExport.ts    formato JSON versionato dell'export e merge additivo (puro)
+  store/libraryExport.ts    formato JSON versionato dell'export, merge additivo e tetto di 8 MB all'import (puro)
   store/playback.ts         shuffle e repeat (persistiti)
   store/session.ts          brano attivo + coda e posizione salvate, "in attesa" all'avvio; useNowPlaying (schema in sessionSchema.ts)
   store/progress.ts         l'unico osservatore di progresso dell'app
@@ -1221,9 +1221,13 @@ riavvio metterebbe in pausa la musica senza che nessuno capisca perche'.
   device. Per un player musicale l'aereo e la metropolitana sono normalita',
   non casi limite.
 - **Test sugli store** — con i doppi in memoria di MMKV e del player gli store
-  si provano in Node: la sessione di ascolto e' coperta, `library` e
-  `playback` non ancora (i loro schemi si'). Sono i bug che l'utente paga di
-  piu', perche' perde dati.
+  si provano in Node: sessione di ascolto, libreria (`scripts/library-store.test.ts`:
+  ogni mutazione lascia su disco lo stato che i componenti leggono, il
+  catalogo si pota, l'import fonde e non scrive a vuoto) e preferenze di
+  riproduzione (`playback-store.test.ts`) sono coperti, come il cablaggio
+  della cache di React Query su MMKV (`query-client.test.ts`: solo chiavi
+  persistibili, senza brani Audius, rilettura del solo fresco). Restano
+  `searchHistory`, `progress`, `sleepTimer` e `notificationPermission`.
 
 ---
 
