@@ -15,6 +15,34 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 24 ottobre 2026: Dependabot per le patch Expo, senza device
+
+Decisione sulla manutenzione delle dipendenze dopo la CI rossa del 23
+ottobre: `npx expo-doctor` in CI confronta il progetto con le ultime patch
+pubblicate dell'SDK 57, quindi `main` e ogni PR diventano rossi appena Expo
+pubblica una patch, finche' qualcuno la prende. Finora i pacchetti Expo
+erano tutti esclusi da Dependabot e il riallineamento era manuale.
+
+- [x] `.github/dependabot.yml`: le patch dei pacchetti che l'SDK fissa con
+      un intervallo (`expo`, `expo-*`, `@expo/*`, `eslint-config-expo`,
+      gesture-handler, safe-area-context, screens) arrivano in una sola PR
+      del gruppo `expo-sdk-patch`, cosi' expo-doctor le valida insieme;
+      minor e major restano esclusi e arrivano solo con il passaggio di SDK.
+      Le versioni esatte dell'SDK (`react`, `react-dom`, `react-native`,
+      `react-native-reanimated`, `react-native-worklets`,
+      `@react-native-community/slider`) restano fuori da Dependabot: le
+      muove solo `npx expo install --fix`.
+- [x] Controllo giornaliero nei giorni feriali e quarantena di sette giorni
+      dalla pubblicazione per tutte le altre dipendenze (`cooldown`), esclusi
+      i pacchetti dell'SDK, che servono subito; gli aggiornamenti di
+      sicurezza non aspettano, per regola di GitHub.
+- [x] File validato in locale contro lo schema `dependabot-2.0` di
+      SchemaStore con ajv; Prettier, ESLint, typecheck e 227 test Node
+      verdi. L'esecuzione reale di Dependabot si osserva alla prossima patch
+      Expo: la prima PR del gruppo e' il collaudo.
+
+Non tocca il codice dell'app ne' l'APK.
+
 ### Verificato il 24 ottobre 2026: salto dopo errore con shuffle e ripeti tutto, e 416 leggibile, senza device
 
 Gli ultimi due rilievi, bassi, delle revisioni dell'audit del 24 ottobre.

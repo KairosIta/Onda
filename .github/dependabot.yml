@@ -2,25 +2,69 @@ version: 2
 updates:
   - package-ecosystem: npm
     directory: /
+    # Ogni giorno feriale: la PR che riallinea le patch Expo deve arrivare
+    # entro un giorno dalla pubblicazione, perche' `npx expo-doctor` in CI
+    # confronta il progetto con le ultime patch pubblicate e fino ad allora
+    # `main` e ogni PR restano rossi su quel passo. Le altre dipendenze
+    # aspettano comunque la quarantena qui sotto.
     schedule:
-      interval: weekly
+      interval: daily
     open-pull-requests-limit: 5
+    # Quarantena di sette giorni dalla pubblicazione prima di proporre una
+    # versione: una release ritirata o compromessa di solito si scopre entro
+    # pochi giorni. Non vale per gli aggiornamenti di sicurezza, che GitHub
+    # propone subito, ne' per i pacchetti dell'SDK Expo, che servono subito.
+    cooldown:
+      default-days: 7
+      exclude:
+        - expo
+        - expo-*
+        - '@expo/*'
+        - eslint-config-expo
+        - react-native-gesture-handler
+        - react-native-safe-area-context
+        - react-native-screens
+    groups:
+      # Le patch dei pacchetti che l'SDK Expo fissa con un intervallo
+      # (`~57.0.x`, `^15.0.2` in expo/bundledNativeModules.json) viaggiano in
+      # una sola PR, cosi' expo-doctor le valida insieme: da sole farebbero
+      # fallire il controllo a turno.
+      expo-sdk-patch:
+        applies-to: version-updates
+        patterns:
+          - expo
+          - expo-*
+          - '@expo/*'
+          - eslint-config-expo
+          - react-native-gesture-handler
+          - react-native-safe-area-context
+          - react-native-screens
+        update-types:
+          - patch
     ignore:
-      # Expo, React Native e i moduli nativi di cui l'SDK fissa la versione
-      # (expo/bundledNativeModules.json) si aggiornano tutti insieme con
-      # `npx expo install --fix` o con il passaggio di SDK: un aggiornamento
-      # isolato fa fallire expo-doctor o `npm ci`.
+      # Minor e major dei pacchetti dell'SDK Expo arrivano solo con il
+      # passaggio di SDK (`npx expo install --fix` o upgrade coordinato):
+      # un aggiornamento isolato fa fallire expo-doctor o `npm ci`.
       - dependency-name: expo
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
       - dependency-name: expo-*
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
       - dependency-name: '@expo/*'
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
       - dependency-name: eslint-config-expo
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      - dependency-name: react-native-gesture-handler
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      - dependency-name: react-native-safe-area-context
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      - dependency-name: react-native-screens
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      # Versioni esatte fissate dall'SDK (expo/bundledNativeModules.json):
+      # si muovono solo con `npx expo install --fix`, patch comprese.
       - dependency-name: react
       - dependency-name: react-dom
       - dependency-name: react-native
-      - dependency-name: react-native-gesture-handler
       - dependency-name: react-native-reanimated
-      - dependency-name: react-native-safe-area-context
-      - dependency-name: react-native-screens
       - dependency-name: react-native-worklets
       - dependency-name: '@react-native-community/slider'
       # eslint-plugin-react, che eslint-config-expo usa, supporta ESLint fino

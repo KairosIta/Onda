@@ -272,6 +272,11 @@ Head Unit.
       Il job `native-player` della CI ordinaria compila il Kotlin ed esegue
       i test JVM su Ubuntu e Windows, con il comando condiviso
       `npm run android:test:player` usato anche dalla build personale.
+      Dal 24 ottobre 2026 Dependabot propone in una sola PR le patch dei
+      pacchetti che l'SDK Expo fissa con un intervallo e aspetta sette
+      giorni dalla pubblicazione per tutte le altre dipendenze; le versioni
+      esatte dell'SDK (React, React Native, Reanimated, Worklets, slider) si
+      muovono solo con `npx expo install --fix` (guida, «Dependabot»).
 - [ ] Font di brand Manrope incorporato nel pacchetto nativo, copertine con
       dissolvenza e cache, feedback tattile di sistema, bottoni che si
       ritraggono, sagome di caricamento e chiusura del player col

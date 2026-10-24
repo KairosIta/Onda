@@ -668,6 +668,40 @@ documenta la policy del repository, non sostituisce una nuova verifica del
 registro npm. Rimuovere ogni eccezione quando esiste una correzione
 compatibile; eccezioni scadute o non più necessarie fanno fallire il controllo.
 
+### Dependabot
+
+`.github/dependabot.yml` segue la stessa logica dell'SDK Expo, che fissa le
+versioni dei suoi pacchetti in `expo/bundledNativeModules.json`:
+
+- le patch dei pacchetti fissati con un intervallo (`expo`, `expo-*`,
+  `@expo/*`, `eslint-config-expo`, `react-native-gesture-handler`,
+  `react-native-safe-area-context`, `react-native-screens`) arrivano in una
+  sola PR del gruppo `expo-sdk-patch`, cosi' `npx expo-doctor` le valida
+  insieme. Minor e major di questi pacchetti sono ignorati: arrivano con il
+  passaggio di SDK;
+- le versioni esatte (`react`, `react-dom`, `react-native`,
+  `react-native-reanimated`, `react-native-worklets`,
+  `@react-native-community/slider`) restano fuori da Dependabot, patch
+  comprese: le muove soltanto `npx expo install --fix`;
+- tutte le altre dipendenze aspettano sette giorni dalla pubblicazione
+  (`cooldown`): una versione ritirata o compromessa di solito si scopre
+  prima. Gli aggiornamenti di sicurezza non aspettano, per regola di GitHub.
+  I pacchetti dell'SDK sono esclusi dalla quarantena perche' servono subito.
+
+Il controllo e' giornaliero nei giorni feriali. Serve perche' `expo-doctor`
+in CI confronta il progetto con le ultime patch pubblicate dell'SDK: quando
+Expo ne pubblica una, `main` e ogni PR aperta diventano rossi sul passo
+`npx expo-doctor` finche' la patch non e' presa, come e' successo dal 17 al
+24 ottobre 2026. La PR del gruppo e' il rimedio: si fonde per prima, in
+fast-forward come le altre (i commit di Dependabot sono firmati da GitHub),
+e le PR aperte si rifanno sopra. Se la PR del gruppo e' rossa, di solito
+manca una patch che Expo pubblica a distanza di ore: Dependabot la aggiunge
+al giro successivo. Se expo-doctor chiede una versione di `react-native` o
+di un altro pacchetto esatto, la strada resta `npx expo install --fix` a
+mano, come il 15 e il 24 ottobre 2026. Dopo una PR di Dependabot `npm ls`
+puo' mostrare `@expo/cli` annidato sotto `expo/node_modules/`: e' solo la
+forma dell'albero, `npm dedupe` la riporta piatta.
+
 ---
 
 ## Verifica dopo il primo avvio
