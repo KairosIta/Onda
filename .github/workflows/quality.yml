@@ -66,6 +66,9 @@ jobs:
           log-accepted-android-sdk-licenses: false
       - run: npm ci
       - run: npm run prebuild -- --no-install
+      # Gli avvisi committati devono corrispondere alle dipendenze: il
+      # controllo esporta il bundle e interroga Gradle, che qui ha JDK e SDK.
+      - run: npm run notices:check
       - run: npm run android:test:player
 
   dependency-audit:

@@ -310,9 +310,10 @@ Head Unit.
       clausola sulla cache di sessione. I dati di catalogo Audius restano già
       solo in memoria. Per il gate 5 (avvisi delle dipendenze incorporate,
       leggibili senza rete) dal 25 ottobre 2026 l'APK porta solo i font usati
-      (Ionicons, Material Symbols, Manrope); restano il generatore degli
-      avvisi, librerie Android e pacchetti npm del bundle, e la schermata
-      «Licenze di terze parti» con il testo Apache 2.0 incorporato.
+      (Ionicons, Material Symbols, Manrope) e `npm run notices` genera
+      l'elenco completo in `assets/legal/third-party-notices.json`, 258
+      componenti verificati dalla CI; resta la schermata «Licenze di terze
+      parti» che lo mostra con il testo Apache 2.0 incorporato.
       **Done:** nota di conformità versionata, privacy policy, nome della sorgente,
       backlink originale e licenza/restrizione di ogni brano visibili; piano e
       quota Jamendo confermati; decisione documentata su Client ID/proxy per una

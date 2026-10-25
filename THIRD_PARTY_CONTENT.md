@@ -33,6 +33,12 @@ MIT, incorporato da `@expo/vector-icons`: l'app importa solo quel set, così gli
 altri font di icone del pacchetto non entrano nella build. expo-router porta
 nell'APK anche il font Material Symbols, di Google, sotto Apache License 2.0.
 
+L'elenco completo di quanto l'APK incorpora, con licenza, titolare e testo di
+ogni componente, è generato da `npm run notices` in
+`assets/legal/third-party-notices.json` dalle dipendenze reali della build:
+il classpath di release di Gradle e la source map del bundle JavaScript. La
+CI verifica che corrisponda alle dipendenze correnti.
+
 ## Musica, metadati e artwork
 
 Brani, registrazioni, composizioni, metadati e artwork ottenuti da Audius o

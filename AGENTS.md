@@ -47,4 +47,6 @@ credenziali e non cambiare la visibilità del repository.
 - Usa gli script npm multipiattaforma; non introdurre comandi che funzionano
   soltanto in Bash se esiste un equivalente Node.js.
 - Prima di proporre una modifica esegui almeno `npm test`, `npm run typecheck`,
-  `npm run lint` e `npm run format:check`.
+  `npm run lint` e `npm run format:check`. Se cambiano le dipendenze esegui
+  anche `npm run notices`, dopo `npm run prebuild`, e committa il file
+  rigenerato in `assets/legal/`.

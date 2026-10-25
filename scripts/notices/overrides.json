@@ -1,0 +1,76 @@
+{
+  "$comment": "Letto da scripts/notices.ts. Qui stanno le decisioni che POM e package.json non permettono di prendere da soli: licenze non dichiarate o scritte male e testi che il pacchetto o l'archivio non portano. I testi in texts/ vengono dai repository ufficiali, verbatim. Un override che non serve piu' fa fallire il generatore: va tolto.",
+  "packages": {
+    "@react-native/assets-registry": {
+      "textFrom": "react-native",
+      "note": "I tarball npm del monorepo React Native non includono LICENSE; la licenza e' quella del repository."
+    },
+    "@react-native/js-polyfills": { "textFrom": "react-native" },
+    "@react-native/normalize-colors": { "textFrom": "react-native" },
+    "@react-native/virtualized-lists": { "textFrom": "react-native" },
+    "expo-router": {
+      "textFrom": "expo",
+      "note": "I tarball del monorepo Expo non includono LICENSE; la licenza e' quella del repository."
+    },
+    "@expo/ui": { "textFrom": "expo" },
+    "@react-native-community/slider": {
+      "textPath": "texts/react-native-slider.txt",
+      "url": "https://github.com/callstack/react-native-slider"
+    },
+    "react-native-mmkv": {
+      "textPath": ["texts/react-native-mmkv.txt", "texts/mmkv-tencent.txt"],
+      "url": "https://github.com/mrousavy/react-native-mmkv",
+      "note": "MIT per il modulo, BSD 3-Clause per la libreria MMKV di Tencent che incorpora."
+    },
+    "standard-navigation": {
+      "textPath": "texts/standard-navigation.txt",
+      "url": "https://github.com/react-navigation/standard-navigation"
+    }
+  },
+  "artifacts": {
+    "com.facebook.fresco": { "textPath": "texts/fresco.txt" },
+    "com.facebook.react": {
+      "textFrom": "react-native",
+      "note": "react-android e' la parte nativa del pacchetto npm react-native."
+    },
+    "com.facebook.hermes": { "textPath": "texts/hermes.txt" },
+    "com.facebook.yoga": { "textPath": "texts/yoga.txt" },
+    "com.facebook.infer.annotation": { "textPath": "texts/infer.txt" },
+    "io.github.lukmccall.pika": { "textPath": "texts/pika.txt" },
+    "org.brotli": { "textPath": "texts/brotli.txt" },
+    "com.parse.bolts": {
+      "license": "BSD-3-Clause",
+      "textPath": "texts/bolts.txt",
+      "note": "Il POM dice solo «BSD License»; il testo e' quello del tag 1.4.0 di Bolts-Android."
+    },
+    "org.aomedia.avif.android": { "textPath": "texts/libavif.txt" },
+    "com.github.bumptech.glide": {
+      "textPath": "texts/glide.txt",
+      "note": "Il LICENSE di Glide copre la libreria (BSD 2-Clause) e le parti di terzi che incorpora."
+    }
+  },
+  "fonts": [
+    {
+      "name": "Ionicons",
+      "via": "@expo/vector-icons",
+      "license": "MIT",
+      "url": "https://ionic.io/ionicons",
+      "textPath": "texts/ionicons.txt"
+    },
+    {
+      "name": "Material Symbols",
+      "via": "@expo-google-fonts/material-symbols",
+      "license": "Apache-2.0",
+      "holder": "Copyright Google LLC",
+      "url": "https://fonts.google.com/icons",
+      "textPath": "texts/Apache-2.0.txt"
+    },
+    {
+      "name": "Manrope",
+      "via": "assets/fonts, incorporato dal config plugin di expo-font",
+      "license": "OFL-1.1",
+      "url": "https://github.com/sharanda/manrope",
+      "textPath": "../../assets/fonts/OFL.txt"
+    }
+  ]
+}

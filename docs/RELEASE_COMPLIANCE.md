@@ -148,8 +148,10 @@ Prima di distribuire un APK ufficiale devono essere presenti:
    per un APK ufficiale resta l'elenco completo degli avvisi incorporato
    nell'app, leggibile anche senza rete. Dal 25 ottobre 2026 l'APK incorpora
    solo i font usati (Ionicons MIT, Material Symbols Apache 2.0, Manrope
-   OFL 1.1); l'elenco da incorporare copre le librerie Android del classpath
-   di release, circa duecento artefatti Maven, e i 75 pacchetti npm del
-   bundle;
+   OFL 1.1) e `npm run notices` genera l'elenco completo in
+   `assets/legal/third-party-notices.json`: 175 artefatti Maven del classpath
+   di release, 80 pacchetti npm fra bundle e moduli nativi e i tre font, con
+   i testi di licenza e le NOTICE Apache; la CI verifica che corrisponda alle
+   dipendenze. Resta la schermata dell'app che lo mostra;
 6. nessuna credenziale nell'APK e nessuna credenziale in log, export o backup,
    verificati su una build di release.

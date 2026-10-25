@@ -15,6 +15,42 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 25 ottobre 2026: elenco degli avvisi generato dalle dipendenze reali, senza device
+
+Secondo passo del gate 5. `npm run notices` scrive
+`assets/legal/third-party-notices.json` leggendo due fonti: la source map del
+bundle Android esportato da Metro (quali pacchetti npm entrano davvero nel
+JS) e il classpath di release di Gradle tramite l'init script
+`scripts/gradle/notices.init.gradle` (artefatti Maven, moduli nativi
+compilati dai sorgenti e AAR precompilati di Expo, con i POM fino al primo
+che dichiara la licenza e i file META-INF/LICENSE e NOTICE degli archivi).
+
+- [x] 258 componenti: 175 artefatti Maven, 80 pacchetti npm (75 nel bundle,
+      22 anche come modulo nativo, 5 solo nativi come expo-splash-screen) e
+      i font Ionicons, Material Symbols e Manrope; 59 testi distinti, 201 KB,
+      nessun percorso locale. Licenze: 137 Apache 2.0, 107 MIT, 6 Glide
+      (Apache 2.0 e BSD 2-Clause), 2 ISC, 2 BSD 3-Clause, 1 BSD 2-Clause,
+      1 OFL 1.1, piu' le espressioni composte di react-native-mmkv e
+      Material Symbols.
+- [x] Le decisioni che POM e package.json non permettono stanno in
+      `scripts/notices/overrides.json`, con i testi verbatim dai repository
+      ufficiali in `scripts/notices/texts/`: i pacchetti dei monorepo React
+      Native ed Expo senza LICENSE nel tarball, slider, mmkv (con la licenza
+      BSD di Tencent), standard-navigation, Fresco, Hermes, Yoga, Infer,
+      pika, Brotli, Bolts 1.4.0, libavif, Glide. Un componente senza licenza
+      o senza testo, o un override non piu' usato, fermano il generatore
+      elencando ogni caso.
+- [x] `npm run notices:check` rigenera e confronta: una seconda esecuzione
+      ha prodotto lo stesso file byte per byte. Il controllo gira nei job
+      Media3 della CI, dopo il prebuild, su Ubuntu e Windows.
+- [x] 9 test Node nuovi su lettura dei POM, normalizzazione SPDX, mappatura
+      dei percorsi a pacchetti npm, composizione, errori e confronto; 236
+      test Node, typecheck, ESLint e Prettier verdi. Nessuna modifica nativa
+      all'app: l'init script aggiunge solo un task a `:app`.
+
+Resta per il gate 5 la schermata «Licenze di terze parti» che legge il file
+dall'app, con il testo Apache 2.0 incorporato, e il suo collaudo su device.
+
 ### Verificato il 25 ottobre 2026: nell'APK solo i font di icone usati, senza device
 
 Primo passo del gate 5 della nota di conformita' (avvisi delle dipendenze

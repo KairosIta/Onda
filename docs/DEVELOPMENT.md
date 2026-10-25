@@ -178,6 +178,7 @@ src/
   services/haptics.ts       feedback tattile di sistema: l'unico file che parla con expo-haptics
   theme.ts                  palette, spaziature, tipografia (Manrope), molla condivisa
 assets/fonts/               Manrope (SIL OFL 1.1), incorporata dal plugin expo-font come famiglia XML
+assets/legal/               third-party-notices.json, gli avvisi delle dipendenze incorporate (npm run notices)
 modules/
   onda-player/              il player nativo: modulo Expo in Kotlin su AndroidX Media3, con test JVM
 scripts/
@@ -187,6 +188,9 @@ scripts/
   build-environment.ts      i file .env* letti con la precedenza Expo e la diagnostica senza valori
   build-provenance.cjs      commit e canale nel nome di versione (puro, CommonJS per app.config.ts)
   audit.ts                  npm audit alla soglia alta con le eccezioni di audit-policy.ts
+  notices.ts                genera o verifica gli avvisi delle dipendenze incorporate; le regole pure in notices-core.ts
+  notices/                  overrides.json e i testi di licenza verbatim che pacchetti e archivi non portano
+  gradle/notices.init.gradle  task :app:ondaNotices: artefatti, POM e NOTICE del classpath di release
   installed.ts              confronta la versione installata sul telefono con il repository (npm run check:installed)
   verify-signing.ts         verifica keystore, password e identita' di release senza costruire
   *.test.ts                 i test di npm test, uno per area; unit.test.ts raccoglie le parti pure
@@ -701,6 +705,48 @@ di un altro pacchetto esatto, la strada resta `npx expo install --fix` a
 mano, come il 15 e il 24 ottobre 2026. Dopo una PR di Dependabot `npm ls`
 puo' mostrare `@expo/cli` annidato sotto `expo/node_modules/`: e' solo la
 forma dell'albero, `npm dedupe` la riporta piatta.
+
+### Avvisi delle dipendenze incorporate
+
+Il gate 5 della [nota di conformita'](RELEASE_COMPLIANCE.md) chiede che
+l'APK porti gli avvisi di tutto cio' che incorpora, leggibili senza rete.
+`npm run notices` genera `assets/legal/third-party-notices.json` dalle
+dipendenze reali della build, non dal `package.json`: `npm ls --omit=dev`
+conta oltre 500 pacchetti, nel bundle Hermes ne entrano 75.
+
+- La parte JavaScript viene dalla source map del bundle Android esportato
+  con `npx expo export --dump-sourcemap --no-bytecode` in una cartella
+  temporanea, con `EXPO_NO_DOTENV=1` perche' un eventuale `.env` resti
+  fuori: ogni sorgente sotto `node_modules/` porta al suo pacchetto, con la
+  licenza da `package.json` e il testo dal file LICENSE del pacchetto.
+- La parte nativa viene dal classpath di release di Gradle, letto dall'init
+  script `scripts/gradle/notices.init.gradle`, che aggiunge a `:app` il solo
+  task `ondaNotices` senza toccare la build: per ogni artefatto Maven il POM
+  e, se non dichiara la licenza, i genitori, piu' i file META-INF/LICENSE e
+  NOTICE dell'archivio (Apache 2.0, sezione 4d). I moduli compilati dai
+  sorgenti e gli AAR precompilati di Expo, che stanno in
+  `node_modules/<pacchetto>/local-maven-repo/`, tornano al loro pacchetto
+  npm: la licenza e' la sua.
+- I font Ionicons, Material Symbols e Manrope sono elencati a parte.
+
+Le decisioni stanno in `scripts/notices-core.ts`, puro e provato da
+`scripts/notices.test.ts`: i nomi liberi dei POM diventano identificatori
+SPDX (Apache 2.0 e' scritta in nove modi), i testi uguali hanno un solo id,
+l'ordine e' fisso e nel file non entra alcun percorso locale. Quello che le
+fonti non dicono sta in `scripts/notices/overrides.json`: licenze non
+dichiarate o ambigue (Bolts dice solo «BSD License»), testi che il tarball
+non porta (i pacchetti dei monorepo React Native ed Expo) e i testi
+verbatim dai repository ufficiali in `scripts/notices/texts/`. Un componente
+senza licenza o senza testo, e un override che non serve piu', fermano il
+generatore elencando ogni caso: la scelta e' di chi aggiorna il file, non
+un'ipotesi.
+
+`npm run notices:check` rigenera e confronta: e' il passo che la CI esegue
+nei job Media3 dopo il prebuild, perche' servono JDK e SDK. Quando una PR
+cambia le dipendenze, anche di Dependabot, si esegue `npm run notices` dopo
+`npm run prebuild` e si committa il file rigenerato sul ramo; il confronto
+dice cosa e' cambiato (nuovi, rimossi, versioni, testi). Il file e' escluso
+da Prettier con il resto di `assets/`.
 
 ---
 

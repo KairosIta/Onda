@@ -1,0 +1,120 @@
+// Init script per `npm run notices`: elenca gli artefatti Maven del classpath
+// di release dell'app con i loro POM (fino al primo che dichiara la licenza)
+// e gli avvisi META-INF che portano. Non tocca la build: aggiunge solo il
+// task :app:ondaNotices, che scrive un JSON nel file indicato da
+// -PondaNoticesOut. La lettura dei POM e la scelta delle licenze stanno in
+// scripts/notices-core.ts, dove i test le raggiungono.
+import groovy.json.JsonOutput
+import groovy.xml.XmlSlurper
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+import org.gradle.api.artifacts.component.ProjectComponentIdentifier
+import org.gradle.maven.MavenModule
+import org.gradle.maven.MavenPomArtifact
+
+allprojects { project ->
+  if (project.path != ':app') return
+  project.tasks.register('ondaNotices') {
+    description = 'Scrive artefatti, POM e avvisi del classpath di release per scripts/notices.ts'
+    notCompatibleWithConfigurationCache('risolve la configurazione in esecuzione')
+    doLast {
+      def out = project.findProperty('ondaNoticesOut')
+      if (!out) throw new GradleException('Serve -PondaNoticesOut=<file>')
+      def configuration = project.configurations.getByName('releaseRuntimeClasspath')
+
+      def pomCache = [:]
+      def pomFor = { String group, String name, String version ->
+        def key = "${group}:${name}:${version}".toString()
+        if (pomCache.containsKey(key)) return pomCache[key]
+        def result = project.dependencies.createArtifactResolutionQuery()
+          .forModule(group, name, version)
+          .withArtifacts(MavenModule, MavenPomArtifact)
+          .execute()
+        File file = null
+        result.resolvedComponents.each { component ->
+          component.getArtifacts(MavenPomArtifact).each { artifact ->
+            if (artifact.hasProperty('file')) file = artifact.file
+          }
+        }
+        pomCache[key] = file
+        return file
+      }
+
+      // Il POM dell'artefatto e poi i genitori, finche' uno dichiara <licenses>.
+      def pomChain = { String group, String name, String version ->
+        def files = []
+        def g = group, n = name, v = version
+        for (int depth = 0; depth < 10; depth++) {
+          File file = pomFor(g, n, v)
+          if (file == null) break
+          files << file
+          def pom = new XmlSlurper(false, false).parse(file)
+          if (!pom.licenses.license.isEmpty()) break
+          if (pom.parent.isEmpty()) break
+          g = pom.parent.groupId.text() ?: g
+          n = pom.parent.artifactId.text()
+          v = pom.parent.version.text() ?: v
+          if (!n) break
+        }
+        return files
+      }
+
+      def noticePaths = ['NOTICE', 'NOTICE.txt', 'NOTICE.md', 'LICENSE', 'LICENSE.txt', 'LICENSE.md']
+        .collect { "META-INF/${it}".toString() }
+      def noticesIn = { File archive ->
+        def found = []
+        project.zipTree(archive).matching { include noticePaths }.visit { details ->
+          if (!details.directory) {
+            found << [path: details.relativePath.pathString, text: details.file.getText('UTF-8')]
+          }
+        }
+        return found
+      }
+
+      // Solo i moduli esterni: i progetti (moduli Expo compilati dai sorgenti,
+      // onda-player) hanno piu' varianti e si elencano a parte, dal grafo.
+      def artifacts = []
+      def view = configuration.incoming.artifactView {
+        lenient(true)
+        componentFilter { it instanceof ModuleComponentIdentifier }
+      }
+      view.artifacts.artifacts.each { artifact ->
+        def id = artifact.id.componentIdentifier
+        File file = artifact.file
+        def extension = file.name.contains('.') ? file.name.substring(file.name.lastIndexOf('.') + 1) : ''
+        def notices = []
+        if (file.exists() && extension in ['jar', 'aar']) {
+          notices.addAll(noticesIn(file))
+          if (extension == 'aar') {
+            // Dentro un AAR gli avvisi stanno di solito in classes.jar.
+            project.zipTree(file).matching { include 'classes.jar' }.files.each { inner ->
+              notices.addAll(noticesIn(inner))
+            }
+          }
+        }
+        artifacts << [
+          group: id.group,
+          name: id.module,
+          version: id.version,
+          file: file.absolutePath,
+          extension: extension,
+          poms: pomChain(id.group, id.module, id.version)*.absolutePath,
+          notices: notices,
+        ]
+      }
+
+      def projects = []
+      configuration.incoming.resolutionResult.allComponents.each { component ->
+        if (component.id instanceof ProjectComponentIdentifier) {
+          def target = project.rootProject.findProject(component.id.projectPath)
+          projects << [path: component.id.projectPath, dir: target?.projectDir?.absolutePath]
+        }
+      }
+
+      new File(out.toString()).setText(
+        JsonOutput.prettyPrint(JsonOutput.toJson([artifacts: artifacts, projects: projects])),
+        'UTF-8',
+      )
+      println "ondaNotices: ${artifacts.size()} artefatti, ${projects.size()} progetti -> ${out}"
+    }
+  }
+}
