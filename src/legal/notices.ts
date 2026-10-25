@@ -168,3 +168,38 @@ export function describeOrigin(component: NoticeComponent): string {
     }
   }
 }
+
+/** Fin qui una riga sta su uno schermo stretto senza spezzarsi una seconda volta. */
+const SHORT_LINE = 52;
+/** Una voce di elenco: «- », «* », «1. », «(a) », «iv) ». */
+const LIST_ITEM = /^(?:[-*•]|\(?[a-z0-9]{1,3}[.)])\s/i;
+
+/**
+ * I testi di licenza arrivano impaginati per un terminale a 80 colonne:
+ * righe spezzate a mano e rientri a colpi di spazi. Su uno schermo stretto
+ * ogni riga andrebbe a capo una seconda volta, lasciando una parola sola
+ * per riga (collaudo del 25 ottobre 2026). Qui le righe di un paragrafo
+ * tornano un flusso unico e il telefono le spezza dove serve; restano a
+ * capo i blocchi di righe corte (titoli, intestazioni, indirizzi), le voci
+ * di elenco e cio' che segue una riga chiusa dai due punti. Cambia solo lo
+ * spazio bianco: le parole sono quelle del file.
+ */
+export function reflowLicenseText(text: string): string {
+  return text
+    .replace(/\r\n?/g, '\n')
+    .trim()
+    .split(/\n[ \t]*\n+/)
+    .map((block) => {
+      const lines = block
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line !== '');
+      if (lines.every((line) => line.length <= SHORT_LINE)) return lines.join('\n');
+      return lines.reduce((out, line) => {
+        if (out === '') return line;
+        const apart = out.endsWith(':') || LIST_ITEM.test(line);
+        return `${out}${apart ? '\n' : ' '}${line}`;
+      }, '');
+    })
+    .join('\n\n');
+}

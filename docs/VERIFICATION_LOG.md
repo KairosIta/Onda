@@ -15,6 +15,40 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 25 ottobre 2026: licenze di terze parti su device, in modalita' aereo
+
+Collaudo del gate 5 su Motorola Edge 50 Neo, Android 16, build personale
+di release 0.2.0+0338e83 installata con `npm run install:personal`, con la
+modalita' aereo attiva e nessuna rete per tutto il giro, guidato da adb
+(uiautomator per i tocchi, screencap per le prove).
+
+- [x] Libreria › Informazioni e privacy › «Licenze di terze parti»: la riga
+      dice «258 componenti: 175 librerie Android, 80 pacchetti npm e 3 font»
+      e l'elenco si apre con lo stesso riepilogo e le licenze per numero;
+      scorrendo, l'intestazione «Librerie Android 175» resta fissa in alto.
+- [x] Una voce dall'elenco (androidx.activity:activity) apre la scheda con
+      versione, licenza Apache 2.0, titolare The Android Open Source
+      Project, dove sta nell'APK e il sito del progetto.
+- [x] `onda://licenses/74` apre androidx.media3:media3-exoplayer 1.11.1 con
+      il testo Apache 2.0 per esteso; `onda://licenses/157` apre
+      commons-codec con il testo della licenza e la sezione «Avviso
+      (NOTICE)»; `onda://licenses/9999` mostra «Componente non trovato» con
+      «Torna alle licenze». Nel logcat nessun errore JS o nativo.
+- [x] Trovato e corretto nello stesso giorno: i testi arrivano impaginati
+      per 80 colonne e, in carattere a spaziatura fissa, ogni riga andava a
+      capo una seconda volta, con una parola orfana per riga. Ora
+      `reflowLicenseText` ricompone i paragrafi (restano a capo i blocchi di
+      righe corte, le voci di elenco e cio' che segue i due punti) e il
+      testo usa il carattere dell'app. Verificato su una seconda build con
+      le stesse schede: il testo Apache scorre come un documento e la NOTICE
+      conserva titolo, riga di copyright e separatori. 1 test Node nuovo
+      (243 in tutto) sul testo Apache del file: titolo su tre righe,
+      paragrafi in un flusso unico, nessun rientro, stesse parole.
+
+Il gate 5 della nota di conformita' e' coperto: nell'APK solo i font usati,
+elenco generato dalle dipendenze reali e verificato dalla CI, schermata che
+lo mostra senza rete. La decisione di release dipende dagli altri gate.
+
 ### Verificato il 25 ottobre 2026: le licenze di terze parti si leggono dall'app, senza device
 
 Terzo passo del gate 5. La schermata «Licenze di terze parti», da

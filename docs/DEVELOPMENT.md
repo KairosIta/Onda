@@ -763,7 +763,11 @@ componente finisce in una sezione, ogni id di testo si risolve e il testo
 Apache 2.0 di Media3 c'e' per esteso. Il parametro della route di dettaglio
 e' la posizione nel file: ci si arriva solo dall'elenco, non da link
 esterni, e tutto cio' che non e' una posizione esistente mostra «Componente
-non trovato».
+non trovato». I testi si mostrano ricomposti per paragrafo da
+`reflowLicenseText`: gli originali sono impaginati per 80 colonne e su un
+telefono ogni riga andrebbe a capo una seconda volta, con una parola orfana
+per riga; restano a capo i blocchi di righe corte, le voci di elenco e cio'
+che segue i due punti, e le parole sono quelle del file.
 
 ---
 

@@ -155,6 +155,7 @@ Prima di distribuire un APK ufficiale devono essere presenti:
    dipendenze. Dallo stesso giorno la schermata «Licenze di terze parti», da
    Informazioni › Musica e licenze, mostra l'elenco con licenza, titolare,
    testo per esteso e NOTICE di ogni componente, Apache 2.0 compresa, senza
-   rete; resta la verifica su device di una build di release;
+   rete: collaudata lo stesso giorno su una build personale di release in
+   modalità aereo;
 6. nessuna credenziale nell'APK e nessuna credenziale in log, export o backup,
    verificati su una build di release.

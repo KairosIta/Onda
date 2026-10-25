@@ -9,6 +9,7 @@ import {
   describeOrigin,
   licenseLabel,
   parseComponentIndex,
+  reflowLicenseText,
   sectionsByKind,
   textsOf,
   type NoticeComponent,
@@ -132,4 +133,48 @@ test('la scheda dice dove il componente entra nell’APK', () => {
     'Font incorporato da @expo/vector-icons',
   );
   assert.match(describeOrigin(component({ kind: 'android' })), /^Libreria Android/);
+});
+
+test('i testi di licenza si ricompongono per paragrafo, senza toccare titoli ed elenchi', () => {
+  const apache = textsOf(
+    file,
+    file.components.find((c) => c.name === 'androidx.media3:media3-exoplayer')!,
+  )[0]!.text;
+  const flowed = reflowLicenseText(apache);
+  assert.ok(
+    flowed.startsWith('Apache License\nVersion 2.0, January 2004\nhttp://www.apache.org/licenses/'),
+    'il blocco del titolo resta su tre righe, senza rientri',
+  );
+  assert.ok(
+    flowed.includes(
+      '"Work" shall mean the work of authorship, whether in Source or Object form, made available under the License,',
+    ),
+    'le righe di un paragrafo tornano un flusso unico',
+  );
+  assert.ok(!/^[ \t]/m.test(flowed), 'nessuna riga comincia con uno spazio');
+  assert.ok(flowed.includes('\n\n1. Definitions.\n\n'), 'i paragrafi restano separati');
+  assert.equal(
+    flowed.split(/\s+/).join(' '),
+    apache.trim().split(/\s+/).join(' '),
+    'le parole sono le stesse',
+  );
+
+  assert.equal(
+    reflowLicenseText(
+      'Redistribution and use are permitted provided that the following conditions are met:\n' +
+        '1. Redistributions of source code must retain the above copyright notice, this\n' +
+        '   list of conditions and the following disclaimer.\n' +
+        '2. Redistributions in binary form must reproduce the above copyright notice.\n',
+    ),
+    'Redistribution and use are permitted provided that the following conditions are met:\n' +
+      '1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.\n' +
+      '2. Redistributions in binary form must reproduce the above copyright notice.',
+  );
+  assert.equal(
+    reflowLicenseText(
+      'Apache Commons Codec\r\nCopyright 2002-2014 The Apache Software Foundation\r\n\r\n',
+    ),
+    'Apache Commons Codec\nCopyright 2002-2014 The Apache Software Foundation',
+    'un blocco di righe corte resta com\u2019era, anche con i fine riga di Windows',
+  );
 });

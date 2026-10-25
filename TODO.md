@@ -314,8 +314,8 @@ Head Unit.
       l'elenco completo in `assets/legal/third-party-notices.json`, 258
       componenti verificati dalla CI, che la schermata «Licenze di terze
       parti», da Informazioni › Musica e licenze, mostra con licenza,
-      titolare e testo per esteso, Apache 2.0 compresa; resta il collaudo
-      su device.
+      titolare e testo per esteso, Apache 2.0 compresa, collaudata su device
+      lo stesso giorno in modalità aereo.
       **Done:** nota di conformità versionata, privacy policy, nome della sorgente,
       backlink originale e licenza/restrizione di ogni brano visibili; piano e
       quota Jamendo confermati; decisione documentata su Client ID/proxy per una

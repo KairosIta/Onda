@@ -3,7 +3,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ExternalLink } from '@/components/ExternalLink';
 import { Empty } from '@/components/StateViews';
-import { describeOrigin, licenseLabel, parseComponentIndex, textsOf } from '@/legal/notices';
+import {
+  describeOrigin,
+  licenseLabel,
+  parseComponentIndex,
+  reflowLicenseText,
+  textsOf,
+} from '@/legal/notices';
 import { NOTICES } from '@/legal/noticesFile';
 import { colors, radius, spacing, touch, type } from '@/theme';
 
@@ -21,8 +27,10 @@ function Meta({ label, value }: { label: string; value: string }) {
 /**
  * Un componente dell'elenco: chi e', con quale licenza, dove sta nell'APK
  * e i testi per esteso, licenza e NOTICE. I testi si selezionano e si
- * copiano; sono a spaziatura fissa perche' sono impaginati cosi' negli
- * originali, con intestazioni centrate a colpi di spazi.
+ * copiano. Non sono a spaziatura fissa: gli originali sono impaginati per
+ * 80 colonne e su un telefono le righe andrebbero a capo due volte, quindi
+ * i paragrafi si ricompongono (`reflowLicenseText`) e il testo scorre come
+ * un documento.
  */
 export default function LicenseScreen() {
   const router = useRouter();
@@ -80,7 +88,7 @@ export default function LicenseScreen() {
             {entry.role === 'notice' ? 'Avviso (NOTICE)' : 'Testo della licenza'}
           </Text>
           <Text style={styles.licenseText} selectable>
-            {entry.text}
+            {reflowLicenseText(entry.text)}
           </Text>
         </View>
       ))}
@@ -116,5 +124,5 @@ const styles = StyleSheet.create({
   meta: { gap: 2 },
   metaLabel: { ...type.caption, color: colors.textMuted },
   metaValue: { ...type.body, color: colors.text, lineHeight: 22 },
-  licenseText: { fontFamily: 'monospace', fontSize: 12, lineHeight: 17, color: colors.textMuted },
+  licenseText: { ...type.caption, lineHeight: 18, color: colors.textMuted },
 });
