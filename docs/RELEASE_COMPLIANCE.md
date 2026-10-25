@@ -152,6 +152,9 @@ Prima di distribuire un APK ufficiale devono essere presenti:
    `assets/legal/third-party-notices.json`: 175 artefatti Maven del classpath
    di release, 80 pacchetti npm fra bundle e moduli nativi e i tre font, con
    i testi di licenza e le NOTICE Apache; la CI verifica che corrisponda alle
-   dipendenze. Resta la schermata dell'app che lo mostra;
+   dipendenze. Dallo stesso giorno la schermata «Licenze di terze parti», da
+   Informazioni › Musica e licenze, mostra l'elenco con licenza, titolare,
+   testo per esteso e NOTICE di ogni componente, Apache 2.0 compresa, senza
+   rete; resta la verifica su device di una build di release;
 6. nessuna credenziale nell'APK e nessuna credenziale in log, export o backup,
    verificati su una build di release.

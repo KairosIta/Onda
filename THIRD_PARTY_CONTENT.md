@@ -37,7 +37,9 @@ L'elenco completo di quanto l'APK incorpora, con licenza, titolare e testo di
 ogni componente, è generato da `npm run notices` in
 `assets/legal/third-party-notices.json` dalle dipendenze reali della build:
 il classpath di release di Gradle e la source map del bundle JavaScript. La
-CI verifica che corrisponda alle dipendenze correnti.
+CI verifica che corrisponda alle dipendenze correnti. L'app lo mostra in
+Informazioni › Musica e licenze › «Licenze di terze parti», con il testo per
+esteso di ogni licenza e le NOTICE, anche senza rete.
 
 ## Musica, metadati e artwork
 

@@ -183,6 +183,8 @@ export default function RootLayout() {
                   options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
                 />
                 <Stack.Screen name="about" options={{ animation: 'slide_from_right' }} />
+                <Stack.Screen name="licenses/index" options={{ animation: 'slide_from_right' }} />
+                <Stack.Screen name="licenses/[id]" options={{ animation: 'slide_from_right' }} />
                 <Stack.Screen name="sources" options={{ animation: 'slide_from_right' }} />
                 {/* Il benvenuto si chiude con un bottone, non tornando indietro:
                     dietro c'e' Scopri, che rimanderebbe qui. */}

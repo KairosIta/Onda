@@ -116,6 +116,8 @@ app/
   album/[source]/[id].tsx   pagina album (solo Jamendo, vedi sotto)
   welcome.tsx               primo avvio: le sorgenti e il Client ID Jamendo, con «Salta»
   sources.tsx               Sorgenti (da Libreria): interruttori e credenziali
+  licenses/index.tsx        Licenze di terze parti (da Informazioni): tutto cio' che l'APK incorpora, per sezioni
+  licenses/[id].tsx         un componente: licenza, titolare, dove sta nell'APK e i testi per esteso
   +not-found.tsx            URL che non corrisponde a niente: messaggio e ritorno a Scopri
 src/
   types/track.ts            modello unificato, interfaccia MusicSource, SOURCE_IDS (l'elenco delle sorgenti)
@@ -138,6 +140,7 @@ src/
   services/pickerErrors.ts  l'annullamento del selettore di cartelle, in ogni forma in cui Expo lo segnala (puro)
   services/setupPlayer.ts   configurazione del player (una volta per processo)
   services/buildInfo.ts     commit, canale e data della build per la schermata Informazioni; la lettura pura in buildInfoSchema.ts
+  legal/notices.ts          sezioni, etichette e testi degli avvisi per la schermata Licenze (puro); il file importato in legal/noticesFile.ts
   services/playbackService.ts  eventi del player, anche in background: cambi di brano, progresso, errori
   services/mediaItems.ts    andata e ritorno fra il nostro modello e i MediaItem del player
   services/playbackStatus.ts  lo stato unico del tasto play, ricavato dai segnali del player
@@ -747,6 +750,20 @@ cambia le dipendenze, anche di Dependabot, si esegue `npm run notices` dopo
 `npm run prebuild` e si committa il file rigenerato sul ramo; il confronto
 dice cosa e' cambiato (nuovi, rimossi, versioni, testi). Il file e' escluso
 da Prettier con il resto di `assets/`.
+
+Nell'app il file lo importa `src/legal/noticesFile.ts` come modulo: Metro lo
+incorpora nel bundle, quindi si legge senza rete e senza file system, e il
+typecheck lo confronta con il tipo. `app/licenses/index.tsx` lo mostra per
+sezioni (librerie Android, pacchetti npm, font) e `app/licenses/[id].tsx`
+apre un componente con licenza, titolare, dove sta nell'APK e i testi per
+esteso, licenza e NOTICE; ci si arriva da Informazioni › Musica e licenze.
+Le regole pure stanno in `src/legal/notices.ts` e
+`scripts/legal-notices.test.ts` le prova sul file committato: ogni
+componente finisce in una sezione, ogni id di testo si risolve e il testo
+Apache 2.0 di Media3 c'e' per esteso. Il parametro della route di dettaglio
+e' la posizione nel file: ci si arriva solo dall'elenco, non da link
+esterni, e tutto cio' che non e' una posizione esistente mostra «Componente
+non trovato».
 
 ---
 

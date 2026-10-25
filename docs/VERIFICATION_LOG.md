@@ -15,6 +15,37 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 25 ottobre 2026: le licenze di terze parti si leggono dall'app, senza device
+
+Terzo passo del gate 5. La schermata «Licenze di terze parti», da
+Informazioni › Musica e licenze, mostra il file generato da
+`npm run notices`: Metro lo incorpora nel bundle come modulo, quindi
+licenza, titolare, testo per esteso e NOTICE di ogni componente si leggono
+senza rete e senza file system.
+
+- [x] `app/licenses/index.tsx`: elenco per sezioni (librerie Android,
+      pacchetti npm, font) con intestazioni fisse e riepilogo per tipo e per
+      licenza; `app/licenses/[id].tsx`: un componente con licenza,
+      titolare, dove sta nell'APK, sito del progetto e i testi per esteso,
+      selezionabili. Informazioni ha la riga che porta all'elenco. Le regole
+      pure stanno in `src/legal/notices.ts`.
+- [x] Bundle Android esportato con `expo export`, source map e senza
+      bytecode: il JSON degli avvisi e le due schermate sono moduli del
+      bundle; i 74 pacchetti npm che la source map elenca sotto
+      `node_modules/` coincidono uno a uno con i 75 che il file segna nel
+      bundle JS (react-is c'e' in due versioni); i font registrati restano 2.
+      Il JS esportato pesa 3,2 MB, di cui 0,2 il file degli avvisi.
+- [x] 6 test Node nuovi (242 in tutto) sul file committato: ogni componente
+      finisce in una sezione e ogni id di testo si risolve; il testo Apache
+      2.0 di Media3 ExoPlayer c'e' per esteso e commons-codec porta la sua
+      NOTICE; il parametro della route rifiuta tutto cio' che non e' una
+      posizione esistente; etichette delle licenze, riepiloghi e origine nel
+      file. Typecheck con le rotte tipizzate rigenerate, ESLint e Prettier
+      verdi. Nessuna modifica nativa.
+
+Resta per il gate 5 il collaudo su device: aprire l'elenco, un componente
+Media3 con il testo Apache 2.0 e uno con NOTICE, in modalita' aereo.
+
 ### Verificato il 25 ottobre 2026: elenco degli avvisi generato dalle dipendenze reali, senza device
 
 Secondo passo del gate 5. `npm run notices` scrive

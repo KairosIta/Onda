@@ -131,7 +131,9 @@ Il codice e la documentazione originali di Onda sono disponibili sotto
 [MIT](LICENSE). Questa licenza non si estende automaticamente alle dipendenze
 di terze parti (come AndroidX Media3, sotto Apache 2.0), agli asset di brand,
 alle API, alle credenziali, alla musica, agli artwork, ai metadati o ai marchi
-di terzi.
+di terzi. Nell'app, da Informazioni › Musica e licenze, «Licenze di terze
+parti» elenca tutto ciò che l'APK incorpora con il testo di ogni licenza,
+anche senza rete.
 
 Prima di usare, modificare o distribuire il progetto leggi
 [Contenuti, software e servizi di terze parti](THIRD_PARTY_CONTENT.md) e la

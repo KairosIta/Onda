@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ExternalLink } from '@/components/ExternalLink';
+import { ScreenLink } from '@/components/ScreenLink';
 import {
   APACHE_LICENSE_URL,
   AUDIUS_API_TERMS_URL,
@@ -15,6 +16,8 @@ import {
   PROJECT_URL,
   THIRD_PARTY_CONTENT_URL,
 } from '@/config/legal';
+import { describeKinds } from '@/legal/notices';
+import { NOTICES } from '@/legal/noticesFile';
 import { describeBuild, readBuildInfo } from '@/services/buildInfo';
 import { colors, radius, spacing, touch, type } from '@/theme';
 
@@ -86,8 +89,14 @@ export default function AboutScreen() {
         <Text style={styles.body}>
           Il player di Onda è codice Onda sotto MIT e usa AndroidX Media3, di The Android Open
           Source Project, sotto licenza Apache 2.0: il motore viene scaricato e incorporato nell’APK
-          durante la build.
+          durante la build. Il testo della licenza e gli avvisi di tutto ciò che l’APK incorpora si
+          leggono qui, anche senza rete.
         </Text>
+        <ScreenLink
+          label="Licenze di terze parti"
+          detail={describeKinds(NOTICES)}
+          onPress={() => router.push('/licenses')}
+        />
         <ExternalLink label="AndroidX Media3" url={MEDIA3_PROJECT_URL} />
         <ExternalLink label="Licenza Apache 2.0" url={APACHE_LICENSE_URL} />
         <ExternalLink label="Condizioni generali Audius" url={AUDIUS_TERMS_URL} />

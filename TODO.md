@@ -312,8 +312,10 @@ Head Unit.
       leggibili senza rete) dal 25 ottobre 2026 l'APK porta solo i font usati
       (Ionicons, Material Symbols, Manrope) e `npm run notices` genera
       l'elenco completo in `assets/legal/third-party-notices.json`, 258
-      componenti verificati dalla CI; resta la schermata «Licenze di terze
-      parti» che lo mostra con il testo Apache 2.0 incorporato.
+      componenti verificati dalla CI, che la schermata «Licenze di terze
+      parti», da Informazioni › Musica e licenze, mostra con licenza,
+      titolare e testo per esteso, Apache 2.0 compresa; resta il collaudo
+      su device.
       **Done:** nota di conformità versionata, privacy policy, nome della sorgente,
       backlink originale e licenza/restrizione di ogni brano visibili; piano e
       quota Jamendo confermati; decisione documentata su Client ID/proxy per una
@@ -623,7 +625,8 @@ Head Unit.
       vuoto e contenuto non riproducibile.
 
 - [ ] Completare Impostazioni/Informazioni: versione, sorgenti, privacy, licenze
-      e collegamenti ufficiali sono presenti; restano diagnostica ed export.
+      di terze parti e collegamenti ufficiali sono presenti; restano diagnostica
+      ed export.
 
 - [ ] Documentare qualità e consumo dati oppure offrire una modalità risparmio
       dati compatibile con le sorgenti.
