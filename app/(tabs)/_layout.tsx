@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 // Da expo-router e non da @react-navigation/bottom-tabs: expo-router
 // incorpora la sua copia del navigator, e mescolare le due fa litigare

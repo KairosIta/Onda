@@ -15,6 +15,31 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 25 ottobre 2026: nell'APK solo i font di icone usati, senza device
+
+Primo passo del gate 5 della nota di conformita' (avvisi delle dipendenze
+incorporate, leggibili senza rete). Misurando il bundle Android esportato con
+la source map e' emerso che `import { Ionicons } from '@expo/vector-icons'`
+registra tutti i set del pacchetto: venti font di icone nell'APK per usarne
+uno.
+
+- [x] I 17 file dell'app importano `Ionicons` da
+      `@expo/vector-icons/Ionicons`; una regola ESLint rifiuta il barrel in
+      `app/` e `src/`. Il doppio della UI nel test di `Artwork` segue il nuovo
+      percorso.
+- [x] Bundle esportato prima e dopo con `expo export`, source map e senza
+      bytecode: i font registrati passano da 20 a 2 (Ionicons, MIT; Material
+      Symbols 400 Regular, Apache 2.0, portato da expo-router), gli asset
+      esportati da 5,0 MB a 1,5 MB, i pacchetti npm nel bundle restano 75.
+      Escono dall'APK, e dagli avvisi da incorporare, Entypo (CC BY-SA 4.0),
+      FontAwesome (OFL 1.1 e CC BY 4.0) e gli altri sedici set.
+- [x] 227 test Node, typecheck, ESLint e Prettier verdi. Nessuna modifica
+      nativa.
+
+Restano per il gate 5 il generatore degli avvisi, circa duecento artefatti
+Maven del classpath di release e i 75 pacchetti npm del bundle, e la
+schermata «Licenze di terze parti» con il testo Apache 2.0 incorporato.
+
 ### Verificato il 24 ottobre 2026: Dependabot per le patch Expo, senza device
 
 Decisione sulla manutenzione delle dipendenze dopo la CI rossa del 23

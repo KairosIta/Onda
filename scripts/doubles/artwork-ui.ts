@@ -10,6 +10,7 @@ export function Image(props: Record<string, unknown>) {
 
 export const View = ({ children }: { children?: ReactNode }) => children;
 export const Ionicons = () => null;
+export default Ionicons;
 export const StyleSheet = {
   create: <T>(styles: T): T => styles,
   absoluteFill: {},

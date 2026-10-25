@@ -1247,6 +1247,20 @@ riavvio metterebbe in pausa la musica senza che nessuno capisca perche'.
 
 ---
 
+**Le icone si importano dal set, non dal barrel di `@expo/vector-icons`.**
+`import { Ionicons } from '@expo/vector-icons'` carica `build/IconsLazy.js`,
+che esporta tutti i set e registra i loro font come asset: nell'APK finivano
+venti font di icone per usarne uno, con licenze diverse da dichiarare, come
+Entypo (CC BY-SA 4.0) e FontAwesome (OFL 1.1 e CC BY 4.0). Con
+`import Ionicons from '@expo/vector-icons/Ionicons'` il bundle del 25 ottobre
+2026 porta solo Ionicons (MIT) e Material Symbols (Apache 2.0, che arriva da
+expo-router) e gli asset esportati passano da 5,0 MB a 1,5 MB. ESLint rifiuta
+il barrel in `app/` e `src/`. Per contare i font registrati si esporta il
+bundle con `npx expo export --platform android --dump-sourcemap --no-bytecode`
+in una cartella fuori dal repository, con `EXPO_NO_DOTENV=1` perche' un
+eventuale `.env` non finisca nel bundle, e si cercano nel JS le voci
+`type:"ttf"`.
+
 ## Prossimi passi
 
 - **Offline** — solo per sorgenti e licenze che lo consentono espressamente.

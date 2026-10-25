@@ -8,7 +8,9 @@ module.exports = defineConfig([
   prettierConfig,
   {
     // Nell'app il player e' solo `@/player`, anche con percorsi relativi:
-    // contratto, backend e modulo nativo restano interni.
+    // contratto, backend e modulo nativo restano interni. Le icone si
+    // importano dal set che serve: il barrel di `@expo/vector-icons`
+    // registra nel bundle tutti i font di icone, usati o no.
     files: ['index.js', 'app/**', 'src/**'],
     ignores: ['src/player/**'],
     rules: {
@@ -23,6 +25,11 @@ module.exports = defineConfig([
             {
               regex: '(^|/)modules/onda-player(/|$)',
               message: "Il player si usa da '@/player': il modulo nativo lo importa src/player.",
+            },
+            {
+              regex: '^@expo/vector-icons$',
+              message:
+                "Si importa il set che serve, come '@expo/vector-icons/Ionicons': il barrel porta nell'APK tutti i font di icone.",
             },
           ],
         },

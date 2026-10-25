@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';

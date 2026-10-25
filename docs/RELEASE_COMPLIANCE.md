@@ -146,6 +146,10 @@ Prima di distribuire un APK ufficiale devono essere presenti:
    le altre) consultabili dall'APK. Dal 24 ottobre 2026 la schermata
    Informazioni nomina Media3 e collega il testo della licenza Apache 2.0;
    per un APK ufficiale resta l'elenco completo degli avvisi incorporato
-   nell'app, leggibile anche senza rete;
+   nell'app, leggibile anche senza rete. Dal 25 ottobre 2026 l'APK incorpora
+   solo i font usati (Ionicons MIT, Material Symbols Apache 2.0, Manrope
+   OFL 1.1); l'elenco da incorporare copre le librerie Android del classpath
+   di release, circa duecento artefatti Maven, e i 75 pacchetti npm del
+   bundle;
 6. nessuna credenziale nell'APK e nessuna credenziale in log, export o backup,
    verificati su una build di release.

@@ -20,7 +20,7 @@ const ui = new URL('./doubles/artwork-ui.ts', import.meta.url).href;
 // Node non legge TSX, quindi qui TypeScript toglie tipi e trasforma il JSX.
 registerHooks({
   resolve(specifier, context, next) {
-    if (['react-native', 'expo-image', '@expo/vector-icons'].includes(specifier)) {
+    if (['react-native', 'expo-image', '@expo/vector-icons/Ionicons'].includes(specifier)) {
       return { url: ui, shortCircuit: true };
     }
     return next(specifier, context);

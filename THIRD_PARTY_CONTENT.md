@@ -28,6 +28,11 @@ Manrope Project Authors ed è distribuito sotto la
 dal config plugin di expo-font. La licenza OFL resta quella del font: la MIT di
 Onda non lo rilicenzia.
 
+Le icone dell'interfaccia vengono dal font Ionicons, di Ionic, sotto licenza
+MIT, incorporato da `@expo/vector-icons`: l'app importa solo quel set, così gli
+altri font di icone del pacchetto non entrano nella build. expo-router porta
+nell'APK anche il font Material Symbols, di Google, sotto Apache License 2.0.
+
 ## Musica, metadati e artwork
 
 Brani, registrazioni, composizioni, metadati e artwork ottenuti da Audius o
