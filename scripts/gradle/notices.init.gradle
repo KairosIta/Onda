@@ -72,9 +72,13 @@ allprojects { project ->
 
       // Solo i moduli esterni: i progetti (moduli Expo compilati dai sorgenti,
       // onda-player) hanno piu' varianti e si elencano a parte, dal grafo.
+      // Niente `lenient`: un artefatto che non si scarica deve fermare il
+      // task subito, con l'errore di Gradle che dice quale e da quale
+      // repository. In modalita' lenient spariva in silenzio, Gradle
+      // esauriva i tentativi su ogni artefatto per mezz'ora e il controllo
+      // finiva per lamentarsi di un override «inutile».
       def artifacts = []
       def view = configuration.incoming.artifactView {
-        lenient(true)
         componentFilter { it instanceof ModuleComponentIdentifier }
       }
       view.artifacts.artifacts.each { artifact ->

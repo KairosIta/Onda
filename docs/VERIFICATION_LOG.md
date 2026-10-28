@@ -15,6 +15,27 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 28 ottobre 2026: il controllo degli avvisi fallisce subito se un artefatto non si scarica, senza device
+
+- [x] Il 28 ottobre `npm run notices:check` in CI e' rimasto bloccato tre
+      volte nel passo «Classpath di release da Gradle»: 35 minuti su Ubuntu
+      per la PR degli script Windows, due volte, e 40 minuti su Windows per
+      il run di `main` a 73109e8, fino al timeout del job. Nello stesso
+      momento altri run passavano in 6 minuti: un problema di rete verso un
+      repository Maven, non del codice. L'init script risolveva gli artefatti
+      in modalita' `lenient`: un artefatto che non si scarica spariva in
+      silenzio mentre Gradle esauriva i tentativi su ognuno, e alla fine il
+      controllo si lamentava di un override «inutile» per `com.facebook.react`,
+      un messaggio che non diceva la causa. Ora la risoluzione non e'
+      lenient: il primo artefatto che non si scarica ferma il task con
+      l'errore di Gradle, che `notices.ts` stampa per intero.
+- [x] Con la rete normale il controllo passa come prima: 258 componenti
+      (175 android, 3 font, 80 npm), senza l'ambiguita' di varianti che
+      aveva motivato `lenient`, perche' i progetti sono gia' esclusi dal
+      filtro sui componenti. Con un proxy morto e una cache Gradle vuota il
+      controllo fallisce in 14 secondi con «BUILD FAILED» e «What went wrong»
+      a schermo, invece di mezz'ora e un messaggio fuorviante.
+
 ### Verificato il 28 ottobre 2026: azioni di GitHub fissate allo SHA, senza device
 
 - [x] I due workflow usavano le azioni per tag di major

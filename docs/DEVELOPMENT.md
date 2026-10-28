@@ -743,7 +743,10 @@ conta oltre 500 pacchetti, nel bundle Hermes ne entrano 75.
   NOTICE dell'archivio (Apache 2.0, sezione 4d). I moduli compilati dai
   sorgenti e gli AAR precompilati di Expo, che stanno in
   `node_modules/<pacchetto>/local-maven-repo/`, tornano al loro pacchetto
-  npm: la licenza e' la sua.
+  npm: la licenza e' la sua. La risoluzione non e' `lenient`: un artefatto
+  che non si scarica ferma subito il task con l'errore di Gradle, che
+  `notices.ts` stampa per intero, invece di sparire in silenzio e far
+  passare il controllo per un override «inutile» dopo mezz'ora di tentativi.
 - I font Ionicons, Material Symbols e Manrope sono elencati a parte.
 
 Le decisioni stanno in `scripts/notices-core.ts`, puro e provato da
