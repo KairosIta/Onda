@@ -54,6 +54,8 @@ import {
 import {
   buildExport,
   EXPORT_FORMAT,
+  IMPORT_LIMITS,
+  importLimitExceeded,
   mergeLibrary,
   parseExport,
   previewImport,
@@ -658,6 +660,48 @@ test('un export da una versione futura si rifiuta, uno vecchio si legge', () => 
 
   const vecchio = parseExport({ format: EXPORT_FORMAT, version: 1, library: {} });
   assert.equal(vecchio.ok, true);
+});
+
+test('un file con troppe voci o campi smisurati si rifiuta prima di entrare', () => {
+  const base = { format: EXPORT_FORMAT, version: 1 };
+  const playlist = (i: number) => ({ id: `p${i}`, name: 'x', createdAt: 1, trackUids: [] });
+
+  const playlists = Array.from({ length: IMPORT_LIMITS.playlists + 1 }, (_, i) => playlist(i));
+  const troppe = parseExport({ ...base, library: { playlists } });
+  assert.equal(troppe.ok, false);
+  assert.ok(!troppe.ok && troppe.reason.includes('playlist'), 'dice quale tetto');
+
+  const tracks = Object.fromEntries(
+    Array.from({ length: IMPORT_LIMITS.tracks + 1 }, (_, i) => [`audius:${i}`, {}]),
+  );
+  const troppi = parseExport({ ...base, library: { tracks } });
+  assert.equal(troppi.ok, false);
+  assert.ok(!troppi.ok && troppi.reason.includes('brani'));
+
+  const nome = 'x'.repeat(IMPORT_LIMITS.fieldLength + 1);
+  const lungo = parseExport({ ...base, library: { playlists: [{ ...playlist(0), name: nome }] } });
+  assert.equal(lungo.ok, false);
+  assert.ok(!lungo.ok && lungo.reason.includes('caratteri'));
+
+  // Anche una chiave, non solo un valore, e anche in profondita'.
+  const chiave = importLimitExceeded({ tracks: { [nome]: { annidato: [[{ a: 'b' }]] } } });
+  assert.ok(chiave?.includes('caratteri'));
+
+  // Al tetto passa, e un file vero resta leggibile.
+  const alTetto = parseExport({
+    ...base,
+    library: { playlists: playlists.slice(0, IMPORT_LIMITS.playlists) },
+  });
+  assert.equal(alTetto.ok, true);
+  assert.equal(
+    importLimitExceeded({ tracks: {}, favorites: [], playlists: [], history: [] }),
+    undefined,
+  );
+  assert.equal(
+    importLimitExceeded(null),
+    undefined,
+    'una libreria assente la gestisce loadLibrary',
+  );
 });
 
 test('la fusione non toglie mai niente a chi importa', () => {
@@ -2226,9 +2270,9 @@ test('credenziali: il Client ID si pulisce, si controlla e a schermo si maschera
   assert.match(jamendoClientIdProblem('') ?? '', /Inserisci/u);
   assert.match(jamendoClientIdProblem('inserisci_il_tuo_client_id') ?? '', /esempio/u);
   assert.match(jamendoClientIdProblem('abc!1234') ?? '', /lettere e numeri/u);
-  assert.equal(maskCredential('abcd1234'), '••••1234');
+  assert.equal(maskCredential('abcd1234'), '••••34', 'due caratteri su otto, non quattro');
   assert.equal(maskCredential('abc'), '••••', 'troppo corto per mostrarne un pezzo');
-  assert.equal(maskCredential('abcd1234').includes('abcd'), false);
+  assert.equal(maskCredential('abcd1234').includes('abcd12'), false);
 
   assert.equal(audiusApiKeyProblem('0123456789abcdef'), null);
   assert.match(audiusApiKeyProblem('Bearer abcdefgh123') ?? '', /Bearer/u);

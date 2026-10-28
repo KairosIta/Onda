@@ -153,7 +153,7 @@ src/
   services/queryClient.ts   React Query reidratata da MMKV; potatura in queryPersistenceSchema.ts
   services/browseTree.ts    l'albero per Android Auto dalla libreria (puro); l'invio sta in browseTreeSync.ts
   store/library.ts          preferiti, playlist, cronologia (persistiti); validazione e tetto della cronologia in librarySchema.ts (puro)
-  store/libraryExport.ts    formato JSON versionato dell'export, merge additivo e tetto di 8 MB all'import (puro)
+  store/libraryExport.ts    formato JSON versionato dell'export, merge additivo e tetti all'import: 8 MB, playlist, brani, lunghezza dei campi (puro)
   store/playback.ts         shuffle e repeat (persistiti); la rilettura tollerante in playbackSchema.ts (puro)
   store/session.ts          brano attivo + coda e posizione salvate, "in attesa" all'avvio; useNowPlaying (schema in sessionSchema.ts)
   store/progress.ts         l'unico osservatore di progresso dell'app

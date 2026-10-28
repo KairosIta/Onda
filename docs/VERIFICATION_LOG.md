@@ -15,6 +15,24 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 28 ottobre 2026: credenziale mascherata a due caratteri e tetti interni all'import, senza device
+
+- [x] La schermata Sorgenti mostrava gli ultimi quattro caratteri della
+      credenziale salvata: un Client ID Jamendo ne ha otto, quindi uno
+      screenshot o uno sguardo ne scopriva meta'. `maskCredential` ne mostra
+      due, abbastanza per riconoscere quale e' salvato; test aggiornato.
+- [x] L'import aveva il tetto di 8 MB ma nessun tetto dentro il file: in 8 MB
+      stanno centomila playlist vuote, e dopo l'import ogni cuoricino avrebbe
+      riserializzato la libreria intera sul thread JS, la Libreria avrebbe
+      elencato centomila righe e, siccome la fusione non toglie mai niente,
+      l'unico rimedio sarebbe stato cancellare i dati dell'app. `parseExport`
+      rifiuta ora, con il motivo, un file con piu' di 1000 playlist, piu' di
+      20.000 brani o un campo (chiavi comprese) oltre 4096 caratteri
+      (`IMPORT_LIMITS`, `importLimitExceeded`, scansione iterativa cosi' un
+      file annidato apposta non sfonda lo stack). Un test nuovo copre i tre
+      tetti, il caso al limite e una libreria assente.
+- [x] `npm test` 245 verdi (1 nuovo), typecheck, ESLint e Prettier puliti.
+
 ### Verificato il 28 ottobre 2026: argomenti con spazi su Windows ed expo-doctor nel lockfile, senza device
 
 - [x] Su Windows gli script lanciavano `npm.cmd`, `npx.cmd`, `gradlew.bat` e

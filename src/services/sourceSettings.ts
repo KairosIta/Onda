@@ -97,9 +97,13 @@ export function jamendoClientIdProblem(input: string): string | null {
   return null;
 }
 
-/** Il valore salvato a schermo: abbastanza per riconoscerlo, non per copiarlo. */
+/**
+ * Il valore salvato a schermo: abbastanza per riconoscerlo, non per
+ * copiarlo. Due caratteri: un Client ID Jamendo ne ha otto, e mostrarne
+ * quattro ne scopriva meta' a chi guarda lo schermo o uno screenshot.
+ */
 export function maskCredential(value: string): string {
-  return value.length > 4 ? `••••${value.slice(-4)}` : '••••';
+  return value.length > 4 ? `••••${value.slice(-2)}` : '••••';
 }
 
 /**

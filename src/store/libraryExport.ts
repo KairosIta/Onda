@@ -40,6 +40,59 @@ export const EXPORT_MAX_BYTES = 8 * 1024 * 1024;
 export const tooLargeReason = (): string =>
   `Il file supera ${EXPORT_MAX_BYTES / (1024 * 1024)} MB: non è un export di Onda.`;
 
+/**
+ * Tetti dentro il file, oltre a quello in byte. In 8 MB stanno centomila
+ * playlist vuote da sessanta byte: dopo l'import ogni cuoricino
+ * riserializzerebbe la libreria intera sul thread JS, la Libreria
+ * elencherebbe centomila righe e, siccome la fusione non toglie mai
+ * niente, l'unico rimedio sarebbe cancellare i dati dell'app. Una libreria
+ * vera ha decine di playlist e migliaia di brani, e un campo di testo delle
+ * API sta in poche centinaia di caratteri.
+ */
+export const IMPORT_LIMITS = {
+  playlists: 1000,
+  tracks: 20_000,
+  fieldLength: 4096,
+} as const;
+
+/** La stringa piu' lunga nel valore, chiavi comprese; iterativo, cosi' un file annidato apposta non sfonda lo stack. */
+function longestString(root: unknown): number {
+  let longest = 0;
+  const pending: unknown[] = [root];
+  while (pending.length > 0) {
+    const value = pending.pop();
+    if (typeof value === 'string') {
+      longest = Math.max(longest, value.length);
+    } else if (Array.isArray(value)) {
+      for (const item of value) pending.push(item);
+    } else if (isRecord(value)) {
+      for (const [key, item] of Object.entries(value)) {
+        longest = Math.max(longest, key.length);
+        pending.push(item);
+      }
+    }
+  }
+  return longest;
+}
+
+/** Il primo tetto che la libreria del file supera, come frase, o `undefined`. */
+export function importLimitExceeded(library: unknown): string | undefined {
+  if (!isRecord(library)) return undefined;
+  const playlists = Array.isArray(library.playlists) ? library.playlists.length : 0;
+  if (playlists > IMPORT_LIMITS.playlists) {
+    return `${playlists} playlist, oltre le ${IMPORT_LIMITS.playlists} ammesse`;
+  }
+  const tracks = isRecord(library.tracks) ? Object.keys(library.tracks).length : 0;
+  if (tracks > IMPORT_LIMITS.tracks) {
+    return `${tracks} brani, oltre i ${IMPORT_LIMITS.tracks} ammessi`;
+  }
+  const longest = longestString(library);
+  if (longest > IMPORT_LIMITS.fieldLength) {
+    return `un campo di ${longest} caratteri, oltre i ${IMPORT_LIMITS.fieldLength} ammessi`;
+  }
+  return undefined;
+}
+
 export interface LibraryExport {
   format: typeof EXPORT_FORMAT;
   version: number;
@@ -89,6 +142,8 @@ export function parseExport(value: unknown): ParseResult {
       reason: `File nella versione ${value.version}: serve una versione più recente di Onda.`,
     };
   }
+  const exceeded = importLimitExceeded(value.library);
+  if (exceeded) return { ok: false, reason: `Il file ha ${exceeded}: non è un export di Onda.` };
   // Da qui in giu' e' roba nostra e `loadLibrary` sa gia' scartare il
   // singolo pezzo rotto senza buttare via il resto.
   return { ok: true, library: loadLibrary(value.library) };
