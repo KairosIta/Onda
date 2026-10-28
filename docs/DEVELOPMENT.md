@@ -658,13 +658,16 @@ GHSA-w5hq-g745-h8pq. Non va sostituito con `npm audit fix --force`: npm propone
 un downgrade incompatibile a Expo 53 e React Native 0.72.
 
 L'elenco corrente delle eccezioni è in
-[`scripts/audit-policy.ts`](../scripts/audit-policy.ts): `node-forge`
+[`scripts/audit-policy.ts`](../scripts/audit-policy.ts): `zod`
+(GHSA-mrhx-c7xc-m3w5, validazione nella CLI Expo: la correzione esiste solo
+nella 4.6.6, che `@expo/cli` non accetta), da rivedere entro il 15 gennaio
+del 2027. La policy registra il motivo dell'accettazione e il fatto che lo
+strumento non entra nell'APK Android. L'eccezione per `node-forge`
 (GHSA-86w9-cpqp-85rv, strumenti Expo per firma iOS e manifest expo-updates)
-e `zod` (GHSA-mrhx-c7xc-m3w5, validazione nella CLI Expo: la correzione
-esiste solo nella 4.6.6, che `@expo/cli` non accetta), con revisione entro
-il 15 gennaio 2027. La policy registra il motivo dell'accettazione e il
-fatto che questi strumenti non entrano nell'APK Android. L'eccezione per
-`braces` (GHSA-vfj7-8cjw-p6xm, watcher Metro) è uscita il 24 ottobre 2026:
+è uscita il 28 ottobre 2026: la 1.4.1 del 27 ottobre corregge l'avviso e
+l'intervallo `^1.3.3` di `@expo/cli` la accetta, quindi è bastato aggiornare
+il lockfile alla 1.4.2, senza override. L'eccezione per `braces`
+(GHSA-vfj7-8cjw-p6xm, watcher Metro) è uscita il 24 ottobre 2026:
 GitHub aveva ritirato l'avviso il giorno prima e, come previsto,
 un'eccezione non più necessaria aveva fatto fallire il controllo. Gli avvisi
 `image-size` riportati nell'audit storico di agosto non sono più

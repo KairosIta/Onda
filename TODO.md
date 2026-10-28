@@ -549,8 +549,10 @@ Head Unit.
       delle risposte Audius e Jamendo.
 
 - [ ] Rivedere entro il 15 gennaio 2027 le eccezioni dichiarate in
-      `scripts/audit-policy.ts` (`node-forge` e `zod`, senza versione corretta
-      installabile al 24 ottobre 2026): dopo quella data `npm run check:audit`
+      `scripts/audit-policy.ts` (`zod`, senza versione corretta installabile
+      al 28 ottobre 2026; `node-forge` è uscita dall'elenco lo stesso giorno,
+      con il lockfile aggiornato alla 1.4.2 che corregge l'avviso): dopo
+      quella data `npm run check:audit`
       torna rosso. Se nel frattempo è uscita una correzione compatibile, la
       strada è un override; altrimenti motivo e data si riscrivono. Un avviso
       ritirato da GitHub, come `braces` il 23 ottobre 2026, rende l'eccezione

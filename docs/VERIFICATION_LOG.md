@@ -15,6 +15,23 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 28 ottobre 2026: node-forge corretta a monte, eccezione tolta, senza device
+
+- [x] `node-forge` 1.4.1 del 27 ottobre 2026 corregge GHSA-86w9-cpqp-85rv
+      (CVE-2026-85393, firma RSA PKCS#1 v1.5 con campi extra in
+      DigestAlgorithm), accettata in `scripts/audit-policy.ts` dal 24
+      ottobre perche' allora senza versione corretta. L'intervallo `^1.3.3`
+      di `@expo/cli` e `@expo/code-signing-certificates` la accetta:
+      `npm update node-forge` porta il lockfile alla 1.4.2 (la 1.4.1 aveva
+      rotto `pem.decode` su input `Buffer`), tre righe cambiate, nessun
+      override. L'eccezione esce dalla policy nello stesso commit: lasciata,
+      il controllo l'avrebbe segnalata come inutile e sarebbe fallito.
+      L'avviso GitHub non indica ancora la versione corretta, quindi
+      Dependabot non l'aveva proposta.
+- [x] `npm run check:audit` verde con la sola eccezione `zod`; `npm test` 243
+      verdi, typecheck, ESLint e Prettier puliti; `npm run notices:check`
+      conferma 258 componenti invariati: il pacchetto non entra nell'APK.
+
 ### Verificato il 28 ottobre 2026: binding legacy di Android Auto e richieste di coda vuote, senza device
 
 Audit a tutto campo di `main` (`5220c4d`) con tre revisioni indipendenti

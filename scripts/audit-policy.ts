@@ -53,15 +53,6 @@ export interface AcceptedAdvisory {
  */
 export const ACCEPTED_ADVISORIES: readonly AcceptedAdvisory[] = [
   {
-    id: 'GHSA-86w9-cpqp-85rv',
-    packageName: 'node-forge',
-    reviewBy: '2027-01-15',
-    reason:
-      "Nessuna versione corretta (l'ultima, 1.4.0, e' colpita). In @expo/cli serve alla firma " +
-      "del codice iOS e dei manifest di expo-updates: Onda e' solo Android, non usa " +
-      "expo-updates, e il pacchetto non finisce nell'APK.",
-  },
-  {
     id: 'GHSA-mrhx-c7xc-m3w5',
     packageName: 'zod',
     reviewBy: '2027-01-15',
