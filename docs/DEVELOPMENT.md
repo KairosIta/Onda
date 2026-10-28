@@ -532,7 +532,10 @@ ed eseguirli su Ubuntu e Windows a ogni PR e push su `main`. Dal 18 ottobre
 2026 il job è verde su GitHub a ogni PR; il 24 ottobre i test JVM sono 27, il 28 ottobre 31.
 `main` è protetto: i cinque job del workflow Quality sono tutti
 obbligatori, i commit devono essere firmati e la storia resta lineare, cioè
-solo fast-forward. Lo stesso controllo gira in
+solo fast-forward. Dal 28 ottobre 2026 le azioni dei workflow sono fissate
+allo SHA del commit, con la versione esatta accanto, e Dependabot aggiorna
+SHA e commento insieme: un tag di major si può spostare, uno SHA no. Lo
+stesso controllo gira in
 `npm run build:personal` prima dell'Android Lint. Per eseguirlo da solo:
 
 ```bash

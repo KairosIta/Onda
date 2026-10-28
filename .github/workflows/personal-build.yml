@@ -6,6 +6,8 @@ on:
 permissions:
   contents: read
 
+# Le azioni sono fissate allo SHA del commit, con la versione accanto: un tag
+# si puo' spostare, uno SHA no. Dependabot aggiorna SHA e commento insieme.
 jobs:
   android:
     name: Android on ${{ matrix.os }}
@@ -17,20 +19,20 @@ jobs:
         os: [ubuntu-latest, windows-latest]
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22.15.0
           cache: npm
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: 17
       # Il pacchetto `tools`, predefinito nella v3, non e' piu' servito da Google:
       # qui si chiede all'azione soltanto cio' che serve alla build.
-      - uses: android-actions/setup-android@v4
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         with:
           packages: platform-tools platforms;android-36 build-tools;36.0.0
           log-accepted-android-sdk-licenses: false

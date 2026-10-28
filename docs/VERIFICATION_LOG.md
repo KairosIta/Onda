@@ -15,6 +15,21 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 28 ottobre 2026: azioni di GitHub fissate allo SHA, senza device
+
+- [x] I due workflow usavano le azioni per tag di major
+      (`actions/checkout@v7`, `actions/setup-node@v7`, `actions/setup-java@v6`,
+      `android-actions/setup-android@v4`): un tag si puo' spostare, e il
+      codice che gira sul runner cambierebbe senza una modifica nel
+      repository. Ogni azione e' ora fissata allo SHA del commit a cui il tag
+      puntava il 28 ottobre 2026, con la versione esatta accanto (v7.0.1,
+      v7.1.0, v6.1.0, v4.0.4), risolti con l'API di GitHub. Dependabot, gia'
+      configurato per `github-actions`, aggiorna SHA e commento insieme. E' il
+      prerequisito dell'impostazione del repository «Require actions to be
+      pinned to a full-length commit SHA».
+- [x] Prettier pulito; la prova e' la CI della PR stessa, che gira con le
+      azioni fissate.
+
 ### Verificato il 28 ottobre 2026: credenziale mascherata a due caratteri e tetti interni all'import, senza device
 
 - [x] La schermata Sorgenti mostrava gli ultimi quattro caratteri della
