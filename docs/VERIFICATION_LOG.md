@@ -15,6 +15,43 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 28 ottobre 2026: binding legacy di Android Auto e richieste di coda vuote, senza device
+
+Audit a tutto campo di `main` (`5220c4d`) con tre revisioni indipendenti
+(modulo nativo, livello TypeScript, script di build). Qui le due correzioni
+al modulo del player; gli altri rilievi restano nella roadmap.
+
+- [x] Android Auto non riusciva a collegarsi al servizio. Dal 18 ottobre
+      `onGetSession` consegnava la sessione solo ai controller riconosciuti,
+      ma per il binding con l'azione `android.media.browse.MediaBrowserService`,
+      quello di Android Auto, Automotive e dei comandi Bluetooth, Media3
+      1.11.1 chiama `onGetSession` con un segnaposto (package
+      `android.media.session.MediaController`, non fidato) e senza sessione
+      non restituisce nessun binder: Onda sarebbe comparsa fra le app media
+      senza aprirsi mai. Verificato con `javap` sul bytecode di
+      `media3-session-1.11.1` (`MediaSessionService.onBind`,
+      `ControllerInfo.createLegacyControllerInfo`); lo stesso bytecode
+      conferma che i browser legacy passano comunque da `onConnect` con il
+      controller vero (`MediaSessionServiceLegacyStub.onGetRoot`,
+      `isTrustedForMediaControl`, `onConnectOnHandler`). Ora `onGetSession`
+      consegna sempre la sessione e il confine resta in `onConnect`, che
+      non cambia: chi non e' Onda, notifica, Auto, Automotive o fidato e'
+      respinto come prima, e chi non sfoglia la libreria non manda code.
+      Il segnaposto non si costruisce in un test JVM puro (passa da
+      `TextUtils`, uno stub di android.jar), quindi la prova e' con il
+      Desktop Head Unit, ancora aperta nella roadmap.
+- [x] Una richiesta di coda senza brani riconosciuti svuotava la coda in
+      ascolto: `onSetMediaItems` rispondeva con una lista vuota, che Media3
+      applica al player (`setMediaItems([])`). Raggiungibile da Auto con
+      una ricerca vocale, che arriva senza id ne' URL, o con un id rimasto
+      indietro rispetto all'albero. La decisione e' ora in `QueueRequest`,
+      pura: un brano scelto in macchina porta la sua cartella, gli elementi
+      con URL restano e quelli senza si cercano, e senza nessun brano la
+      richiesta fallisce lasciando la coda com'e'. Tre test JVM.
+- [x] `npm test` 243 verdi, typecheck, ESLint e Prettier puliti;
+      compilazione Kotlin e 31 test JVM (3 nuovi), 0 falliti;
+      `npm run build:personal` completo con Android Lint.
+
 ### Verificato il 25 ottobre 2026: licenze di terze parti su device, in modalita' aereo
 
 Collaudo del gate 5 su Motorola Edge 50 Neo, Android 16, build personale

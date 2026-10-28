@@ -467,7 +467,11 @@ audio scritto interamente da Onda.
   service con la notifica. I tasti di `setup` vanno al controller della
   notifica, ad Android Auto e ai controller fidati del sistema, che pero'
   non possono sostituire la coda; ogni altra app e' respinta alla
-  connessione. Il tocco sulla notifica apre
+  connessione (`onConnect`), non al binding: a `onGetSession` Media3 passa,
+  per i browser legacy come Android Auto, un segnaposto non fidato
+  (`ControllerInfo.LEGACY_CONTROLLER_PACKAGE_NAME`) e senza sessione non
+  restituisce nessun binder, quindi la sessione si consegna sempre e il
+  controller vero si giudica alla connessione. Il tocco sulla notifica apre
   `onda://notification.click`, che `app/+native-intent.ts` porta al player.
 - **Recenti.** Tolta dai recenti, Onda si ferma e il servizio si chiude, ma
   coda e posizione restano nel player: se processo e JS sopravvivono,
@@ -515,13 +519,17 @@ audio scritto interamente da Onda.
   stare in Preferiti, in una playlist
   e negli ascolti recenti, quindi in macchina il suo id porta anche la
   cartella (`cartella|uid`): scelto un brano, in coda vanno i brani suonabili
-  della stessa cartella, a partire da lui. In coda torna l'uid nudo.
+  della stessa cartella, a partire da lui. In coda torna l'uid nudo. Una
+  richiesta in cui nessun brano si riconosce, come una ricerca vocale o un
+  id rimasto indietro rispetto all'albero, fallisce e lascia la coda in
+  ascolto: una lista vuota Media3 l'avrebbe applicata al player
+  (`QueueRequest`, test JVM).
 
 Le parti pure (categorie d'errore, tasti, timer di spegnimento, albero di
 Auto) hanno test JVM in `modules/onda-player/android/src/test`. Il job
 `native-player` del workflow Quality è configurato per compilare il Kotlin
 ed eseguirli su Ubuntu e Windows a ogni PR e push su `main`. Dal 18 ottobre
-2026 il job è verde su GitHub a ogni PR; il 24 ottobre i test JVM sono 27.
+2026 il job è verde su GitHub a ogni PR; il 24 ottobre i test JVM sono 27, il 28 ottobre 31.
 `main` è protetto: i cinque job del workflow Quality sono tutti
 obbligatori, i commit devono essere firmati e la storia resta lineare, cioè
 solo fast-forward. Lo stesso controllo gira in

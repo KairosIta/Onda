@@ -206,7 +206,13 @@ Head Unit.
       passaggio nativo: cronologia e cuoricino risolvono l'uid dalla libreria.
       Scelto un brano in macchina, in coda vanno i brani della sua cartella
       (test JVM del modulo). Nessuna prova con un'unità o con il Desktop Head
-      Unit.
+      Unit. Il 28 ottobre 2026 il servizio consegna la sessione anche al
+      binding legacy, quello con cui l'auto si collega: dal 18 ottobre lo
+      respingeva come controller estraneo e Onda sarebbe comparsa fra le
+      app media senza aprirsi mai. Una richiesta senza brani riconosciuti
+      ora fallisce invece di svuotare la coda in ascolto (`QueueRequest`,
+      tre test JVM). **Done:** navigazione, scelta di un brano e ricerca
+      vocale respinta provate con il Desktop Head Unit o un'unità reale.
 - [ ] Copertine in Android Auto. L'auto non scarica le copertine da un URL
       https: le vuole come `content://`. Serve un ContentProvider nel modulo
       del player che le prenda dalla rete con una cache piccola.

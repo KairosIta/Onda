@@ -54,8 +54,17 @@ class PlaybackService : MediaLibraryService() {
     addSession(librarySession)
   }
 
+  /**
+   * La sessione si consegna a chiunque la chieda al binding: chi e' davvero
+   * lo decide [LibraryCallback.onConnect], che vede il controller vero. Per
+   * i browser legacy (Android Auto, Automotive, i comandi Bluetooth) Media3
+   * chiama questo metodo con un segnaposto, package
+   * `ControllerInfo.LEGACY_CONTROLLER_PACKAGE_NAME` e non fidato, e senza
+   * sessione non restituisce nessun binder: respingerlo qui lasciava l'auto
+   * fuori prima ancora che potesse presentarsi.
+   */
   override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? =
-    session?.takeIf { isOurs(it, controllerInfo) }
+    session
 
   /** Tolta dai recenti, Onda si ferma (contratto). */
   override fun onTaskRemoved(rootIntent: Intent?) {
@@ -175,7 +184,8 @@ class PlaybackService : MediaLibraryService() {
 
     /**
      * Un brano scelto in macchina arriva senza URL: in coda vanno i brani
-     * della sua cartella, a partire da lui (contratto, `setBrowseTree`).
+     * della sua cartella, a partire da lui (contratto, `setBrowseTree`). La
+     * decisione e' di [QueueRequest]; qui si traduce nei tipi Media3.
      */
     override fun onSetMediaItems(
       mediaSession: MediaSession,
@@ -185,23 +195,23 @@ class PlaybackService : MediaLibraryService() {
       startPositionMs: Long,
     ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
       if (!canBrowse(mediaSession, controller)) return refused()
-      val picked = mediaItems.singleOrNull()
-      if (picked != null && picked.localConfiguration == null) {
-        PlaybackCore.browseTree().resolve(picked.mediaId)?.let { selection ->
-          return Futures.immediateFuture(
+      val request = mediaItems.map { QueueRequest.Item(it.mediaId, it.localConfiguration != null) }
+      return when (val outcome = QueueRequest.plan(PlaybackCore.browseTree(), request, startIndex)) {
+        QueueRequest.Unresolved -> unresolved()
+        is QueueRequest.Resolved ->
+          Futures.immediateFuture(
             MediaSession.MediaItemsWithStartPosition(
-              selection.tracks.map(ItemCodec::fromBrowse),
-              selection.startIndex,
-              C.TIME_UNSET,
+              outcome.entries.map { entry ->
+                when (entry) {
+                  is QueueRequest.Entry.Given -> mediaItems[entry.index]
+                  is QueueRequest.Entry.FromTree -> ItemCodec.fromBrowse(entry.node)
+                }
+              },
+              outcome.startIndex,
+              if (outcome.fromTree) C.TIME_UNSET else startPositionMs,
             )
           )
-        }
       }
-      val resolved = mediaItems.mapNotNull(::resolve)
-      val start = if (startIndex in resolved.indices) startIndex else 0
-      return Futures.immediateFuture(
-        MediaSession.MediaItemsWithStartPosition(resolved, start, startPositionMs)
-      )
     }
 
     override fun onAddMediaItems(
@@ -210,7 +220,13 @@ class PlaybackService : MediaLibraryService() {
       mediaItems: MutableList<MediaItem>,
     ): ListenableFuture<MutableList<MediaItem>> {
       if (!canBrowse(mediaSession, controller)) return refused()
-      return Futures.immediateFuture(mediaItems.mapNotNull(::resolve).toMutableList())
+      val tree = PlaybackCore.browseTree()
+      val resolved =
+        mediaItems.mapNotNull { item ->
+          if (item.localConfiguration != null) item
+          else QueueRequest.lookup(tree, item.mediaId)?.let(ItemCodec::fromBrowse)
+        }
+      return Futures.immediateFuture(resolved.toMutableList())
     }
 
     /**
@@ -221,13 +237,15 @@ class PlaybackService : MediaLibraryService() {
     private fun <T> refused(): ListenableFuture<T> =
       Futures.immediateFailedFuture(SecurityException("Il controller non puo' cambiare la coda"))
 
-    /** Un elemento con il suo URL resta com'e'; senza, si cerca nell'albero. */
-    private fun resolve(item: MediaItem): MediaItem? {
-      if (item.localConfiguration != null) return item
-      val tree = PlaybackCore.browseTree()
-      val node = tree.item(item.mediaId)?.takeIf { !it.isFolder && it.url != null } ?: tree.track(item.mediaId)
-      return node?.let(ItemCodec::fromBrowse)
-    }
+    /**
+     * Nessun brano riconosciuto nella richiesta: fallisce come sopra e la coda
+     * in ascolto resta. Una lista vuota, invece, Media3 l'avrebbe data al
+     * player, che l'avrebbe applicata cancellando la coda.
+     */
+    private fun <T> unresolved(): ListenableFuture<T> =
+      Futures.immediateFailedFuture(
+        IllegalArgumentException("Nessun brano riconosciuto nella richiesta di coda")
+      )
   }
 
   private companion object {
