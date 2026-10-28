@@ -12,6 +12,7 @@ import {
   isVersionAtLeast,
   npmExecutable,
   parseJavaMajor,
+  quoteForCmd,
 } from './personal-policy.ts';
 
 test('il requisito Node distingue versioni supportate e obsolete', () => {
@@ -32,8 +33,39 @@ test('i comandi Windows usano wrapper ed eseguibili nativi', () => {
   assert.equal(gradleWrapper('C:\\repo', 'win32'), 'C:\\repo\\android\\gradlew.bat');
   assert.equal(androidExecutable('adb', 'win32'), 'adb.exe');
   assert.equal(apksignerExecutable('win32'), 'apksigner.bat');
-  assert.deepEqual(commandSpec('gradlew.bat', 'win32'), { command: 'gradlew.bat', shell: true });
-  assert.deepEqual(commandSpec('java', 'win32'), { command: 'java', shell: false });
+  assert.deepEqual(commandSpec('gradlew.bat', ['assembleRelease'], 'win32'), {
+    command: 'gradlew.bat assembleRelease',
+    args: [],
+    shell: true,
+  });
+  assert.deepEqual(commandSpec('java', ['-version'], 'win32'), {
+    command: 'java',
+    args: ['-version'],
+    shell: false,
+  });
+  assert.deepEqual(commandSpec('gradlew.bat', ['x'], 'linux'), {
+    command: 'gradlew.bat',
+    args: ['x'],
+    shell: false,
+  });
+});
+
+test('su Windows i percorsi con spazi restano un solo argomento per cmd.exe', () => {
+  const wrapper = 'C:\\Users\\Mario Rossi\\Onda\\android\\gradlew.bat';
+  assert.deepEqual(
+    commandSpec(wrapper, ['assembleRelease', '-PondaNoticesOut=C:\\Temp\\onda notices'], 'win32'),
+    {
+      command: `"${wrapper}" assembleRelease "-PondaNoticesOut=C:\\Temp\\onda notices"`,
+      args: [],
+      shell: true,
+    },
+  );
+  assert.equal(quoteForCmd('verify'), 'verify');
+  assert.equal(quoteForCmd('a&b'), '"a&b"');
+  assert.equal(quoteForCmd('100%'), '"100%"');
+  assert.equal(quoteForCmd(''), '""');
+  assert.throws(() => quoteForCmd('con "virgolette"'), /non rappresentabile/u);
+  assert.throws(() => quoteForCmd('a\nb'), /non rappresentabile/u);
 });
 
 test('la ricerca SDK privilegia le variabili esplicite e copre Windows', () => {

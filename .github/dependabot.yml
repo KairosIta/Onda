@@ -44,7 +44,9 @@ updates:
     ignore:
       # Minor e major dei pacchetti dell'SDK Expo arrivano solo con il
       # passaggio di SDK (`npx expo install --fix` o upgrade coordinato):
-      # un aggiornamento isolato fa fallire expo-doctor o `npm ci`.
+      # un aggiornamento isolato fa fallire expo-doctor o `npm ci`. Il
+      # pattern copre anche `expo-doctor`, nelle devDependencies dal 28
+      # ottobre 2026: le sue minor seguono lo stesso passaggio di SDK.
       - dependency-name: expo
         update-types: ['version-update:semver-major', 'version-update:semver-minor']
       - dependency-name: expo-*

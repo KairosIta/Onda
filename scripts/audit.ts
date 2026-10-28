@@ -26,10 +26,10 @@ function fail(message: string): never {
 const describe = (a: Advisory): string =>
   `${a.severity.padEnd(8)} ${a.packageName} ${a.range} — ${a.title} (${a.id})`;
 
-const spec = commandSpec(npmExecutable());
+const spec = commandSpec(npmExecutable(), ['audit', '--json']);
 // `npm audit` esce con un codice diverso da zero appena trova qualcosa,
 // anche un avviso moderato: il verdetto lo da' la policy, non il codice.
-const result = spawnSync(spec.command, ['audit', '--json'], {
+const result = spawnSync(spec.command, spec.args, {
   cwd: root,
   encoding: 'utf8',
   shell: spec.shell,

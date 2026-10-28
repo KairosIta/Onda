@@ -63,8 +63,8 @@ function fail(message: string): never {
 
 function run(label: string, command: string, args: string[]): void {
   console.log(`\n==> ${label}`);
-  const spec = commandSpec(command);
-  const result = spawnSync(spec.command, args, {
+  const spec = commandSpec(command, args);
+  const result = spawnSync(spec.command, spec.args, {
     cwd: root,
     env,
     encoding: 'utf8',

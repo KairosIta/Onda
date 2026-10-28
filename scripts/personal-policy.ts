@@ -9,8 +9,10 @@ export interface VersionCheck {
   supported: boolean;
 }
 
+/** Cosa passare a `spawnSync`: comando, argomenti e se serve la shell. */
 export interface CommandSpec {
   command: string;
+  args: string[];
   shell: boolean;
 }
 
@@ -45,8 +47,37 @@ export function parseJavaMajor(output: string): number | undefined {
   return major === 1 && match[2] ? Number.parseInt(match[2], 10) : major;
 }
 
-export function commandSpec(command: string, platform = process.platform): CommandSpec {
-  return { command, shell: platform === 'win32' && /[.](?:cmd|bat)$/iu.test(command) };
+/**
+ * Un argomento sulla riga di comando di cmd.exe: fra virgolette se ha spazi
+ * o caratteri che cmd interpreta (`& | < > ^ ( ) % !`). Dentro le virgolette
+ * cmd li lascia passare; le virgolette stesse e gli a capo non hanno una
+ * forma affidabile, e un argomento che li contiene si rifiuta.
+ */
+export function quoteForCmd(arg: string): string {
+  if (/["\r\n]/u.test(arg)) {
+    throw new Error(`Argomento non rappresentabile per cmd.exe: ${JSON.stringify(arg)}`);
+  }
+  if (arg === '') return '""';
+  return /[\s&|<>^()%!]/u.test(arg) ? `"${arg}"` : arg;
+}
+
+/**
+ * Come lanciare un comando. Su Windows `.cmd` e `.bat` passano da cmd.exe,
+ * e con `shell: true` Node incolla gli argomenti con uno spazio e senza
+ * virgolette: un percorso come `C:\Users\Mario Rossi\Onda` diventa due
+ * argomenti e cmd cerca `C:\Users\Mario`. Qui la riga si compone con ogni
+ * pezzo fra virgolette quando serve e si passa intera, senza argomenti: e'
+ * anche la forma che Node 24 chiede (DEP0190). Altrove niente shell.
+ */
+export function commandSpec(
+  command: string,
+  args: readonly string[],
+  platform = process.platform,
+): CommandSpec {
+  if (platform === 'win32' && /[.](?:cmd|bat)$/iu.test(command)) {
+    return { command: [command, ...args].map(quoteForCmd).join(' '), args: [], shell: true };
+  }
+  return { command, args: [...args], shell: false };
 }
 
 export function npmExecutable(platform = process.platform): string {

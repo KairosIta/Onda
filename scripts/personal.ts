@@ -50,8 +50,8 @@ function fail(message: string): never {
 }
 
 function capture(command: string, args: string[], env: NodeJS.ProcessEnv = process.env) {
-  const spec = commandSpec(command);
-  return spawnSync(spec.command, args, {
+  const spec = commandSpec(command, args);
+  return spawnSync(spec.command, spec.args, {
     cwd: root,
     env,
     encoding: 'utf8',
@@ -61,8 +61,8 @@ function capture(command: string, args: string[], env: NodeJS.ProcessEnv = proce
 
 function run(label: string, command: string, args: string[], env: NodeJS.ProcessEnv): void {
   console.log(`\n==> ${label}`);
-  const spec = commandSpec(command);
-  const result = spawnSync(spec.command, args, {
+  const spec = commandSpec(command, args);
+  const result = spawnSync(spec.command, spec.args, {
     cwd: root,
     env,
     stdio: 'inherit',

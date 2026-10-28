@@ -15,6 +15,33 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### Verificato il 28 ottobre 2026: argomenti con spazi su Windows ed expo-doctor nel lockfile, senza device
+
+- [x] Su Windows gli script lanciavano `npm.cmd`, `npx.cmd`, `gradlew.bat` e
+      `apksigner.bat` con `shell: true` e gli argomenti in un array: Node li
+      incolla con uno spazio e senza virgolette, quindi un percorso con uno
+      spazio, come `C:\Users\Mario Rossi\Onda`, diventava due argomenti e
+      cmd.exe cercava `C:\Users\Mario`. `build:personal` falliva su
+      `gradlew.bat` o, con il repository altrove, su apksigner con un
+      messaggio fuorviante, e Node 24 segnalava DEP0190. La CI su
+      windows-latest non lo vedeva perche' il suo percorso non ha spazi. Ora
+      `commandSpec` compone la riga di comando con ogni pezzo fra virgolette
+      quando serve e la passa intera, senza argomenti; virgolette e a capo
+      negli argomenti si rifiutano. Un test nuovo in
+      `scripts/personal.test.ts` copre il percorso con spazi, `&`, `%` e i
+      casi rifiutati. Su Linux e macOS niente cambia: nessuna shell.
+- [x] `npx expo-doctor` in CI scaricava a ogni run l'ultima versione
+      pubblicata, fuori dal lockfile. `expo-doctor` 1.21.5 e' nelle
+      devDependencies, cosi' `npx` usa la copia del lockfile; il pattern
+      `expo-*` di Dependabot lo copre, con le minor che seguono il passaggio
+      di SDK.
+- [x] `npm test` 244 verdi (1 nuovo), typecheck, ESLint e Prettier puliti;
+      `check:audit` verde con la sola eccezione `zod`; `expo-doctor` 21/21
+      dalla copia locale; `npm run doctor`, `npm run android:test:player` e
+      `npm run notices:check` passano dal nuovo `commandSpec` su Linux. La
+      prova su Windows e' il workflow `Verify personal build`, lanciato a
+      mano sul branch: `build:personal` completo su windows-latest.
+
 ### Verificato il 28 ottobre 2026: node-forge corretta a monte, eccezione tolta, senza device
 
 - [x] `node-forge` 1.4.1 del 27 ottobre 2026 corregge GHSA-86w9-cpqp-85rv
