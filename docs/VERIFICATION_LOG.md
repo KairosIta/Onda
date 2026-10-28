@@ -35,6 +35,13 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
       filtro sui componenti. Con un proxy morto e una cache Gradle vuota il
       controllo fallisce in 14 secondi con «BUILD FAILED» e «What went wrong»
       a schermo, invece di mezz'ora e un messaggio fuorviante.
+- [x] Il job Media3 e la build personale in CI scaricavano a ogni run piu'
+      di un gigabyte di dipendenze Gradle, ed e' li' che la rete cedeva.
+      `actions/cache`, fissata allo SHA come le altre azioni, conserva
+      `~/.gradle/caches` e `~/.gradle/wrapper` con chiave dal lockfile e dai
+      file Gradle del progetto: meno download, meno occasioni di timeout. La
+      prova e' la CI della PR stessa, prima a cache vuota e poi con la cache
+      ripristinata.
 
 ### Verificato il 28 ottobre 2026: azioni di GitHub fissate allo SHA, senza device
 

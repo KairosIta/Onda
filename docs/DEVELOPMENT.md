@@ -534,8 +534,10 @@ ed eseguirli su Ubuntu e Windows a ogni PR e push su `main`. Dal 18 ottobre
 obbligatori, i commit devono essere firmati e la storia resta lineare, cioè
 solo fast-forward. Dal 28 ottobre 2026 le azioni dei workflow sono fissate
 allo SHA del commit, con la versione esatta accanto, e Dependabot aggiorna
-SHA e commento insieme: un tag di major si può spostare, uno SHA no. Lo
-stesso controllo gira in
+SHA e commento insieme: un tag di major si può spostare, uno SHA no. I job
+che usano Gradle conservano `~/.gradle` nella cache delle azioni, con chiave
+dal lockfile e dai file Gradle del progetto, così i download pesanti non si
+ripetono a ogni run. Lo stesso controllo gira in
 `npm run build:personal` prima dell'Android Lint. Per eseguirlo da solo:
 
 ```bash

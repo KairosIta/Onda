@@ -36,6 +36,17 @@ jobs:
         with:
           packages: platform-tools platforms;android-36 build-tools;36.0.0
           log-accepted-android-sdk-licenses: false
+      # Le dipendenze Gradle (AGP, Kotlin, Media3, gli artefatti React) pesano
+      # piu' di un gigabyte: dalla cache del repository arrivano in secondi,
+      # senza i download che il 28 ottobre 2026 hanno bloccato quattro job
+      # per mezz'ora. La chiave segue il lockfile e i file Gradle del progetto.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('package-lock.json', 'modules/onda-player/android/build.gradle', 'plugins/with-release-signing.js') }}
+          restore-keys: gradle-${{ runner.os }}-
       - run: npm ci
       - run: npm run build:personal
       # L'APK resta nel runner e non viene caricato da nessuna parte: qui
