@@ -6,8 +6,14 @@ import { PressableScale } from '@/components/PressableScale';
 import { Empty } from '@/components/StateViews';
 import { haptics } from '@/services/haptics';
 import { exportLibrary, pickBackup, saveLibrary } from '@/services/libraryBackup';
-import { createPlaylist, getLibrary, importLibrary, useLibrary } from '@/store/library';
-import { previewImport, type ImportPreview } from '@/store/libraryExport';
+import {
+  createPlaylist,
+  getLibrary,
+  importLibrary,
+  previewImport,
+  useLibrary,
+} from '@/store/library';
+import type { ImportPreview } from '@/store/libraryExport';
 import type { LibraryState } from '@/store/librarySchema';
 import { colors, motion, radius, spacing, touch, type } from '@/theme';
 
@@ -70,12 +76,23 @@ export default function LibraryScreen() {
     setMessage(`Salvataggio non riuscito: ${esito.reason}`);
   };
 
+  const showImportError = (error: unknown) => {
+    haptics.reject();
+    setMessage(
+      `Importazione non riuscita: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  };
+
   const doPick = async () => {
     setBusy(true);
     const esito = await pickBackup();
     setBusy(false);
     if (esito.ok) {
-      setPending({ library: esito.library, preview: previewImport(getLibrary(), esito.library) });
+      try {
+        setPending({ library: esito.library, preview: previewImport(esito.library) });
+      } catch (error) {
+        showImportError(error);
+      }
     } else if (!('canceled' in esito)) {
       haptics.reject();
       setMessage(esito.reason);
@@ -84,11 +101,14 @@ export default function LibraryScreen() {
 
   const confirmImport = () => {
     if (!pending) return;
-    const fatto = importLibrary(pending.library);
     setPending(null);
-    // Un file che non aggiunge niente non e' un errore: si tace.
-    if (!fatto.empty) haptics.success();
-    setMessage(fatto.empty ? 'Niente da aggiungere.' : 'Libreria importata.');
+    try {
+      const fatto = importLibrary(pending.library);
+      if (!fatto.empty) haptics.success();
+      setMessage(fatto.empty ? 'Niente da aggiungere.' : 'Libreria importata.');
+    } catch (error) {
+      showImportError(error);
+    }
   };
 
   // La vibrazione sta qui e non sul bottone: da tastiera (Invio) e da

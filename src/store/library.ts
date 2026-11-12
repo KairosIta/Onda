@@ -1,6 +1,11 @@
 import { useSyncExternalStore } from 'react';
 import { readJSON, writeJSON } from '@/services/storage';
-import { mergeLibrary, previewImport, type ImportPreview } from './libraryExport';
+import {
+  mergeLibrary,
+  serializeExport,
+  summarizeImport,
+  type ImportPreview,
+} from './libraryExport';
 import { HISTORY_MAX, loadLibrary, type LibraryState } from './librarySchema';
 import type { Track } from '@/types/track';
 
@@ -68,10 +73,14 @@ function prune(next: LibraryState): LibraryState {
   return { ...next, tracks };
 }
 
-function commit(next: LibraryState): void {
-  state = prune(next);
-  writeJSON(KEY, state);
+function persist(next: LibraryState): void {
+  writeJSON(KEY, next);
+  state = next;
   listeners.forEach((l) => l());
+}
+
+function commit(next: LibraryState): void {
+  persist(prune(next));
 }
 
 const subscribe = (listener: () => void): (() => void) => {
@@ -218,6 +227,19 @@ export function clearHistory(): void {
 
 // --- import ---------------------------------------------------------
 
+function prepareImport(incoming: LibraryState) {
+  const next = prune(mergeLibrary(state, incoming));
+  const preview = summarizeImport(state, next);
+  // Anche i metadati più recenti del catalogo di sessione, scelti da
+  // prune, devono rientrare nel file che sarà possibile ripristinare.
+  if (!preview.empty) serializeExport(next);
+  return { next, preview };
+}
+
+export function previewImport(incoming: LibraryState): ImportPreview {
+  return prepareImport(incoming).preview;
+}
+
 /**
  * Fonde un export nella libreria. Ritorna cosa e' entrato davvero.
  *
@@ -228,9 +250,8 @@ export function clearHistory(): void {
  * molto piu' basso di una libreria importata.
  */
 export function importLibrary(incoming: LibraryState): ImportPreview {
-  const applied = previewImport(state, incoming);
-  if (applied.empty) return applied;
-
-  commit(mergeLibrary(state, incoming));
-  return applied;
+  // La libreria può essere cambiata mentre era aperta la conferma.
+  const { next, preview } = prepareImport(incoming);
+  if (!preview.empty) persist(next);
+  return preview;
 }

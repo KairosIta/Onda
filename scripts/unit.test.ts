@@ -58,7 +58,7 @@ import {
   importLimitExceeded,
   mergeLibrary,
   parseExport,
-  previewImport,
+  summarizeImport,
 } from '@/store/libraryExport';
 import { loadLibrary, parseTrack } from '@/store/librarySchema';
 import { loadPlaybackPrefs } from '@/store/playbackSchema';
@@ -789,8 +789,8 @@ test('a cronologia piena l anteprima non promette voci che non entrano', () => {
   const mia = conTracce(miei, { history: miei.map((i) => `audius:${i}`) });
   const sua = conTracce(suoi, { history: suoi.map((i) => `audius:${i}`) });
 
-  const p = previewImport(mia, sua);
   const dopo = mergeLibrary(mia, sua);
+  const p = summarizeImport(mia, dopo);
   assert.equal(p.newHistory, 0, 'nessuna voce entra: il tetto e pieno');
   assert.deepEqual(dopo.history, mia.history, 'e infatti la cronologia non cambia');
   assert.equal(p.newTracks, 10, 'le tracce pero entrano nel catalogo');
@@ -803,8 +803,8 @@ test('l anteprima conta solo la cronologia che ci sta davvero', () => {
   const mia = conTracce(miei, { history: miei.map((i) => `audius:${i}`) });
   const sua = conTracce(suoi, { history: suoi.map((i) => `audius:${i}`) });
 
-  const p = previewImport(mia, sua);
   const dopo = mergeLibrary(mia, sua);
+  const p = summarizeImport(mia, dopo);
   assert.equal(p.newHistory, 3);
   assert.equal(dopo.history.length, 100);
 });
@@ -813,7 +813,7 @@ test('un file che porta solo cronologia gia piena non e da importare', () => {
   const miei = Array.from({ length: 100 }, (_, i) => `t${i}`);
   const mia = conTracce(miei, { history: miei.map((i) => `audius:${i}`) });
   // Stesse tracce, stessa cronologia: non c'e' nemmeno un brano nuovo.
-  const p = previewImport(mia, mia);
+  const p = summarizeImport(mia, mergeLibrary(mia, mia));
   assert.equal(p.empty, true, 'altrimenti il pulsante Importa resta attivo a vuoto');
 });
 
@@ -831,7 +831,7 @@ test('l anteprima dice cosa entra prima di farlo entrare', () => {
     history: ['audius:c'],
   });
 
-  const p = previewImport(mia, sua);
+  const p = summarizeImport(mia, mergeLibrary(mia, sua));
   assert.equal(p.newFavorites, 1);
   assert.equal(p.newPlaylists, 1, 'solo p2 e nuova');
   assert.equal(p.grownPlaylists, 1, 'p1 cresce di una traccia');
@@ -839,7 +839,11 @@ test('l anteprima dice cosa entra prima di farlo entrare', () => {
   assert.equal(p.newHistory, 1);
   assert.equal(p.empty, false);
 
-  assert.equal(previewImport(mia, mia).empty, true, 'importare se stessi non aggiunge nulla');
+  assert.equal(
+    summarizeImport(mia, mergeLibrary(mia, mia)).empty,
+    true,
+    'importare se stessi non aggiunge nulla',
+  );
 });
 
 // --- sessione di ascolto ----------------------------------------------

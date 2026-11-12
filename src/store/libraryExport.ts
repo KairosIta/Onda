@@ -29,16 +29,22 @@ export const EXPORT_VERSION = 1;
 export const EXPORT_FORMAT = 'onda.library';
 
 /**
- * Tetto alla dimensione di un file da importare, in byte. Una libreria vera
- * sta in pochi megabyte (un brano e' circa mezzo chilobyte di JSON); oltre,
- * il file non e' un export di Onda o e' stato costruito apposta, e leggerlo
- * per poi riserializzarlo a ogni modifica terrebbe fermo il JS. Il tetto
- * vale prima di leggere il file (`libraryBackup`) e prima di analizzarlo.
+ * Tetto del JSON UTF-8 su disco, condiviso da salvataggio e ripristino.
  */
 export const EXPORT_MAX_BYTES = 8 * 1024 * 1024;
 
 export const tooLargeReason = (): string =>
-  `Il file supera ${EXPORT_MAX_BYTES / (1024 * 1024)} MB: non è un export di Onda.`;
+  `Il backup supera il limite di ${EXPORT_MAX_BYTES / (1024 * 1024)} MB.`;
+
+function exceedsByteLimit(text: string): boolean {
+  if (text.length > EXPORT_MAX_BYTES) return true;
+  // Ogni unità UTF-16 occupa al massimo tre byte in UTF-8. Per i file
+  // piccoli la lunghezza basta, senza allocare una seconda copia.
+  return (
+    text.length * 3 > EXPORT_MAX_BYTES &&
+    new TextEncoder().encode(text).byteLength > EXPORT_MAX_BYTES
+  );
+}
 
 /**
  * Tetti dentro il file, oltre a quello in byte. In 8 MB stanno centomila
@@ -50,7 +56,8 @@ export const tooLargeReason = (): string =>
  * API sta in poche centinaia di caratteri.
  */
 export const IMPORT_LIMITS = {
-  playlists: 1000,
+  // Comprende anche l'unione di due file al vecchio limite di 1.000.
+  playlists: 2000,
   tracks: 20_000,
   fieldLength: 4096,
 } as const;
@@ -110,6 +117,15 @@ export function buildExport(state: LibraryState, now = Date.now()): LibraryExpor
   };
 }
 
+/** Il testo esatto che si può scrivere e poi importare, oppure il motivo del rifiuto. */
+export function serializeExport(state: LibraryState): string {
+  const exceeded = importLimitExceeded(state);
+  if (exceeded) throw new Error(`La libreria ha ${exceeded}.`);
+  const text = JSON.stringify(buildExport(state), null, 2);
+  if (exceedsByteLimit(text)) throw new Error(tooLargeReason());
+  return text;
+}
+
 export type ParseResult = { ok: true; library: LibraryState } | { ok: false; reason: string };
 
 /**
@@ -122,7 +138,7 @@ export type ParseResult = { ok: true; library: LibraryState } | { ok: false; rea
  */
 export function parseExport(value: unknown): ParseResult {
   if (typeof value === 'string') {
-    if (value.length > EXPORT_MAX_BYTES) return { ok: false, reason: tooLargeReason() };
+    if (exceedsByteLimit(value)) return { ok: false, reason: tooLargeReason() };
     try {
       return parseExport(JSON.parse(value));
     } catch {
@@ -143,7 +159,7 @@ export function parseExport(value: unknown): ParseResult {
     };
   }
   const exceeded = importLimitExceeded(value.library);
-  if (exceeded) return { ok: false, reason: `Il file ha ${exceeded}: non è un export di Onda.` };
+  if (exceeded) return { ok: false, reason: `Il file ha ${exceeded}.` };
   // Da qui in giu' e' roba nostra e `loadLibrary` sa gia' scartare il
   // singolo pezzo rotto senza buttare via il resto.
   return { ok: true, library: loadLibrary(value.library) };
@@ -180,9 +196,7 @@ const union = (current: string[], incoming: string[]): string[] => [
  * import che non cambiava niente. Cosi' l'anteprima non puo' divergere
  * dal risultato: e' il risultato, misurato.
  */
-export function previewImport(current: LibraryState, incoming: LibraryState): ImportPreview {
-  const next = mergeLibrary(current, incoming);
-
+export function summarizeImport(current: LibraryState, next: LibraryState): ImportPreview {
   const byId = new Map(current.playlists.map((p) => [p.id, p]));
   let newPlaylists = 0;
   let grownPlaylists = 0;

@@ -2224,6 +2224,19 @@
     },
     {
       "kind": "npm",
+      "name": "@marmelab/decode-uri-component",
+      "version": "0.2.3",
+      "license": "MIT",
+      "holder": "Copyright (c) 2017, Sam Verschueren <sam.verschueren@gmail.com> (github.com/SamVerschueren)",
+      "scopes": [
+        "js"
+      ],
+      "texts": [
+        "ed7a9a0f74e43951"
+      ]
+    },
+    {
+      "kind": "npm",
       "name": "@radix-ui/react-compose-refs",
       "version": "1.1.5",
       "license": "MIT",
@@ -2444,19 +2457,6 @@
       ],
       "texts": [
         "01ff41ce7f3921d9"
-      ]
-    },
-    {
-      "kind": "npm",
-      "name": "decode-uri-component",
-      "version": "0.2.2",
-      "license": "MIT",
-      "holder": "Copyright (c) 2017, Sam Verschueren <sam.verschueren@gmail.com> (github.com/SamVerschueren)",
-      "scopes": [
-        "js"
-      ],
-      "texts": [
-        "ed7a9a0f74e43951"
       ]
     },
     {

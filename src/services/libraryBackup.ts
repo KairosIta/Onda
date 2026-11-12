@@ -2,8 +2,8 @@ import { Directory, File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import {
   EXPORT_MAX_BYTES,
-  buildExport,
   parseExport,
+  serializeExport,
   type ParseResult,
   tooLargeReason,
 } from '@/store/libraryExport';
@@ -48,10 +48,11 @@ export type ExportOutcome =
  */
 export async function exportLibrary(state: LibraryState): Promise<ExportOutcome> {
   try {
+    const text = serializeExport(state);
     const file = new File(Paths.cache, backupFileName());
     if (file.exists) file.delete();
     file.create();
-    file.write(JSON.stringify(buildExport(state), null, 2));
+    file.write(text);
 
     if (!(await Sharing.isAvailableAsync())) {
       return { ok: true, shared: false, uri: file.uri };
@@ -93,9 +94,10 @@ export type SaveOutcome =
  */
 export async function saveLibrary(state: LibraryState): Promise<SaveOutcome> {
   try {
+    const text = serializeExport(state);
     const dir = await Directory.pickDirectoryAsync();
     const file = dir.createFile(backupFileName(), 'application/json');
-    file.write(JSON.stringify(buildExport(state), null, 2));
+    file.write(text);
     return { ok: true, name: file.name };
   } catch (e) {
     // A differenza del selettore di file, quello di cartelle segnala

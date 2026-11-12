@@ -153,7 +153,7 @@ src/
   services/queryClient.ts   React Query reidratata da MMKV; potatura in queryPersistenceSchema.ts
   services/browseTree.ts    l'albero per Android Auto dalla libreria (puro); l'invio sta in browseTreeSync.ts
   store/library.ts          preferiti, playlist, cronologia (persistiti); validazione e tetto della cronologia in librarySchema.ts (puro)
-  store/libraryExport.ts    formato JSON versionato dell'export, merge additivo e tetti all'import: 8 MB, playlist, brani, lunghezza dei campi (puro)
+  store/libraryExport.ts    formato JSON del backup, unione delle librerie e limiti condivisi da export e import
   store/playback.ts         shuffle e repeat (persistiti); la rilettura tollerante in playbackSchema.ts (puro)
   store/session.ts          brano attivo + coda e posizione salvate, "in attesa" all'avvio; useNowPlaying (schema in sessionSchema.ts)
   store/progress.ts         l'unico osservatore di progresso dell'app
@@ -220,6 +220,13 @@ in tre playlist e' un riferimento, non tre copie che divergono.
 I dati letti da MMKV vengono validati campo per campo prima di entrare negli
 store. Un campo di una vecchia versione o malformato viene normalizzato o
 scartato senza buttare via le altre parti sane della libreria.
+
+Il backup JSON v1 può contenere fino a 2.000 playlist, 20.000 brani e campi
+di 4.096 caratteri, entro 8 MiB di testo UTF-8. «Salva» e «Condividi»
+controllano il testo prima di creare il file. L'importazione verifica che
+anche la libreria risultante dall'unione sia esportabile, sia all'anteprima
+sia alla conferma. Se nel frattempo una modifica locale fa superare un limite,
+Onda indica il motivo e conserva la libreria corrente.
 
 Lo storage ha una versione (`schema.version`, `services/storageSchema`,
 puro e testato): `services/storage` la porta alla corrente prima che
@@ -656,6 +663,13 @@ Un `warn` su un genere non e' un errore: e' una sorgente che per quel tag non
 ha risultati. Un `FAIL` si', ed e' quasi sempre l'API che e' cambiata.
 
 ### Audit delle dipendenze
+
+Expo Router usa `query-string@7.1.3`, che carica il decoder degli URL con
+`require()`. L'override in `package.json` usa il backport CommonJS
+`@marmelab/decode-uri-component@0.2.3` per questa dipendenza. Include la
+correzione per GHSA-qr28-fpjm-wq7f. Quando si aggiorna Expo Router, verificare
+se l'override serve ancora. `scripts/router-links.test.ts` prova la lettura e
+la riscrittura di un link con caratteri Unicode, spazi e un segno più.
 
 Verificato il 9 agosto 2026: l'override `xcode > uuid` in `package.json`
 porta `uuid` alla versione corretta 11.1.1 e rimuove le segnalazioni moderate
