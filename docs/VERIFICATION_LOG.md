@@ -15,6 +15,28 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### 13 novembre 2026 — ripristino di 1.001 playlist su Android 16
+
+Su Motorola Edge 50 Neo (API 36), la build personale `0.2.0+bcf5fc9`
+ha ripristinato tutte le 1.001 playlist su una libreria vuota. L'APK
+installato aveva lo stesso SHA-256 del manifest di build:
+`4064d43784eff7bbc2d911f42be66bd6d5a8d186ba5d0e1c20070dd6b0b7f7d7`.
+
+1. In un utente Android temporaneo, da **Libreria › Importa una libreria**,
+   abbiamo importato due backup v1 sintetici da 501 e 500 playlist. Con
+   **Salva la libreria** abbiamo scritto il file unito sul telefono e
+   confrontato il suo contenuto con i dati attesi dai due file iniziali.
+2. Dopo aver cancellato i soli dati di Onda nell'utente di prova, la Libreria
+   mostrava «Nessuna playlist». L'anteprima del file unito indicava
+   «1001 nuove playlist» e la conferma ha completato il ripristino.
+3. Dopo l'arresto forzato e la riapertura dell'app, abbiamo salvato una
+   seconda copia. I due JSON coincidevano in ogni campo tranne `exportedAt`.
+   Il confronto ha verificato ordine delle playlist e dei brani, metadati
+   dei 6 brani, 4 preferiti e 4 voci di cronologia.
+
+Al termine abbiamo rimosso l'utente di prova. La regressione automatica
+è coperta da [library-backup.test.ts](../scripts/library-backup.test.ts).
+
 ### Verificato il 28 ottobre 2026: il controllo degli avvisi fallisce subito se un artefatto non si scarica, senza device
 
 - [x] Il 28 ottobre `npm run notices:check` in CI e' rimasto bloccato tre
