@@ -74,25 +74,23 @@ function run(label: string, command: string, args: string[], env: NodeJS.Process
 
 function personalEnvironment() {
   const loaded = readBuildEnvironment(root, process.env);
-  return {
-    env: {
-      ...loaded.environment,
-      ONDA_ALLOW_DEBUG_RELEASE: '1',
-      ONDA_FORCE_DEBUG_RELEASE: '1',
-      CI: '1',
-    },
-    credentialErrors: loaded.credentialErrors,
+  const sdk = androidSdkCandidates(loaded.environment).find((candidate) => existsSync(candidate));
+  const env: NodeJS.ProcessEnv = {
+    ...loaded.environment,
+    ANDROID_HOME: sdk ? resolve(sdk) : undefined,
+    ONDA_ALLOW_DEBUG_RELEASE: '1',
+    ONDA_FORCE_DEBUG_RELEASE: '1',
+    CI: '1',
   };
+  // Gradle richiede che la variabile legacy, se usata, indichi lo stesso SDK.
+  if (env.ANDROID_HOME && env.ANDROID_SDK_ROOT) env.ANDROID_SDK_ROOT = env.ANDROID_HOME;
+  return { env, credentialErrors: loaded.credentialErrors };
 }
 
 function loadPersonalEnvironment(): NodeJS.ProcessEnv {
   const { env, credentialErrors } = personalEnvironment();
   if (credentialErrors.length) fail(credentialErrors.join('\n'));
   return env;
-}
-
-function findAndroidSdk(env: NodeJS.ProcessEnv): string | undefined {
-  return androidSdkCandidates(env).find((candidate) => existsSync(candidate));
 }
 
 function collectChecks(env: NodeJS.ProcessEnv, credentialErrors: string[]): Check[] {
@@ -113,7 +111,7 @@ function collectChecks(env: NodeJS.ProcessEnv, credentialErrors: string[]): Chec
     detail: javaMajor ? `Java ${javaMajor} (richiesto 17)` : 'java non trovato (richiesto JDK 17)',
   });
 
-  const sdk = findAndroidSdk(env);
+  const sdk = env.ANDROID_HOME;
   checks.push({
     label: 'Android SDK',
     ok: Boolean(sdk),
@@ -154,7 +152,7 @@ function collectChecks(env: NodeJS.ProcessEnv, credentialErrors: string[]): Chec
   return checks;
 }
 
-function doctor(): { checks: Check[]; sdk?: string } {
+function doctor() {
   const { env, credentialErrors } = personalEnvironment();
   const checks = collectChecks(env, credentialErrors);
   console.log('\nDiagnosi ambiente Onda\n');
@@ -165,11 +163,11 @@ function doctor(): { checks: Check[]; sdk?: string } {
     );
   }
   const errors = checks.filter((check) => !check.ok && check.required !== false);
-  if (errors.length) {
+  if (errors.length || !env.ANDROID_HOME) {
     fail(`${errors.length} requisito/i da sistemare. Consulta docs/BUILD_PERSONAL.md.`);
   }
   console.log('\nAmbiente pronto per una build personale.');
-  return { checks, sdk: findAndroidSdk(env) };
+  return { ...env, ANDROID_HOME: env.ANDROID_HOME };
 }
 
 /**
@@ -209,7 +207,7 @@ function runAndroidLint(env = loadPersonalEnvironment()): void {
 }
 
 /** La stessa compilazione e gli stessi test JVM in CI e nella build personale. */
-function runPlayerTests(env = loadPersonalEnvironment()): void {
+function runPlayerTests(env: NodeJS.ProcessEnv): void {
   const wrapper = gradleWrapper(root);
   if (!existsSync(wrapper)) fail('android/ non esiste: esegui prima npm run prebuild.');
   run(
@@ -277,9 +275,7 @@ function preparePersonalDebugKeystore(env: NodeJS.ProcessEnv): void {
   copyFileSync(personalKeystorePath, join(root, 'android', 'app', 'debug.keystore'));
 }
 
-function build(): string {
-  doctor();
-  const env = loadPersonalEnvironment();
+function build(env = doctor()): string {
   const npm = npmExecutable();
   const npx = npxExecutable();
 
@@ -300,9 +296,7 @@ function build(): string {
 
   if (!existsSync(apkPath)) fail('Gradle ha terminato senza produrre app-release.apk.');
 
-  const sdk = findAndroidSdk(env);
-  if (!sdk) fail('Android SDK non disponibile dopo la build.');
-  const apksigner = join(sdk, 'build-tools', '36.0.0', apksignerExecutable());
+  const apksigner = join(env.ANDROID_HOME, 'build-tools', '36.0.0', apksignerExecutable());
   const signature = capture(apksigner, ['verify', '--verbose', '--print-certs', apkPath], env);
   const signatureOutput = `${signature.stdout ?? ''}\n${signature.stderr ?? ''}`;
   if (signature.status !== 0 || !/^Verifies$/mu.test(signatureOutput)) {
@@ -380,10 +374,9 @@ function build(): string {
 }
 
 function install(): void {
-  const outputApk = build();
-  const env = loadPersonalEnvironment();
-  const sdk = findAndroidSdk(env);
-  const adb = sdk ? join(sdk, 'platform-tools', androidExecutable('adb')) : 'adb';
+  const env = doctor();
+  const outputApk = build(env);
+  const adb = join(env.ANDROID_HOME, 'platform-tools', androidExecutable('adb'));
   const devices = capture(adb, ['devices'], env);
   if (devices.status !== 0) fail('ADB non disponibile. Installa Android SDK Platform-Tools.');
   const connected = `${devices.stdout ?? ''}`
@@ -416,8 +409,7 @@ switch (action) {
     runAndroidLint();
     break;
   case 'player-test':
-    doctor();
-    runPlayerTests();
+    runPlayerTests(doctor());
     break;
   default:
     fail('azione non valida. Usa setup, doctor, build, install, android-lint o player-test.');

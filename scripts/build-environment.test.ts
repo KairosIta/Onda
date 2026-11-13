@@ -73,7 +73,7 @@ test('Git ignora tutte le varianti dotenv senza dover creare file reali nel repo
   assert.deepEqual(ignored.stdout.trim().split(/\r?\n/u), variants);
 });
 
-test('doctor rifiuta .env.production in un progetto interamente temporaneo', (t) => {
+function personalProject(t: { after: (fn: () => void) => void }): string {
   const dir = fixture(t);
   mkdirSync(join(dir, 'scripts'));
   for (const file of [
@@ -85,6 +85,11 @@ test('doctor rifiuta .env.production in un progetto interamente temporaneo', (t)
   ]) {
     copyFileSync(join(root, 'scripts', file), join(dir, 'scripts', file));
   }
+  return dir;
+}
+
+test('doctor rifiuta .env.production in un progetto interamente temporaneo', (t) => {
+  const dir = personalProject(t);
   writeFileSync(join(dir, '.env.production'), `EXPO_PUBLIC_JAMENDO_CLIENT_ID=${secret}\n`);
   const result = spawnSync(
     process.execPath,
@@ -108,4 +113,44 @@ test('doctor rifiuta .env.production in un progetto interamente temporaneo', (t)
   assert.equal(result.status, 1);
   assert.match(result.stdout, /ERRORE\s+Credenziali nel bundle:.*\.env.production/u);
   assert.equal((result.stdout + result.stderr).includes(secret), false);
+});
+
+test('Gradle riceve il percorso SDK standard o quello esplicito di ANDROID_SDK_ROOT', (t) => {
+  const dir = personalProject(t);
+  const profile = join(dir, 'Profilo con spazi');
+  const standardSdk =
+    process.platform === 'darwin'
+      ? join(profile, 'Library', 'Android', 'sdk')
+      : join(profile, 'Android', 'Sdk');
+  const customSdk = join(dir, 'SDK personalizzato');
+  const android = join(dir, 'android');
+  mkdirSync(android);
+  if (process.platform === 'win32') {
+    writeFileSync(join(android, 'gradlew.bat'), '@echo SDK=%ANDROID_HOME%\r\n');
+  } else {
+    writeFileSync(join(android, 'gradlew'), '#!/bin/sh\necho "SDK=$ANDROID_HOME"\n', {
+      mode: 0o755,
+    });
+  }
+
+  // Il wrapper riporta l'ambiente ricevuto da Onda; il test gira senza JDK e SDK installati.
+  for (const sdk of [standardSdk, customSdk]) {
+    mkdirSync(join(sdk, 'platforms', 'android-36'), { recursive: true });
+    mkdirSync(join(sdk, 'build-tools', '36.0.0'), { recursive: true });
+    const env: NodeJS.ProcessEnv = {
+      NODE_ENV: 'test',
+      HOME: profile,
+      LOCALAPPDATA: profile,
+      PATH: process.env.PATH,
+      SystemRoot: process.env.SystemRoot,
+    };
+    if (sdk === customSdk) env.ANDROID_SDK_ROOT = customSdk;
+    const result = spawnSync(
+      process.execPath,
+      ['--experimental-strip-types', 'scripts/personal.ts', 'android-lint'],
+      { cwd: dir, encoding: 'utf8', env },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.ok(result.stdout.split(/\r?\n/u).includes(`SDK=${sdk}`), result.stdout);
+  }
 });

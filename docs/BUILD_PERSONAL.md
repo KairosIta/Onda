@@ -20,8 +20,9 @@ non è compatibile con i moduli nativi usati da Onda.
 
 ## Linux
 
-Configura `ANDROID_HOME` verso il tuo SDK; il percorso Android Studio più comune
-è `$HOME/Android/Sdk`.
+Se l'SDK è nel percorso standard `$HOME/Android/Sdk`, puoi eseguire la
+build senza impostare variabili. Per un SDK installato altrove, imposta
+`ANDROID_HOME` sulla sua directory.
 
 Su Debian 13 e derivate `apt` offre solo OpenJDK 21 e 25: installa Temurin 17
 da [Adoptium](https://adoptium.net/temurin/releases/?version=17), come archivio
@@ -61,6 +62,11 @@ riutilizzare alla cieca SDK o `node_modules` di Windows. Per chi vuole soltanto
 compilare e installare Onda, PowerShell nativo ha meno punti di rottura.
 
 ## Comandi
+
+La build personale passa a Gradle il percorso verificato da `npm run doctor`.
+Lo script cerca nell'ordine `ANDROID_HOME`, `ANDROID_SDK_ROOT` e il percorso
+standard del sistema. Il percorso selezionato vale per i processi avviati
+dallo script.
 
 | Comando                       | Effetto                                                                                             |
 | ----------------------------- | --------------------------------------------------------------------------------------------------- |
