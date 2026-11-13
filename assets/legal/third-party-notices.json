@@ -2133,7 +2133,7 @@
     {
       "kind": "npm",
       "name": "@expo-google-fonts/material-symbols",
-      "version": "0.4.51",
+      "version": "0.4.53",
       "license": "MIT AND Apache-2.0",
       "holder": "Copyright (c) 2020 Expo",
       "scopes": [
@@ -2146,7 +2146,7 @@
     {
       "kind": "npm",
       "name": "@expo/cli",
-      "version": "57.0.32",
+      "version": "57.0.34",
       "license": "MIT",
       "holder": "Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)",
       "scopes": [
@@ -2172,7 +2172,7 @@
     {
       "kind": "npm",
       "name": "@expo/log-box",
-      "version": "57.0.4",
+      "version": "57.0.5",
       "license": "MIT",
       "holder": "Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)",
       "scopes": [
@@ -2185,7 +2185,7 @@
     {
       "kind": "npm",
       "name": "@expo/metro-runtime",
-      "version": "57.0.17",
+      "version": "57.0.18",
       "license": "MIT",
       "holder": "Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)",
       "scopes": [
@@ -2488,7 +2488,7 @@
     {
       "kind": "npm",
       "name": "expo",
-      "version": "57.0.31",
+      "version": "57.0.33",
       "license": "MIT",
       "holder": "Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)",
       "scopes": [
@@ -2502,7 +2502,7 @@
     {
       "kind": "npm",
       "name": "expo-asset",
-      "version": "57.0.20",
+      "version": "57.0.21",
       "license": "MIT",
       "holder": "Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)",
       "scopes": [
@@ -2516,7 +2516,7 @@
     {
       "kind": "npm",
       "name": "expo-constants",
-      "version": "57.0.22",
+      "version": "57.0.24",
       "license": "MIT",
       "holder": "Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)",
       "scopes": [
@@ -2558,7 +2558,7 @@
     {
       "kind": "npm",
       "name": "expo-glass-effect",
-      "version": "57.0.4",
+      "version": "57.0.5",
       "license": "MIT",
       "holder": "Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)",
       "scopes": [
@@ -2612,7 +2612,7 @@
     {
       "kind": "npm",
       "name": "expo-linking",
-      "version": "57.0.13",
+      "version": "57.0.14",
       "license": "MIT",
       "holder": "Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)",
       "scopes": [
@@ -2626,7 +2626,7 @@
     {
       "kind": "npm",
       "name": "expo-modules-core",
-      "version": "57.0.24",
+      "version": "57.0.26",
       "license": "MIT",
       "holder": "Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)",
       "scopes": [
@@ -2640,7 +2640,7 @@
     {
       "kind": "npm",
       "name": "expo-router",
-      "version": "57.0.29",
+      "version": "57.0.31",
       "license": "MIT",
       "holder": "Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)",
       "scopes": [
@@ -2668,7 +2668,7 @@
     {
       "kind": "npm",
       "name": "expo-sharing",
-      "version": "57.0.24",
+      "version": "57.0.26",
       "license": "MIT",
       "holder": "Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)",
       "scopes": [
@@ -2682,7 +2682,7 @@
     {
       "kind": "npm",
       "name": "expo-splash-screen",
-      "version": "57.0.10",
+      "version": "57.0.11",
       "license": "MIT",
       "holder": "Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)",
       "scopes": [
