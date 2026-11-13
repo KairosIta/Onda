@@ -15,6 +15,31 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### 13 novembre 2026 — build personale con rilevamento automatico dell'SDK Android
+
+Su Linux, con l'SDK nella directory standard `$HOME/Android/Sdk`, `doctor`
+trovava la piattaforma 36 e i Build-Tools 36.0.0. Prima della correzione
+Gradle si fermava con `SDK location not found` durante i test del player.
+Sul commit `f0a2423`, con Node.js 24.21.0 e JDK 17, la build personale è
+riuscita eseguendo questo comando:
+
+```sh
+env -u ANDROID_HOME -u ANDROID_SDK_ROOT npm run build:personal
+```
+
+Il prebuild pulito ha rigenerato il progetto Android. Gradle ha ricevuto il
+percorso selezionato da `doctor` e ha completato i 31 test JVM del player,
+Android Lint e l'assemblaggio. Il file `android/local.properties` era assente
+anche al termine della prova. Sono passati tutti i 249 test Node, TypeScript,
+ESLint e Prettier. Il [test di regressione](../scripts/build-environment.test.ts)
+verifica il percorso ricevuto dal wrapper Gradle sia con una directory standard
+contenente spazi sia con il solo `ANDROID_SDK_ROOT` impostato.
+
+La build ha verificato la firma personale e la presenza del bundle JavaScript
+nell'APK `0.2.0+f0a2423`. Lo SHA-256 ricalcolato sul file coincideva con
+quello del manifest:
+`288a8d7c8ceaf8aec7026cdf4a22ff596a937a90be210808db4301552838ae78`.
+
 ### 13 novembre 2026 — ripristino di 1.001 playlist su Android 16
 
 Su Motorola Edge 50 Neo (API 36), la build personale `0.2.0+bcf5fc9`
