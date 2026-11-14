@@ -4,6 +4,7 @@ import {
   makeUid,
   type MusicSource,
   type SearchParams,
+  type SourceTrackPage,
   type SpotlightKind,
   type Track,
   type TrendingParams,
@@ -139,28 +140,31 @@ function fetchJSON<T>(url: string, signal?: AbortSignal): Promise<T> {
   });
 }
 
-async function fetchTracks(url: string, signal?: AbortSignal): Promise<Track[]> {
+async function fetchTracks(url: string, signal?: AbortSignal): Promise<SourceTrackPage> {
   const json = await fetchJSON<{ data?: AudiusTrack[] }>(url, signal);
   const data = Array.isArray(json.data) ? json.data : [];
-  return data.filter((t) => usable(t) && playable(t)).map(mapTrack);
+  return {
+    tracks: data.filter((t) => usable(t) && playable(t)).map(mapTrack),
+    hasMore: data.length > 0,
+  };
 }
 
 export const audiusSource: MusicSource = {
   id: 'audius',
   label: SOURCE_META.audius.label,
 
-  async search({ query, ...rest }: SearchParams): Promise<Track[]> {
+  async search({ query, ...rest }: SearchParams): Promise<SourceTrackPage> {
     return fetchTracks(withAppName('/tracks/search', { query, ...page(rest) }), rest.signal);
   },
 
-  async trending({ genre, ...rest }: TrendingParams = {}): Promise<Track[]> {
+  async trending({ genre, ...rest }: TrendingParams = {}): Promise<SourceTrackPage> {
     return fetchTracks(
       withAppName('/tracks/trending', { ...page(rest), ...(genre ? { genre } : {}) }),
       rest.signal,
     );
   },
 
-  async artistTracks(artistId: string, params: ListParams = {}): Promise<Track[]> {
+  async artistTracks(artistId: string, params: ListParams = {}): Promise<SourceTrackPage> {
     return fetchTracks(
       withAppName(`/users/${segment(artistId)}/tracks`, page(params)),
       params.signal,
@@ -181,12 +185,13 @@ export const audiusSource: MusicSource = {
    * un elenco di uscite recenti, e questo e' il piu' vicino a "voci nuove".
    */
   async spotlight(kind: SpotlightKind, params: ListParams = {}): Promise<Track[]> {
-    return kind === 'rising'
+    const result = await (kind === 'rising'
       ? fetchTracks(
           withAppName('/tracks/trending', { time: 'week', ...page(params) }),
           params.signal,
         )
-      : fetchTracks(withAppName('/tracks/trending/underground', page(params)), params.signal);
+      : fetchTracks(withAppName('/tracks/trending/underground', page(params)), params.signal));
+    return result.tracks;
   },
 
   async searchArtists({ query, ...rest }: SearchParams): Promise<ArtistInfo[]> {

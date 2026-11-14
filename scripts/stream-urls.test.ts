@@ -141,7 +141,7 @@ test("jamendo: l'adapter salva lo stream senza Client ID e il player lo riceve c
     ],
   };
   await withFetch(responding(payload), async () => {
-    const tracks = await jamendoSource.search({ query: 'x' });
+    const { tracks } = await jamendoSource.search({ query: 'x' });
     assert.deepEqual(
       tracks.map((t) => [t.id, t.title, t.artist, t.streamUrl]),
       [
@@ -321,13 +321,13 @@ test('audius: gli id nel percorso si codificano e una voce malformata non fa cad
     ],
   };
   await withFetch(responding(payload), async () => {
-    const tracks = await audiusSource.trending();
+    const { tracks } = await audiusSource.trending();
     assert.deepEqual(
       tracks.map((t) => t.id),
       ['t1'],
     );
   });
   await withFetch(responding({ data: 'non un elenco' }), async () => {
-    assert.deepEqual(await audiusSource.trending(), []);
+    assert.deepEqual(await audiusSource.trending(), { tracks: [], hasMore: false });
   });
 });

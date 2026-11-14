@@ -15,6 +15,25 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### 14 novembre 2026 — paginazione Audius oltre le pagine non riproducibili
+
+Verifica automatica su Linux con Node.js 24.21.0, usando risposte HTTP
+sintetiche e gli adapter reali. Le tre regressioni per ricerca, trending
+per genere e brani artista fallivano prima della correzione: una pagina di
+20 brani non riproducibili restituiva una lista vuota e impediva di arrivare
+ai brani validi all'offset 20.
+
+Ora `SourceTrackPage.hasMore` conserva la continuazione della risposta
+originale, prima dei filtri. La federazione attraversa le pagine interamente
+filtrate e restituisce i brani validi con il cursore aggiornato. I nove test
+in `scripts/audius-pagination.test.ts` verificano anche pagine filtrate
+consecutive dopo risultati validi, fine reale del catalogo, ripresa dopo
+errore, annullamento, Jamendo non raggiungibile e limiti di pagina non validi.
+
+Passati `npm ci`, `npm run doctor`, tutti i 261 test Node, `npm run typecheck`,
+`npm run lint` e `npm run format:check`. Questa prova riguarda il catalogo
+e la paginazione in Node; non comprende una nuova build o un collaudo Android.
+
 ### 14 novembre 2026 — pausa e ripresa durante il buffering su Samsung Android 14
 
 La build personale `0.2.0+cd655ca` è stata compilata su Linux con Node.js

@@ -10,6 +10,7 @@ import {
   makeUid,
   type MusicSource,
   type SearchParams,
+  type SourceTrackPage,
   type SpotlightKind,
   type Track,
   type TrendingParams,
@@ -343,20 +344,20 @@ async function fetchResults<T>(
   }
 }
 
-async function fetchTracks(requestUrl: string, signal?: AbortSignal): Promise<Track[]> {
+async function fetchTracks(requestUrl: string, signal?: AbortSignal): Promise<SourceTrackPage> {
   const results = await fetchResults<JamendoTrack>(requestUrl, { signal });
-  return results.filter(usable).map(mapTrack);
+  return { tracks: results.filter(usable).map(mapTrack), hasMore: results.length > 0 };
 }
 
 export const jamendoSource: MusicSource = {
   id: 'jamendo',
   label: SOURCE_META.jamendo.label,
 
-  async search({ query, ...rest }: SearchParams): Promise<Track[]> {
+  async search({ query, ...rest }: SearchParams): Promise<SourceTrackPage> {
     return fetchTracks(url('/tracks/', { search: query, ...page(rest) }), rest.signal);
   },
 
-  async trending({ genre, ...rest }: TrendingParams = {}): Promise<Track[]> {
+  async trending({ genre, ...rest }: TrendingParams = {}): Promise<SourceTrackPage> {
     return fetchTracks(
       url('/tracks/', {
         order: 'popularity_month',
@@ -367,7 +368,7 @@ export const jamendoSource: MusicSource = {
     );
   },
 
-  async artistTracks(artistId: string, params: ListParams = {}): Promise<Track[]> {
+  async artistTracks(artistId: string, params: ListParams = {}): Promise<SourceTrackPage> {
     // /tracks/?artist_id= invece di /artists/tracks/: risposta piatta,
     // stesso parser e stessa gestione degli errori di tutto il resto.
     return fetchTracks(
@@ -388,13 +389,14 @@ export const jamendoSource: MusicSource = {
    * Jamendo la espone davvero.
    */
   async spotlight(kind: SpotlightKind, params: ListParams = {}): Promise<Track[]> {
-    return fetchTracks(
+    const result = await fetchTracks(
       url('/tracks/', {
         order: kind === 'rising' ? 'popularity_week' : 'releasedate_desc',
         ...page(params),
       }),
       params.signal,
     );
+    return result.tracks;
   },
 
   async searchArtists({ query, ...rest }: SearchParams): Promise<ArtistInfo[]> {

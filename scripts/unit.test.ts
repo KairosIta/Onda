@@ -119,7 +119,7 @@ import {
   versionName,
 } from './build-provenance.cjs';
 import { formatTime } from '@/theme';
-import type { ListParams, MusicSource, SourceId, Track } from '@/types/track';
+import type { ListParams, MusicSource, SourceId, SourceTrackPage, Track } from '@/types/track';
 import { SOURCE_IDS, isSourceId, makeUid, parseUid } from '@/types/track';
 import { AUDIUS_OPEN_MUSIC_LICENSE_URL } from '@/config/legal';
 import {
@@ -176,7 +176,15 @@ const ok = (tracks: Track[]): PromiseSettledResult<Track[]> => ({
   value: tracks,
 });
 
-const ko = (reason: unknown): PromiseSettledResult<Track[]> => ({ status: 'rejected', reason });
+const ko = (reason: unknown): PromiseRejectedResult => ({ status: 'rejected', reason });
+
+const pageOk = (
+  tracks: Track[],
+  hasMore = tracks.length > 0,
+): PromiseFulfilledResult<SourceTrackPage> => ({
+  status: 'fulfilled',
+  value: { tracks, hasMore },
+});
 
 test('il permalink Audius diventa sempre un collegamento canonico', () => {
   assert.equal(audiusTrackUrl('/artista/brano'), 'https://audius.co/artista/brano');
@@ -267,7 +275,7 @@ test('il cursore avanza chi risponde, ferma chi cade e toglie chi ha finito', ()
     advanceCursor(
       { audius: 40, jamendo: 40 },
       [
-        { source: 'audius', result: ok([track('a')]) },
+        { source: 'audius', result: pageOk([track('a')]) },
         { source: 'jamendo', result: ko(new Error('Jamendo ha risposto 429')) },
       ],
       20,
@@ -279,8 +287,8 @@ test('il cursore avanza chi risponde, ferma chi cade e toglie chi ha finito', ()
     advanceCursor(
       { audius: 40, jamendo: 40 },
       [
-        { source: 'audius', result: ok([]) },
-        { source: 'jamendo', result: ok([jamendoTrack('j')]) },
+        { source: 'audius', result: pageOk([]) },
+        { source: 'jamendo', result: pageOk([jamendoTrack('j')]) },
       ],
       20,
     ),
@@ -288,11 +296,19 @@ test('il cursore avanza chi risponde, ferma chi cade e toglie chi ha finito', ()
   );
   // Tutte finite: l'elenco e' finito.
   assert.equal(
-    advanceCursor({ audius: 40 }, [{ source: 'audius', result: ok([]) }], 20),
+    advanceCursor({ audius: 40 }, [{ source: 'audius', result: pageOk([]) }], 20),
     undefined,
   );
   // Un esito di una sorgente che non era nel cursore non la rimette dentro.
-  assert.equal(advanceCursor({}, [{ source: 'audius', result: ok([track('a')]) }], 20), undefined);
+  assert.equal(
+    advanceCursor({}, [{ source: 'audius', result: pageOk([track('a')]) }], 20),
+    undefined,
+  );
+  // Il filtro puo' scartare tutti i brani senza esaurire il catalogo.
+  assert.deepEqual(
+    advanceCursor({ audius: 40 }, [{ source: 'audius', result: pageOk([], true) }], 20),
+    { audius: 60 },
+  );
 });
 
 test('le preferenze playback partono con valori sicuri', () => {
@@ -1649,10 +1665,10 @@ test('federazione: ogni sorgente viene interrogata una volta sola', async () => 
       label: id,
       search: async () => {
         count();
-        return [];
+        return { tracks: [], hasMore: false };
       },
-      trending: async () => [],
-      artistTracks: async () => [],
+      trending: async () => ({ tracks: [], hasMore: false }),
+      artistTracks: async () => ({ tracks: [], hasMore: false }),
       artistInfo: async () => ({ id, name: id, source: id }) as never,
       ...(withSpotlight
         ? {
@@ -1697,9 +1713,10 @@ function pagedSource(
   const make = id === 'audius' ? track : jamendoTrack;
   const items = Array.from({ length: size }, (_, i) => make(String(i)));
   let requests = 0;
-  const page = async ({ limit = 20, offset = 0 }: ListParams = {}): Promise<Track[]> => {
+  const page = async ({ limit = 20, offset = 0 }: ListParams = {}): Promise<SourceTrackPage> => {
     if (down(requests++)) throw new Error(`${id} ha risposto 503`);
-    return items.slice(offset, offset + limit);
+    const tracks = items.slice(offset, offset + limit);
+    return { tracks, hasMore: tracks.length > 0 };
   };
   return {
     id,
@@ -2041,7 +2058,10 @@ function jamendoReplying(results: unknown[], onCall: (n: number) => void = () =>
 test('jamendo: gli elenchi riprovano una lista vuota, le vetrine di nomi una volta sola', async () => {
   const empty = jamendoReplying([]);
   await withFetch(empty.fake, async () => {
-    assert.deepEqual(await jamendoSource.search({ query: 'nessuno' }), []);
+    assert.deepEqual(await jamendoSource.search({ query: 'nessuno' }), {
+      tracks: [],
+      hasMore: false,
+    });
   });
   assert.equal(empty.calls(), LIST_ATTEMPTS);
 
@@ -2085,7 +2105,7 @@ test('federazione: il segnale di chi aspetta arriva a ogni sorgente', async () =
     ...pagedSource(id, 5),
     search: async (params) => {
       seen.push(params.signal);
-      return [];
+      return { tracks: [], hasMore: false };
     },
     searchArtists: async (params) => {
       seen.push(params.signal);

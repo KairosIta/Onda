@@ -1296,8 +1296,14 @@ porta il cursore della successiva, `{ audius: 40, jamendo: 20 }`
 (`SourceCursor` in `services/sources/federation.ts`, puro e testato), e
 `useInfiniteTracks` lo passa alla richiesta dopo senza leggerlo. Una sorgente
 che risponde avanza di una pagina; una caduta richiede la stessa pagina alla
-volta dopo, senza fermare le altre; una che torna vuota senza errori ha finito
-e non si interroga piu'. Cosi' con Jamendo giu' per ore lo scroll continua su
+volta dopo, senza fermare le altre. Gli elenchi paginati dell'adapter restituiscono
+`SourceTrackPage`: `tracks` contiene solo brani validi, mentre `hasMore` si decide
+sulla risposta originale, prima dei filtri. Una pagina interamente filtrata
+non chiude il catalogo: la federazione continua dalla successiva, anche quando
+la lista non ha ancora righe da scorrere. Si ferma sui primi brani validi, sulla
+fine reale o su un errore; ogni richiesta conserva il segnale di annullamento.
+Il cursore tiene conto di tutte le pagine saltate, separatamente per sorgente.
+Cosi' con Jamendo giu' per ore lo scroll continua su
 Audius, e quando Jamendo torna riparte da dove era: niente buchi, niente
 doppioni, e il dedup per uid resta solo come difesa per il trending che cambia
 ordine. I brani di un artista (`artistTracksPage`) usano lo stesso cursore con
@@ -1381,7 +1387,9 @@ eventuale `.env` non finisca nel bundle, e si cercano nel JS le voci
   diritti di ripiego, eventuali condizioni da collegare a ogni brano) e un
   nome per ogni genere in `services/genres.ts`. Poi l'adapter: implementa
   `MusicSource`, passa `params.signal` a ogni richiesta e filtra i brani non
-  riproducibili prima di restituirli. Restano scritti a mano, perche' sono
+  riproducibili prima di restituirli; per ricerca, trending e brani artista
+  conserva in `SourceTrackPage.hasMore` la continuazione della pagina originale.
+  Restano scritti a mano, perche' sono
   testi legali o editoriali da rivedere comunque: i collegamenti a privacy
   e termini in `app/about.tsx`, `THIRD_PARTY_CONTENT.md`, `PRIVACY.md` e il
   suggerimento della ricerca vuota. Infine lo smoke (`scripts/smoke.ts`).

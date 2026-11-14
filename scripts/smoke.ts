@@ -110,22 +110,26 @@ for (const source of available) {
   console.log(`\n=== ${source.label} (${source.id}) ===`);
 
   const trending = await step('trending', () => source.trending({ limit: 5 }));
-  const first = trending ? validate('trending', trending) : null;
+  const first = trending ? validate('trending', trending.tracks) : null;
 
   const search = await step('search "love"', () => source.search({ query: 'love', limit: 5 }));
-  if (search) validate('search "love"', search);
+  if (search) validate('search "love"', search.tracks);
 
   // Se l'offset non funziona, lo scroll infinito ripete le stesse tracce.
   const p2 = await step('paginazione (offset 5)', () => source.trending({ limit: 5, offset: 5 }));
   if (p2 && trending) {
-    const overlap = p2.filter((t) => trending.some((x) => x.uid === t.uid)).length;
+    const overlap = p2.tracks.filter((t) => trending.tracks.some((x) => x.uid === t.uid)).length;
     if (overlap === 0) ok('paginazione (offset 5)', 'nessuna ripetizione');
-    else bad('paginazione (offset 5)', `${overlap}/${p2.length} tracce ripetute dalla pagina 1`);
+    else
+      bad(
+        'paginazione (offset 5)',
+        `${overlap}/${p2.tracks.length} tracce ripetute dalla pagina 1`,
+      );
   }
 
   if (first?.artistId) {
     const at = await step('artistTracks', () => source.artistTracks(first.artistId!, { limit: 5 }));
-    if (at) validate('artistTracks', at);
+    if (at) validate('artistTracks', at.tracks);
     const info = await step('artistInfo', () => source.artistInfo(first.artistId!));
     if (info) ok('artistInfo', `"${info.name}" — ${info.detail ?? 'nessun dettaglio'}`);
   } else {
@@ -165,7 +169,7 @@ for (const source of available) {
     console.log('  ----  searchAlbums: non supportato da questa sorgente (previsto)');
   }
 
-  const withAlbum = trending?.find((t) => t.albumId);
+  const withAlbum = trending?.tracks.find((t) => t.albumId);
   if (source.albumTracks && source.albumInfo) {
     if (withAlbum) {
       const al = await step('albumTracks', () =>
@@ -181,7 +185,7 @@ for (const source of available) {
     console.log('  ----  album: non supportato da questa sorgente (previsto)');
   }
 
-  if (trending) await probeStreams(trending);
+  if (trending) await probeStreams(trending.tracks);
 }
 
 /**
@@ -268,7 +272,7 @@ for (const g of GENRES) {
     available.map(async (source) => {
       try {
         const t = await source.trending({ limit: 3, genre: genreFor(g.key, source.id) });
-        return `${source.id}:${t.length}`;
+        return `${source.id}:${t.tracks.length}`;
       } catch {
         return `${source.id}:ERR`;
       }

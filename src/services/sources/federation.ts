@@ -1,4 +1,4 @@
-import type { SourceId, Track } from '@/types/track';
+import type { SourceId, SourceTrackPage, Track } from '@/types/track';
 import { isRecord } from '@/utils/validate';
 
 /**
@@ -19,9 +19,9 @@ export interface FederatedResult<T = Track> {
 }
 
 /** Esito di una singola sorgente interrogata dalla federazione. */
-export interface SourceOutcome<T = Track> {
+export interface SourceOutcome<T> {
   source: SourceId;
-  result: PromiseSettledResult<T[]>;
+  result: PromiseSettledResult<T>;
 }
 
 /**
@@ -68,7 +68,7 @@ export function describeFailure(reason: unknown): string {
  * infinito si chiuderebbe per sempre su una caduta di rete di un secondo.
  * E' lo stesso equivoco delle liste vuote di Jamendo, un piano piu' in alto.
  */
-export function combine<T>(outcomes: SourceOutcome<T>[]): FederatedResult<T> {
+export function combine<T>(outcomes: SourceOutcome<T[]>[]): FederatedResult<T> {
   const lists: T[][] = [];
   const failed: FederatedResult['failed'] = [];
 
@@ -137,21 +137,20 @@ export function resolveCursor(param: unknown, sources: readonly SourceId[]): Sou
 /**
  * Il cursore della pagina dopo, dagli esiti di questa:
  *
- * - brani arrivati: la sorgente avanza di una pagina;
+ * - pagina con altri risultati possibili: la sorgente avanza di una pagina;
  * - sorgente caduta: resta dov'era e riprova alla prossima;
- * - zero brani senza errore: la sorgente ha finito e si toglie.
+ * - fine dichiarata dalla sorgente: si toglie.
  *
  * Quando non resta nessuna sorgente l'elenco e' finito (`undefined`).
  *
- * Zero brani vale come fine anche se la sorgente ha scartato una pagina
- * intera di brani non riproducibili: e' la regola che il cursore unico
- * applicava a tutte insieme, ora presa sorgente per sorgente. Le risposte
- * vuote per errore di Jamendo le esclude gia' l'adapter, che ritenta
- * prima di arrendersi.
+ * Una pagina interamente filtrata puo' avere ancora un seguito. L'adapter
+ * decide `hasMore` dalla risposta originale, prima di scartare i brani
+ * non riproducibili. Le risposte vuote per errore di Jamendo le esclude
+ * gia' l'adapter, che ritenta prima di arrendersi.
  */
-export function advanceCursor<T>(
+export function advanceCursor(
   cursor: SourceCursor,
-  outcomes: readonly SourceOutcome<T>[],
+  outcomes: readonly SourceOutcome<SourceTrackPage>[],
   pageSize: number,
 ): SourceCursor | undefined {
   const next: SourceCursor = {};
@@ -159,7 +158,7 @@ export function advanceCursor<T>(
     const offset = cursor[source];
     if (offset === undefined) continue;
     if (result.status === 'rejected') next[source] = offset;
-    else if (result.value.length > 0) next[source] = offset + pageSize;
+    else if (result.value.hasMore) next[source] = offset + pageSize;
   }
   return Object.keys(next).length > 0 ? next : undefined;
 }

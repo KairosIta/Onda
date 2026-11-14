@@ -5,6 +5,7 @@ import {
   type ListParams,
   type MusicSource,
   type SourceId,
+  type SourceTrackPage,
   type SpotlightKind,
   type Track,
 } from '@/types/track';
@@ -62,11 +63,11 @@ export const activeSourceLabels = (): string => joinLabels(active().map((s) => s
  */
 async function settle<T>(
   sources: readonly MusicSource[],
-  call: (s: MusicSource) => Promise<T[]> | null,
+  call: (s: MusicSource) => Promise<T> | null,
 ): Promise<SourceOutcome<T>[]> {
   const started = sources
     .map((source) => ({ source, promise: call(source) }))
-    .filter((c): c is { source: MusicSource; promise: Promise<T[]> } => c.promise !== null);
+    .filter((c): c is { source: MusicSource; promise: Promise<T> } => c.promise !== null);
   const settled = await Promise.allSettled(started.map((c) => c.promise));
   return started.map(({ source }, i) => ({ source: source.id, result: settled[i] }));
 }
@@ -92,19 +93,43 @@ export interface PageParams {
 async function paginate(
   sources: readonly MusicSource[],
   { limit = 20, cursor, signal }: PageParams,
-  call: (s: MusicSource, page: ListParams) => Promise<Track[]>,
+  call: (s: MusicSource, page: ListParams) => Promise<SourceTrackPage>,
 ): Promise<FederatedPage> {
+  if (!Number.isSafeInteger(limit) || limit <= 0) throw new Error('Limite di pagina non valido');
   const from = resolveCursor(
     cursor,
     sources.map((s) => s.id),
   );
   const outcomes = await settle(
     sources.filter((s) => from[s.id] !== undefined),
-    (s) => call(s, { limit, offset: from[s.id], signal }),
+    async (s) => {
+      let offset = from[s.id]!;
+      for (;;) {
+        const result = await call(s, { limit, offset, signal });
+        if (result.tracks.length > 0 || !result.hasMore) {
+          // Ogni sorgente aggiorna solo il proprio offset, e solo dopo un
+          // successo: un errore lascia il cursore al punto da ritentare.
+          from[s.id] = offset;
+          return result;
+        }
+        // Una lista senza righe non garantisce un altro onEndReached:
+        // salta le pagine filtrate, fino a brani validi o fine catalogo.
+        offset += limit;
+      }
+    },
   );
   // `combine` lancia se sono cadute tutte: la pagina fallisce intera e la
   // richiesta successiva riparte dallo stesso cursore.
-  return { ...combine(outcomes), next: advanceCursor(from, outcomes, limit) };
+  const combined = combine(
+    outcomes.map(({ source, result }): SourceOutcome<Track[]> => ({
+      source,
+      result:
+        result.status === 'fulfilled'
+          ? { status: 'fulfilled', value: result.value.tracks }
+          : result,
+    })),
+  );
+  return { ...combined, next: advanceCursor(from, outcomes, limit) };
 }
 
 export const searchAll = (query: string, page: PageParams = {}): Promise<FederatedPage> =>

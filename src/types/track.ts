@@ -95,6 +95,13 @@ export interface AlbumInfo {
   detail?: string;
 }
 
+/** Una pagina del catalogo, prima di comporla con le altre sorgenti. */
+export interface SourceTrackPage {
+  tracks: Track[];
+  /** Deciso sulla risposta originale: i filtri non indicano la fine del catalogo. */
+  hasMore: boolean;
+}
+
 /**
  * Contratto che ogni sorgente deve rispettare. Aggiungerne una terza
  * (Free Music Archive, un server locale, ...) significa implementare
@@ -105,9 +112,9 @@ export interface AlbumInfo {
 export interface MusicSource {
   id: SourceId;
   label: string;
-  search(params: SearchParams): Promise<Track[]>;
-  trending(params?: TrendingParams): Promise<Track[]>;
-  artistTracks(artistId: string, params?: ListParams): Promise<Track[]>;
+  search(params: SearchParams): Promise<SourceTrackPage>;
+  trending(params?: TrendingParams): Promise<SourceTrackPage>;
+  artistTracks(artistId: string, params?: ListParams): Promise<SourceTrackPage>;
   artistInfo(artistId: string): Promise<ArtistInfo>;
   albumTracks?(albumId: string, params?: ListParams): Promise<Track[]>;
   albumInfo?(albumId: string): Promise<AlbumInfo>;
