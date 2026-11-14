@@ -4,6 +4,14 @@ type Listener = (status: string) => void;
 
 const listeners = new Set<Listener>();
 
+/** Permessi gia' concessi nel dispositivo finto: nessuna finestra di sistema. */
+export const Platform = { OS: 'android', Version: 34 };
+export const PermissionsAndroid = {
+  check: async () => true,
+  request: async () => 'granted',
+};
+export const Linking = { openSettings: async () => {} };
+
 export const AppState = {
   currentState: 'active',
   addEventListener(_type: 'change', listener: Listener) {

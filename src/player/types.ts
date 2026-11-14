@@ -77,6 +77,8 @@ type NoPayload = Record<never, never>;
 /** Gli eventi del player e cosa portano. */
 export interface PlayerEvents {
   isPlayingChanged: { playing: boolean };
+  /** Cambia anche con una pausa durante il buffering, quando non esce gia' audio. */
+  playWhenReadyChanged: { playWhenReady: boolean };
   playbackStateChanged: { state: PlaybackState };
   /**
    * Cambio di brano, anche quando lo stesso brano ricomincia con `one`;

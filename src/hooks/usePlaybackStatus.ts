@@ -1,4 +1,4 @@
-import { useIsPlaying, usePlaybackState } from '@/player';
+import { useIsPlaying, usePlaybackState, usePlayWhenReady } from '@/player';
 import { derivePlaybackStatus, type PlaybackStatus } from '@/services/playbackStatus';
 import { usePlaybackFault } from '@/store/playbackFault';
 import { useNowPlaying } from '@/store/session';
@@ -7,7 +7,15 @@ import { useNowPlaying } from '@/store/session';
 export function usePlaybackStatus(): PlaybackStatus {
   const state = usePlaybackState();
   const playing = useIsPlaying();
+  const playWhenReady = usePlayWhenReady();
   const { item, pending } = useNowPlaying();
   const fault = usePlaybackFault();
-  return derivePlaybackStatus({ state, playing, hasItem: item !== null, pending, fault });
+  return derivePlaybackStatus({
+    state,
+    playing,
+    playWhenReady,
+    hasItem: item !== null,
+    pending,
+    fault,
+  });
 }

@@ -63,13 +63,17 @@ internal object PlaybackCore {
   var session: MediaLibrarySession? = null
 
   /**
-   * Audio in uscita e stato del player, come li ha annunciati l'ultimo
-   * evento: si leggono da qualunque thread senza aspettare il main, perche'
-   * non dipendono dai comandi appena dati (un play diventa audio quando lo
-   * decide la rete). Servono alle schermate e al JS appena caricato.
+   * Audio in uscita, richiesta di play e stato, come li ha annunciati
+   * l'ultimo evento: si leggono da qualunque thread senza aspettare il main.
+   * Servono alle schermate e al JS appena caricato. La richiesta di play
+   * resta distinta dall'audio: il buffering puo' continuare anche in pausa.
    */
   @Volatile
   var playingNow = false
+    private set
+
+  @Volatile
+  var playWhenReadyNow = false
     private set
 
   @Volatile
@@ -453,6 +457,8 @@ internal object PlaybackCore {
         // Un play da fuori, dopo lo swipe dai recenti, vale come un ritorno:
         // il JS non puo' arrivare qui da solo, perche' `play()` lo ferma.
         if (playWhenReady) stoppedByUser = false else cancelRetry()
+        playWhenReadyNow = playWhenReady
+        emit("playWhenReadyChanged", "playWhenReady" to playWhenReady)
       }
 
       override fun onIsPlayingChanged(isPlaying: Boolean) {

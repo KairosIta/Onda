@@ -1,9 +1,10 @@
 import type { PlaybackState } from '@/player';
 
 /**
- * Un solo stato per il tasto play, ricavato dai tre segnali che il player
+ * Un solo stato per il tasto play, ricavato dai segnali che il player
  * espone separatamente: lo stato del player (`idle/ready/buffering/ended/
- * error`), se sta davvero uscendo audio e se c'e' un brano caricato.
+ * error`), se e' richiesto il play, se sta davvero uscendo audio e se c'e'
+ * un brano caricato.
  *
  * Modulo puro: i due tasti play dell'app (mini-player e player) leggono lo
  * stesso stato e reagiscono allo stesso modo, e la tabella si verifica
@@ -25,6 +26,8 @@ export type PlaybackStatus =
 export interface PlaybackSignals {
   state: PlaybackState;
   playing: boolean;
+  /** Il play e' richiesto anche quando la rete non ha ancora fornito audio. */
+  playWhenReady: boolean;
   hasItem: boolean;
   /** Coda ripristinata dal disco ma non ancora caricata nel player. */
   pending: boolean;
@@ -38,6 +41,7 @@ export interface PlaybackSignals {
 export function derivePlaybackStatus({
   state,
   playing,
+  playWhenReady,
   hasItem,
   pending,
   fault,
@@ -49,7 +53,9 @@ export function derivePlaybackStatus({
   // Gli stati eccezionali vincono su `playing`, che durante un buffering
   // e' comunque falso: ExoPlayer considera "playing" solo l'audio che esce.
   if (state === 'error' || fault) return 'error';
-  if (state === 'buffering') return 'buffering';
+  // Una pausa non termina il buffering nativo: il tasto deve comunque
+  // tornare a play, anche se la rete non ha ancora riempito il buffer.
+  if (state === 'buffering') return playWhenReady ? 'buffering' : 'paused';
   if (state === 'ended') return 'ended';
   return playing ? 'playing' : 'paused';
 }

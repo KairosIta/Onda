@@ -393,8 +393,10 @@ incorpora; oggi sotto c'e' il modulo nostro su AndroidX Media3
 ([sotto](#il-modulo-media3)), e il resto dell'app non se n'e' accorto.
 
 - `src/player/index.ts` e' la facciata: esporta `player`, gli hook
-  `usePlaybackState` e `useIsPlaying` e i tipi. Cambiare modulo vuol dire
-  cambiare li' l'import del backend.
+  `usePlaybackState`, `useIsPlaying`, `usePlayWhenReady` e i tipi. La richiesta
+  di play viaggia separata dall'audio effettivo: una pausa durante il buffering
+  deve mostrare subito Riprendi, anche se il caricamento non e' finito.
+  Cambiare modulo vuol dire cambiare li' l'import del backend.
 - `src/player/backend.ts` e' il contratto, `PlayerControls`. Contiene solo
   quello che Onda usa: oltre ai metodi elenca i doveri del nativo, come il
   focus audio, la pausa a cuffie staccate, CPU e Wi-Fi svegli a schermo

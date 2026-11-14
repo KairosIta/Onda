@@ -212,6 +212,7 @@ export const backend: PlayerBackend = {
 
   usePlaybackState: () => playbackState,
   useIsPlaying: () => playing,
+  usePlayWhenReady: () => playRequested,
 };
 
 /** I comandi del test: quello che il nativo farebbe da solo. */
@@ -231,6 +232,7 @@ export const fakePlayer = {
 
   /** Un evento che viene dal nativo, consegnato subito. */
   emit(event: PlayerEvent): void {
+    if (event.type === 'playWhenReadyChanged') playRequested = event.playWhenReady;
     if (event.type === 'isPlayingChanged') {
       playing = event.playing;
       // Il silenzio puo' essere buffering o errore, non necessariamente pausa.

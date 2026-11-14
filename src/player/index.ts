@@ -12,6 +12,8 @@ export const player: PlayerControls = backend;
 export const usePlaybackState = backend.usePlaybackState;
 /** Se sta davvero uscendo audio, per i componenti. */
 export const useIsPlaying = backend.useIsPlaying;
+/** Se deve suonare appena pronto, anche mentre sta caricando. */
+export const usePlayWhenReady = backend.usePlayWhenReady;
 
 export type {
   BrowseCategory,

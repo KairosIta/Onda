@@ -984,7 +984,15 @@ test('lo stato del tasto play segue una tabella sola', () => {
     playing: boolean,
     over: Partial<Parameters<typeof derivePlaybackStatus>[0]> = {},
   ) =>
-    derivePlaybackStatus({ state, playing, hasItem: true, pending: false, fault: false, ...over });
+    derivePlaybackStatus({
+      state,
+      playing,
+      playWhenReady: true,
+      hasItem: true,
+      pending: false,
+      fault: false,
+      ...over,
+    });
 
   assert.equal(s('ready', true), 'playing');
   assert.equal(s('ready', false), 'paused');

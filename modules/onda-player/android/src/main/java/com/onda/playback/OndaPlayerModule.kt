@@ -66,6 +66,7 @@ class OndaPlayerModule : Module() {
     }
     // Senza passare dal main: valgono come li ha annunciati l'ultimo evento.
     Function("isPlaying") { PlaybackCore.playingNow }
+    Function("getPlayWhenReady") { PlaybackCore.playWhenReadyNow }
     Function("getPlaybackState") { PlaybackCore.stateNow }
 
     Function("setRepeatMode") { mode: String ->

@@ -211,6 +211,7 @@ test('il recupero della rete in background aggiorna lo stato visibile senza camb
     derivePlaybackStatus({
       state: 'buffering',
       playing: false,
+      playWhenReady: true,
       hasItem: true,
       pending: false,
       fault: hasPlaybackFault(),
@@ -224,6 +225,7 @@ test('il recupero della rete in background aggiorna lo stato visibile senza camb
     derivePlaybackStatus({
       state: 'ready',
       playing: true,
+      playWhenReady: true,
       hasItem: true,
       pending: false,
       fault: hasPlaybackFault(),

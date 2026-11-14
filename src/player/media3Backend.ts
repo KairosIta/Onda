@@ -42,19 +42,25 @@ const ERROR_CODES: readonly PlaybackErrorCode[] = ['network', 'source', 'rendere
 type Listener = (event: PlayerEvent) => void;
 
 /**
- * Stato del player e audio in uscita per gli hook delle schermate. Si
+ * Stato, richiesta di play e audio in uscita per gli hook delle schermate. Si
  * aggiornano a ogni evento, anche quando l'evento va al gestore in
  * background: tornando in primo piano gli hook sono gia' giusti.
  */
-export function createPlaybackSignals(initial: { state: PlaybackState; playing: boolean }) {
+export function createPlaybackSignals(initial: {
+  state: PlaybackState;
+  playing: boolean;
+  playWhenReady: boolean;
+}) {
   let state = initial.state;
   let playing = initial.playing;
+  let playWhenReady = initial.playWhenReady;
   const listeners = new Set<() => void>();
   const notify = () => listeners.forEach((l) => l());
 
   return {
     getState: () => state,
     getPlaying: () => playing,
+    getPlayWhenReady: () => playWhenReady,
     subscribe(listener: () => void): () => void {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -65,6 +71,9 @@ export function createPlaybackSignals(initial: { state: PlaybackState; playing: 
         notify();
       } else if (event.type === 'isPlayingChanged' && event.playing !== playing) {
         playing = event.playing;
+        notify();
+      } else if (event.type === 'playWhenReadyChanged' && event.playWhenReady !== playWhenReady) {
+        playWhenReady = event.playWhenReady;
         notify();
       }
     },
@@ -151,6 +160,7 @@ export function createMedia3Backend(native: NativePlayer, appState: AppStateLike
   const signals = createPlaybackSignals({
     state: native.getPlaybackState(),
     playing: native.isPlaying(),
+    playWhenReady: native.getPlayWhenReady(),
   });
   const listeners = new Map<PlayerEventName, Set<Listener>>();
   let backgroundHandler: ((event: PlayerEvent) => void) | null = null;
@@ -159,6 +169,8 @@ export function createMedia3Backend(native: NativePlayer, appState: AppStateLike
     switch (raw.type) {
       case 'isPlayingChanged':
         return { type: 'isPlayingChanged', playing: raw.playing === true };
+      case 'playWhenReadyChanged':
+        return { type: 'playWhenReadyChanged', playWhenReady: raw.playWhenReady === true };
       case 'playbackStateChanged': {
         const state = PLAYBACK_STATES.find((s) => s === raw.state) ?? 'idle';
         return { type: 'playbackStateChanged', state };
@@ -284,6 +296,7 @@ export function createMedia3Backend(native: NativePlayer, appState: AppStateLike
 
     usePlaybackState: () => useSyncExternalStore(signals.subscribe, signals.getState),
     useIsPlaying: () => useSyncExternalStore(signals.subscribe, signals.getPlaying),
+    usePlayWhenReady: () => useSyncExternalStore(signals.subscribe, signals.getPlayWhenReady),
   };
 }
 

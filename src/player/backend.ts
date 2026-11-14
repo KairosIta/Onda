@@ -143,4 +143,6 @@ export interface PlayerControls {
 export interface PlayerBackend extends PlayerControls {
   usePlaybackState(): PlaybackState;
   useIsPlaying(): boolean;
+  /** La richiesta di play, distinta dall'audio effettivo durante il buffering. */
+  usePlayWhenReady(): boolean;
 }

@@ -72,8 +72,9 @@ export interface OndaPlayerFunctions {
   getActiveIndex(): number | null;
   getActiveMediaItem(): NativeMediaItem | null;
   getProgress(): { position: number; duration: number; buffered: number };
-  /** Questi due valgono come li ha annunciati l'ultimo evento, senza aspettare il main thread. */
+  /** Valgono come li ha annunciati l'ultimo evento, senza aspettare il main thread. */
   isPlaying(): boolean;
+  getPlayWhenReady(): boolean;
   getPlaybackState(): 'idle' | 'ready' | 'buffering' | 'ended';
 
   setRepeatMode(mode: 'off' | 'one' | 'all'): void;

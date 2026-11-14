@@ -79,6 +79,7 @@ function fakeNative() {
     getActiveMediaItem: () => (active === null ? null : out(queue[active])),
     getProgress: () => ({ position: 12.5, duration: 200, buffered: 30 }),
     isPlaying: () => false,
+    getPlayWhenReady: () => false,
     getPlaybackState: () => 'idle',
     setRepeatMode: record('setRepeatMode'),
     setShuffleModeEnabled: record('setShuffleModeEnabled'),
@@ -276,7 +277,7 @@ test('un listener che lancia non ferma gli altri', async (t) => {
 });
 
 test('stato e audio in uscita si aggiornano anche con gli eventi del background', () => {
-  const signals = createPlaybackSignals({ state: 'idle', playing: false });
+  const signals = createPlaybackSignals({ state: 'idle', playing: false, playWhenReady: false });
   let changes = 0;
   signals.subscribe(() => changes++);
 
@@ -291,4 +292,38 @@ test('stato e audio in uscita si aggiornano anche con gli eventi del background'
 test('i tempi del progresso arrivano in secondi', () => {
   const { backend } = setup();
   assert.deepEqual(backend.getProgress(), { position: 12.5, duration: 200, buffered: 30 });
+});
+
+test('pausa e ripresa aggiornano la richiesta di play anche senza audio o cambi di buffering', () => {
+  const signals = createPlaybackSignals({
+    state: 'buffering',
+    playing: false,
+    playWhenReady: true,
+  });
+  let changes = 0;
+  signals.subscribe(() => changes++);
+  assert.equal(signals.getPlayWhenReady(), true, 'legge anche la richiesta iniziale del nativo');
+
+  signals.apply({ type: 'playWhenReadyChanged', playWhenReady: false });
+  assert.equal(signals.getPlayWhenReady(), false);
+  signals.apply({ type: 'playWhenReadyChanged', playWhenReady: false });
+  assert.equal(changes, 1, 'un evento duplicato non ridisegna i controlli');
+  signals.apply({ type: 'playWhenReadyChanged', playWhenReady: true });
+  assert.equal(signals.getPlayWhenReady(), true);
+  assert.equal(signals.getState(), 'buffering');
+  assert.equal(signals.getPlaying(), false);
+  assert.equal(changes, 2);
+});
+
+test('la richiesta di play dal nativo arriva anche dai controller in background', () => {
+  const { backend, emit, appState } = setup();
+  const foreground: boolean[] = [];
+  const background: PlayerEvent[] = [];
+  backend.subscribe('playWhenReadyChanged', (event) => foreground.push(event.playWhenReady));
+  backend.registerBackgroundHandler((event) => background.push(event));
+  emit({ type: 'playWhenReadyChanged', playWhenReady: true });
+  appState.currentState = 'background';
+  emit({ type: 'playWhenReadyChanged', playWhenReady: false });
+  assert.deepEqual(foreground, [true]);
+  assert.deepEqual(background, [{ type: 'playWhenReadyChanged', playWhenReady: false }]);
 });
