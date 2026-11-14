@@ -174,8 +174,11 @@ Head Unit.
       slider del player, avviso con **Riprova** quando il brano non risponde.
       **Collaudato in parte il 9 settembre 2026**: in modalità aereo a metà
       brano compaiono l'avviso e Riprova, che riparte dalla stessa posizione;
-      restano lo spinner e la porzione bufferizzata con rete lenta. La tabella
-      sta in
+      resta la verifica della porzione bufferizzata con rete lenta.
+      Il 14 novembre 2026, su Samsung Galaxy A13 / Android 14, sono stati
+      verificati spinner, pausa e ripresa durante il buffering nel mini-player
+      e nel player, inclusa la pausa da un controller Android in background.
+      Prova con stream limitato a 2 KiB/s nel registro dei collaudi. La tabella sta in
       `src/services/playbackStatus.ts` (tre test) e i comandi di trasporto
       passano da `playerCommands.ts`, che sa cosa vuol dire play in ogni stato.
 - [ ] Coda riordinabile trascinando la maniglia a destra di ogni riga, con le

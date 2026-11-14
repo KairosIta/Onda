@@ -15,6 +15,48 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### 14 novembre 2026 — pausa e ripresa durante il buffering su Samsung Android 14
+
+La build personale `0.2.0+cd655ca` è stata compilata su Linux con Node.js
+24.21.0 e JDK 17 e installata con `npm run install:personal` su Samsung
+Galaxy A13 (SM-A137F), Android 14 / API 34. Onda non era presente sul telefono.
+Il comando è stato eseguito senza `ANDROID_HOME` e `ANDROID_SDK_ROOT`.
+Sono passati 252 test Node, 31 test JVM, TypeScript, ESLint, Prettier e
+Android Lint; firma personale e bundle standalone sono stati verificati.
+Lo SHA-256 dell'APK letto dal dispositivo coincideva con quello del manifest:
+`ed654b4d381f308bf5556b32c8a0e13756fef639f3467b6bb2edfba1580274f0`.
+
+Il difetto nasceva dalla confusione fra lo stato di caricamento e la richiesta
+di riproduzione: Media3 può restare in `BUFFERING` anche dopo una pausa.
+Ora `playWhenReady` arriva dal modulo nativo agli hook, compresi i cambi
+richiesti da un controller Android. Il test di regressione in
+`scripts/player-commands.test.ts` falliva prima della correzione perché
+otteneva ancora `buffering` dopo la pausa; ora verifica il ritorno del tasto
+Riprendi e la sequenza di comandi `pause`, `play`. Altri due test verificano
+il segnale indipendente dall'audio e l'evento in background.
+
+Il collaudo ha usato una playlist temporanea con un brano Audius pubblico,
+senza credenziali. Un proxy locale attraverso ADB ha limitato il solo tunnel
+HTTPS dello stream a 2 KiB/s (circa 16 kbit/s), senza decifrare il traffico.
+Gerarchie UI, schermate e stato della media session hanno confermato:
+
+1. Nel mini-player, dal caricamento la pausa mostra subito Riprendi,
+   con posizione ancora a zero. Il secondo tocco riprende lo stesso brano
+   anche mentre la rete resta lenta.
+2. Nel player completo funziona la stessa sequenza: pausa, Riprendi,
+   nuovo caricamento e avanzamento senza selezionare nuovamente il brano.
+3. Un comando Android `media_session dispatch pause`, inviato con Onda in
+   background durante `BUFFERING`, lascia al ritorno il player in pausa e
+   il pulsante Riprendi visibile.
+4. Tolto il limite di rete, la posizione resta ferma a 5.311 ms finché
+   non si preme Riprendi. Dopo il tocco la sessione passa a `PLAYING`,
+   velocità 1, e la posizione avanza oltre 46 secondi.
+
+Nel processo della prova non sono comparsi crash, errori dei comandi nativi
+o errori di riproduzione. Al termine sono stati ripristinati proxy e volume
+originali, rimossi il collegamento ADB del proxy, la playlist e i file
+temporanei sul telefono; la build personale è rimasta installata in pausa.
+
 ### 13 novembre 2026 — build personale con rilevamento automatico dell'SDK Android
 
 Su Linux, con l'SDK nella directory standard `$HOME/Android/Sdk`, `doctor`
