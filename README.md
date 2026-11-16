@@ -1,12 +1,13 @@
 <p align="center">
-  <img src="assets/brand/onda-icon.png" width="112" alt="Icona di Onda">
+  <img src="assets/brand/spivra-icon.png" width="112" alt="Icona di Spivra">
 </p>
 
-<h1 align="center">Onda</h1>
+<h1 align="center">Spivra</h1>
+<p align="center">by Andrea Spina</p>
 
 <p align="center">
-  <strong>La musica indipendente, tutta sulla stessa onda.</strong><br>
-  Player Android con codice Onda sotto MIT per ascoltare Audius e Jamendo.
+  <strong>La tua prossima scoperta musicale.</strong><br>
+  Player Android con codice Spivra sotto MIT per ascoltare Audius e Jamendo.
 </p>
 
 <p align="center">
@@ -18,14 +19,19 @@
 > [!IMPORTANT]
 > Questo repository pubblica il sorgente, non un APK ufficiale. Ogni persona
 > crea sul proprio computer una copia personale e inserisce nell'app il proprio
-> Client ID Jamendo: Onda non incorpora credenziali. L'APK risultante usa una
+> Client ID Jamendo: Spivra non incorpora credenziali. L'APK risultante usa una
 > firma personale locale ed è destinato ai dispositivi di chi lo compila, non
 > alla ridistribuzione.
 
-## Cosa fa Onda
+## Cosa fa Spivra
 
-Onda riunisce [Audius](https://audius.co/) e
-[Jamendo](https://www.jamendo.com/) senza account Onda e senza un backend
+**Spivra by Andrea Spina** è il nuovo nome di Onda. Il repository è
+[KairosIta/Spivra](https://github.com/KairosIta/Spivra). Un aggiornamento
+sulla stessa installazione mantiene libreria, sorgenti e impostazioni. Il marchio e i file per la stampa sono in
+[`assets/brand/`](assets/brand/README.md).
+
+Spivra riunisce [Audius](https://audius.co/) e
+[Jamendo](https://www.jamendo.com/) senza account Spivra e senza un backend
 proprietario. Offre una home a sezioni e una ricerca federata di brani,
 artisti e album, riproduzione in background con ripresa dell'ascolto,
 controlli dalla schermata di blocco, integrazione Android Auto, coda riordinabile,
@@ -36,9 +42,9 @@ dispositivo.
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/discover.png" width="260" alt="Catalogo Scopri di Onda con contenuti dimostrativi"></td>
-    <td align="center"><img src="docs/screenshots/player.png" width="260" alt="Player di Onda con contenuti dimostrativi"></td>
-    <td align="center"><img src="docs/screenshots/queue.png" width="260" alt="Coda di Onda con contenuti dimostrativi"></td>
+    <td align="center"><img src="docs/screenshots/discover.png" width="260" alt="Catalogo Scopri di Spivra con contenuti dimostrativi"></td>
+    <td align="center"><img src="docs/screenshots/player.png" width="260" alt="Player di Spivra con contenuti dimostrativi"></td>
+    <td align="center"><img src="docs/screenshots/queue.png" width="260" alt="Coda di Spivra con contenuti dimostrativi"></td>
   </tr>
   <tr>
     <td align="center"><sub><strong>Scopri</strong></sub></td>
@@ -55,7 +61,7 @@ rappresentano contenuti reali dei cataloghi.</sub>
 Installa e apri il tuo coding agent, poi incolla questo prompt:
 
 ```text
-Clona https://github.com/KairosIta/Onda e prepara sul mio computer una build
+Clona https://github.com/KairosIta/Spivra e prepara sul mio computer una build
 Android personale seguendo AGENTS.md e docs/BUILD_PERSONAL.md. Controlla prima
 l'ambiente con npm run doctor, guidami senza mostrare o committare credenziali,
 poi crea e installa l'APK con npm run install:personal. Non pubblicare artefatti,
@@ -63,7 +69,7 @@ non cambiare la visibilità del repository e non creare una release GitHub.
 ```
 
 L'agente può installare software di sistema solo dopo la tua autorizzazione.
-Al primo avvio Onda ti chiede il Client ID Jamendo: crea gratuitamente
+Al primo avvio Spivra ti chiede il Client ID Jamendo: crea gratuitamente
 un'applicazione nel [portale Jamendo](https://devportal.jamendo.com/) e
 inserisci il Client ID nell'app. Puoi anche saltare e aggiungerlo dopo da
 Libreria › Sorgenti; Audius funziona da subito.
@@ -78,14 +84,14 @@ Servono Node.js 22.15 o successivo, JDK 17, Android SDK Platform 36,
 Build-Tools 36.0.0 e un dispositivo/emulatore Android. Expo Go non basta.
 
 ```bash
-git clone https://github.com/KairosIta/Onda.git
-cd Onda
+git clone https://github.com/KairosIta/Spivra.git
+cd Spivra
 npm ci
 npm run doctor
 npm run install:personal
 ```
 
-Al primo avvio Onda chiede il tuo Client ID Jamendo, che crei gratuitamente nel
+Al primo avvio Spivra chiede il tuo Client ID Jamendo, che crei gratuitamente nel
 [portale Jamendo](https://devportal.jamendo.com/). Resta cifrato sul telefono e
 si cambia da Libreria › Sorgenti.
 
@@ -95,7 +101,7 @@ Senza dispositivo collegato puoi creare soltanto l'APK:
 npm run build:personal
 ```
 
-Il file sarà in `dist/personal/Onda-personal.apk`. La guida completa, inclusi
+Il file sarà in `dist/personal/Spivra-personal.apk`. La guida completa, inclusi
 PowerShell, debug USB ed errori comuni, è in
 [Build personale](docs/BUILD_PERSONAL.md).
 
@@ -106,7 +112,7 @@ PowerShell, debug USB ed errori comuni, è in
   senza credenziali.
 - Gli album sono disponibili solo per i brani Jamendo.
 - Nessun ascolto offline.
-- Il modulo nativo è codice Onda (`modules/onda-player`, MIT); il motore di
+- Il modulo nativo è codice Spivra (`modules/onda-player`, MIT); il motore di
   riproduzione è AndroidX Media3 1.11.1, sotto Apache 2.0. Dall'11 ottobre
   2026 sostituisce `@rntp/player`, rimosso da dipendenze, lockfile e APK.
 - Il 13 ottobre 2026 il player Media3 è stato collaudato su Motorola Edge 50
@@ -127,7 +133,7 @@ collaudo sono nella [guida per sviluppatori](docs/DEVELOPMENT.md).
 
 ## Licenze e responsabilità
 
-Il codice e la documentazione originali di Onda sono disponibili sotto
+Il codice e la documentazione originali di Spivra sono disponibili sotto
 [MIT](LICENSE). Questa licenza non si estende automaticamente alle dipendenze
 di terze parti (come AndroidX Media3, sotto Apache 2.0), agli asset di brand,
 alle API, alle credenziali, alla musica, agli artwork, ai metadati o ai marchi

@@ -1,4 +1,4 @@
-# Registro dei collaudi di Onda
+# Registro dei collaudi di Spivra (già Onda)
 
 Qui sta l'evidenza: cosa è stato verificato, quando, su quale dispositivo o
 build e con quale prova. La [roadmap](../TODO.md) tiene solo le voci aperte;
@@ -14,6 +14,58 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 ---
 
 ## Baseline verificata
+
+### 16 novembre 2026 — repository GitHub rinominato Spivra
+
+Il repository GitHub è stato rinominato in `KairosIta/Spivra`, mantenendo
+l'ID `1343096026`, il ramo predefinito `main` e la visibilità pubblica.
+Aggiornati descrizione GitHub, remote `origin`, URL del progetto e dei
+documenti nell'app, comandi di clonazione e riferimenti nella documentazione.
+Il vecchio indirizzo web reindirizza al nuovo; `git ls-remote origin HEAD`
+conferma l'accesso al repository rinominato.
+
+Passati 265 test Node, `npm run typecheck`, `npm run lint`,
+`npm run format:check` e `git diff --check`. Il package Android, gli ID di
+archiviazione, i collegamenti delle notifiche e la firma personale conservano
+la loro identità storica. Questa verifica dei riferimenti non produce un
+nuovo APK: quello collaudato sotto resta la build personale installata.
+
+### 16 novembre 2026 — Spivra by Andrea Spina, aggiornamento personale
+
+Applicati il nome Spivra, il segno originale S a onda sonora, icone Android
+adattiva e monocromatica, splash e firma nelle schermate Scopri, benvenuto e
+Informazioni. Righteous è incorporato per marchio e titoli di navigazione;
+Manrope resta sui brani e sui comandi. I master SVG, compresa la composizione
+monocromatica per la stampa, sono in `assets/brand/`.
+
+Eseguiti `npm ci`, `npm run doctor`, `npm run prebuild -- --no-install`,
+`npm run notices` e `npm run install:personal` su Linux, Node 24.21.0, JDK 17,
+Platform 36 e Build-Tools 36.0.0. Passati 265 test Node, TypeScript, ESLint,
+Prettier, 31 test JVM del player e Android Lint. Gli avvisi incorporano ora
+anche Righteous/OFL-1.1; nessuna versione di dipendenza npm è cambiata.
+Il TTF Righteous nell'APK coincide byte per byte con il file sorgente.
+
+La prima compilazione è stata interrotta da SIGTERM dopo i controlli;
+la pipeline completa, rilanciata in una sessione con PTY, è terminata con
+successo e ha installato l'aggiornamento sul Motorola Edge 50 Neo, Android 16.
+
+Prove sul dispositivo:
+
+- nome Android «Spivra», marchio e firma leggibili in Scopri e Informazioni;
+- 4 preferiti e 96 ascolti recenti conservati; nessuna playlist, come prima;
+- stesso brano e posizione visibile nel mini-player, ancora in pausa;
+- swipe dalla prima alla seconda card, indicatore «Brano 2 di 20», poi
+  ritorno alla prima; nessuna freccia e nessun cambio di riproduzione;
+- il collegamento storico `onda://notification.click` apre ancora il player;
+- package `com.onda.player` e certificato personale locale conservati;
+- hash dell'APK installato uguale a quello dell'artefatto compilato.
+
+Artefatto locale `dist/personal/Spivra-personal.apk`, versione
+`0.2.0+f942b04.dirty`, SHA-256
+`29dc141e2d05ce671311b1ad33bb5388ec07c8d0dce2612a073837853cb839b2`.
+Firma debug personale; APK non destinato alla ridistribuzione. I test di
+regressione verificano inoltre l'importazione del formato storico
+`onda.library`, con preferiti, cronologia e playlist.
 
 ### 14 novembre 2026 — paginazione Audius oltre le pagine non riproducibili
 
@@ -1124,7 +1176,7 @@ player adattivo, bersagli da 48 dp).
 - [x] Screenshot con artwork reali sostituiti da contenuti dimostrativi
       originali; documentazione source-only, Windows, Codex e Claude aggiunta.
 - [x] Build manuale completa su GitHub Actions (`Verify personal build`,
-      [run 32597197344](https://github.com/KairosIta/Onda/actions/runs/32597197344))
+      [run 32597197344](https://github.com/KairosIta/Spivra/actions/runs/32597197344))
       passata su `ubuntu-latest` in circa 21 minuti e su `windows-latest` in
       circa 38, dopo il primo push pubblico.
 

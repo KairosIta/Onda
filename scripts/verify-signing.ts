@@ -105,7 +105,7 @@ if (!digestMatch) fail('impossibile leggere il certificato dal keystore.');
 const actualDigest = normalizeCertificateSha256(digestMatch[1]);
 const expectedDigest = normalizeCertificateSha256(identity.certificateSha256);
 if (actualDigest !== expectedDigest) {
-  fail("il certificato non coincide con l'identita' di release attesa per Onda.");
+  fail("il certificato non coincide con l'identita' di release attesa per Spivra.");
 }
 
-console.log(`Chiave privata e firma Onda verificate in ${credentialsDir}: ${actualDigest}`);
+console.log(`Chiave privata e firma Spivra verificate in ${credentialsDir}: ${actualDigest}`);

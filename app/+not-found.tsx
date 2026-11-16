@@ -13,7 +13,7 @@ export default function NotFoundScreen() {
     <Screen>
       <Empty
         title="Pagina non trovata"
-        hint="Il collegamento non porta a nessuna schermata di Onda."
+        hint="Il collegamento non porta a nessuna schermata di Spivra."
         action={{ label: 'Torna a Scopri', onPress: () => router.navigate('/') }}
       />
     </Screen>

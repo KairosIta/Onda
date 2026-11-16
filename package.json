@@ -1,11 +1,11 @@
 {
-  "name": "onda",
+  "name": "spivra",
   "version": "0.2.0",
-  "description": "Player Android con codice Onda sotto MIT per i cataloghi Audius e Jamendo.",
+  "description": "Spivra by Andrea Spina: player Android sotto MIT per i cataloghi Audius e Jamendo.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/KairosIta/Onda.git"
+    "url": "git+https://github.com/KairosIta/Spivra.git"
   },
   "engines": {
     "node": ">=22.15.0"

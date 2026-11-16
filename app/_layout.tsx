@@ -88,9 +88,9 @@ function PlayerSetupFailed({
 }) {
   return (
     <View style={styles.crash}>
-      <Text style={styles.crashTitle}>Onda non si è avviata</Text>
+      <Text style={styles.crashTitle}>Spivra non si è avviata</Text>
       <Text style={styles.crashHint}>
-        Non riesco a preparare Onda. Riprova; se succede ancora, copia il messaggio qui sotto e
+        Non riesco a preparare Spivra. Riprova; se succede ancora, copia il messaggio qui sotto e
         segnalalo.
       </Text>
 

@@ -25,7 +25,7 @@ import { isRecord } from '@/utils/validate';
  */
 export const EXPORT_VERSION = 1;
 
-/** Marcatore del formato: distingue il nostro file da un JSON qualunque. */
+/** Identità storica del formato: resta stabile per leggere anche i backup di Onda. */
 export const EXPORT_FORMAT = 'onda.library';
 
 /**
@@ -147,7 +147,7 @@ export function parseExport(value: unknown): ParseResult {
   }
   if (!isRecord(value)) return { ok: false, reason: 'Il file non contiene un oggetto.' };
   if (value.format !== EXPORT_FORMAT) {
-    return { ok: false, reason: 'Non è un export di Onda.' };
+    return { ok: false, reason: 'Non è un export di Spivra.' };
   }
   if (typeof value.version !== 'number' || !Number.isFinite(value.version)) {
     return { ok: false, reason: 'Manca la versione del formato.' };
@@ -155,7 +155,7 @@ export function parseExport(value: unknown): ParseResult {
   if (value.version > EXPORT_VERSION) {
     return {
       ok: false,
-      reason: `File nella versione ${value.version}: serve una versione più recente di Onda.`,
+      reason: `File nella versione ${value.version}: serve una versione più recente di Spivra.`,
     };
   }
   const exceeded = importLimitExceeded(value.library);

@@ -244,7 +244,7 @@ export function JamendoGuide() {
         1. Accedi al portale sviluppatori Jamendo: Jamendo ammette un solo account per persona.
       </Text>
       <Text style={styles.body}>
-        2. Crea un’applicazione. Nella descrizione indica il link a Onda: {PROJECT_URL}
+        2. Crea un’applicazione. Nella descrizione indica il link a Spivra: {PROJECT_URL}
       </Text>
       <Text style={styles.body}>3. Copia qui il Client ID dell’applicazione.</Text>
       <Text style={styles.note}>

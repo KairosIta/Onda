@@ -139,7 +139,7 @@ internal object PlaybackCore {
   private fun createPlayer(): ExoPlayer {
     val http =
       DefaultHttpDataSource.Factory()
-        .setUserAgent(Util.getUserAgent(context, "Onda"))
+        .setUserAgent(Util.getUserAgent(context, "Spivra"))
         .setAllowCrossProtocolRedirects(true)
     val audio =
       AudioAttributes.Builder()

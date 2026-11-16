@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Redirect, useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BrandIdentity } from '@/components/BrandIdentity';
+import { FeaturedTracks } from '@/components/FeaturedTracks';
 import { GenreGrid } from '@/components/GenreGrid';
 import { PressableScale } from '@/components/PressableScale';
 import { TrackListSkeleton } from '@/components/Skeleton';
@@ -35,7 +37,7 @@ function useSpotlight(kind: SpotlightKind) {
 }
 
 /**
- * La home a sezioni: ascolti recenti, cosa sale, voci nuove, i generi e
+ * La home a sezioni: cosa sale, ascolti recenti, voci nuove, i generi e
  * poi il trending federato con lo scroll infinito. Le vetrine stanno
  * nell'header della lista, cosi' tutta la schermata scorre insieme.
  */
@@ -140,9 +142,11 @@ function DiscoverScreen() {
         header={
           <View>
             <View style={styles.header}>
-              <Text style={styles.title}>Scopri</Text>
+              <BrandIdentity />
               <Text style={styles.subtitle}>
-                {anyActive ? `Dal catalogo ${activeSourceLabels()}` : 'Nessuna sorgente attiva'}
+                {anyActive
+                  ? `Scopri · ${activeSourceLabels()}`
+                  : 'Scopri · Nessuna sorgente attiva'}
               </Text>
             </View>
 
@@ -156,10 +160,14 @@ function DiscoverScreen() {
               <ErrorNotice key={f.source} message={failureNotice(f)} />
             ))}
 
+            {/* Una vetrina caduta sparisce: l'avviso sulle sorgenti sta sopra. */}
+            <FeaturedTracks tracks={rising.data?.tracks ?? []} loading={rising.isLoading} />
+
             {recent.length > 0 ? (
               <TrackStrip
-                title="Ascoltati di recente"
+                title="Riprendi da qui"
                 tracks={recent}
+                compact
                 more={{
                   label: 'Tutti',
                   onPress: () => router.push('/collection/history'),
@@ -168,14 +176,6 @@ function DiscoverScreen() {
               />
             ) : null}
 
-            {/* Una vetrina caduta sparisce e basta: l'avviso sulle sorgenti
-                sta gia' sopra, e una riga "non risponde" per ogni sezione
-                farebbe della home un bollettino di guasti. */}
-            <TrackStrip
-              title="In ascesa questa settimana"
-              tracks={rising.data?.tracks ?? []}
-              loading={rising.isLoading}
-            />
             <TrackStrip
               title="Voci nuove"
               tracks={fresh.data?.tracks ?? []}
@@ -220,9 +220,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
     paddingBottom: spacing.md,
-    gap: 2,
+    gap: spacing.sm,
   },
-  title: { ...type.display, color: colors.text },
   subtitle: { ...type.caption, color: colors.textMuted },
   sectionTitle: {
     ...type.title,

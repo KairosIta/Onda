@@ -12,8 +12,8 @@ import { colors, radius, spacing, touch, type } from '@/theme';
 import type { SourceId } from '@/types/track';
 
 /**
- * Le sorgenti di Onda: un interruttore per ciascuna e le credenziali che
- * la persona inserisce. Onda non ne incorpora nessuna.
+ * Le sorgenti di Spivra: un interruttore per ciascuna e le credenziali che
+ * la persona inserisce. Spivra non ne incorpora nessuna.
  */
 export default function SourcesScreen() {
   const router = useRouter();
@@ -50,7 +50,7 @@ export default function SourcesScreen() {
       </View>
 
       <Text style={styles.lead}>
-        Onda riproduce i cataloghi di Audius e Jamendo. Le credenziali che inserisci restano su
+        Spivra riproduce i cataloghi di Audius e Jamendo. Le credenziali che inserisci restano su
         questo telefono, cifrate, e vanno solo al servizio a cui appartengono. Spegnere una sorgente
         non cancella niente: i suoi brani restano in Libreria e tornano ascoltabili quando la
         riaccendi.

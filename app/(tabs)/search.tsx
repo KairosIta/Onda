@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     gap: spacing.md,
   },
-  title: { ...type.display, color: colors.text },
+  title: { ...type.editorial, color: colors.text },
   input: {
     backgroundColor: colors.surface,
     borderWidth: 1,

@@ -178,7 +178,7 @@ export default function LibraryScreen() {
         )}
 
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Onda</Text>
+          <Text style={styles.sectionTitle}>Spivra</Text>
         </View>
         {/* Due gesti diversi, due righe: «dove lo metto» non e' «a chi lo
             mando», e la seconda strada fa uscire i dati dal telefono. */}
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { paddingBottom: spacing.xxl },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md },
-  title: { ...type.display, color: colors.text },
+  title: { ...type.editorial, color: colors.text },
   sectionHead: {
     flexDirection: 'row',
     alignItems: 'center',

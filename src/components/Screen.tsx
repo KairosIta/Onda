@@ -25,5 +25,5 @@ export function Screen({ children }: { children: ReactNode }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   body: { flex: 1 },
-  inset: { backgroundColor: colors.surface },
+  inset: { backgroundColor: colors.bg },
 });

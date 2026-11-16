@@ -16,7 +16,7 @@ import { usePlaybackStatus } from '@/hooks/usePlaybackStatus';
 import { describePlayButton } from '@/services/playbackStatus';
 import { skipToNext, togglePlayback } from '@/services/playerCommands';
 import { useProgress } from '@/store/progress';
-import { colors, motion, spacing, touch, type } from '@/theme';
+import { colors, motion, radius, spacing, touch, type } from '@/theme';
 import { Artwork } from './Artwork';
 import { PressableScale } from './PressableScale';
 import { parseUid } from '@/types/track';
@@ -108,78 +108,93 @@ export function MiniPlayer() {
       entering={enterArmed ? ENTERING : undefined}
       exiting={EXITING}
     >
-      <MiniProgress />
-
-      {/* Apre una schermata: evidenziazione come le righe di lista, non
+      <View style={styles.card}>
+        {/* Apre una schermata: evidenziazione come le righe di lista, non
           scala, cosi' un bersaglio largo non sembra un bottone. */}
-      <Pressable
-        style={({ pressed }) => [styles.body, pressed && styles.bodyPressed]}
-        onPress={() => router.push('/player')}
-        accessibilityRole="button"
-        accessibilityLabel={`Apri il player: ${track.title} di ${track.artist}`}
-      >
-        <Artwork
-          source={parseUid(track.mediaId)?.source}
-          uri={track.artworkUrl}
-          size={40}
-          recyclingKey={track.mediaId}
-        />
-
-        <View style={styles.meta}>
-          <Text numberOfLines={1} style={styles.title}>
-            {track.title}
-          </Text>
-          <Text numberOfLines={1} style={styles.artist}>
-            {track.artist}
-          </Text>
-        </View>
-
-        {/* Lo slot ha misura fissa: spinner e icona si alternano senza che
-            il tasto accanto si sposti. */}
-        <PressableScale
-          scaleTo={motion.iconPressScale}
-          haptic="tap"
-          containerStyle={touch.target}
-          onPress={() => togglePlayback(status)}
+        <Pressable
+          style={({ pressed }) => [styles.body, pressed && styles.bodyPressed]}
+          onPress={() => router.push('/player')}
           accessibilityRole="button"
-          accessibilityLabel={play.label}
-          accessibilityState={{ busy: play.busy }}
+          accessibilityLabel={`Apri il player: ${track.title} di ${track.artist}`}
         >
-          <View style={styles.playSlot}>
-            {play.busy ? (
-              <ActivityIndicator size="small" color={colors.accent} />
-            ) : (
-              <Ionicons
-                name={play.icon}
-                size={26}
-                color={status === 'error' ? colors.danger : colors.text}
-              />
-            )}
+          <Artwork
+            source={parseUid(track.mediaId)?.source}
+            uri={track.artworkUrl}
+            size={44}
+            radius={radius.md}
+            recyclingKey={track.mediaId}
+          />
+
+          <View style={styles.meta}>
+            <Text numberOfLines={1} style={styles.title}>
+              {track.title}
+            </Text>
+            <Text numberOfLines={1} style={styles.artist}>
+              {track.artist}
+            </Text>
           </View>
-        </PressableScale>
 
-        <PressableScale
-          scaleTo={motion.iconPressScale}
-          haptic="tap"
-          containerStyle={touch.target}
-          onPress={skipToNext}
-          accessibilityRole="button"
-          accessibilityLabel="Traccia successiva"
-        >
-          <Ionicons name="play-skip-forward" size={22} color={colors.textMuted} />
-        </PressableScale>
-      </Pressable>
+          {/* Lo slot ha misura fissa: spinner e icona si alternano senza che
+            il tasto accanto si sposti. */}
+          <PressableScale
+            scaleTo={motion.iconPressScale}
+            haptic="tap"
+            containerStyle={touch.target}
+            onPress={() => togglePlayback(status)}
+            accessibilityRole="button"
+            accessibilityLabel={play.label}
+            accessibilityState={{ busy: play.busy }}
+          >
+            <View style={styles.playSlot}>
+              {play.busy ? (
+                <ActivityIndicator size="small" color={colors.accent} />
+              ) : (
+                <Ionicons
+                  name={play.icon}
+                  size={26}
+                  color={status === 'error' ? colors.danger : colors.text}
+                />
+              )}
+            </View>
+          </PressableScale>
+
+          <PressableScale
+            scaleTo={motion.iconPressScale}
+            haptic="tap"
+            containerStyle={touch.target}
+            onPress={skipToNext}
+            accessibilityRole="button"
+            accessibilityLabel="Traccia successiva"
+          >
+            <Ionicons name="play-skip-forward" size={22} color={colors.textMuted} />
+          </PressableScale>
+        </Pressable>
+        <MiniProgress />
+      </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    backgroundColor: colors.bg,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
   },
-  progressTrack: { height: 2, backgroundColor: colors.surfaceHigh },
+  card: {
+    backgroundColor: colors.surfaceFloating,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  progressTrack: {
+    height: 2,
+    marginHorizontal: spacing.sm,
+    marginBottom: spacing.xs,
+    backgroundColor: colors.surfaceHigh,
+  },
   progressBuffered: {
     position: 'absolute',
     left: 0,
@@ -201,13 +216,13 @@ const styles = StyleSheet.create({
   body: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
   },
-  bodyPressed: { backgroundColor: colors.surfaceHigh },
-  meta: { flex: 1, gap: 1 },
-  title: { ...type.body, color: colors.text },
+  bodyPressed: { backgroundColor: colors.border },
+  meta: { flex: 1, gap: 2 },
+  title: { ...type.label, fontSize: 14, color: colors.text },
   artist: { ...type.caption, color: colors.textMuted },
   playSlot: { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
 });

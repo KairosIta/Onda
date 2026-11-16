@@ -14,6 +14,8 @@ import {
  * versionCode, package, plugin. Questo file non la sostituisce, la
  * arricchisce con cio' che `app.json`, essendo statico, non puo' sapere:
  * da quale commit sta nascendo questa build.
+ * Il rebrand Spivra conserva package e schema di Onda: sono identità di
+ * installazione e collegamento, non nomi da mostrare nell'interfaccia.
  *
  * Serve a una domanda che prima non aveva risposta: "sul telefono ho
  * l'ultima versione?". Con version e versionCode fermi fra due build dello
@@ -61,8 +63,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   return {
     ...config,
-    name: config.name ?? 'Onda',
-    slug: config.slug ?? 'onda',
+    name: config.name ?? 'Spivra',
+    slug: config.slug ?? 'spivra',
     version: versionName(declared, kind, built),
     extra: {
       ...config.extra,

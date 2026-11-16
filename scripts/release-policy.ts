@@ -50,7 +50,7 @@ export function resolveReleaseEnvironment(
 const CREDENTIAL_NAME = /(CLIENT_ID|API_KEY|SECRET|TOKEN|PASSWORD)/u;
 
 /**
- * Onda non incorpora credenziali: le inserisce ogni persona in app. Una
+ * Spivra non incorpora credenziali: le inserisce ogni persona in app. Una
  * variabile `EXPO_PUBLIC_*` con un nome da credenziale finirebbe in chiaro
  * nel bundle di chi la definisce, quindi build e release si fermano se ne
  * trovano una valorizzata. Restituisce i nomi, mai i valori.
@@ -71,7 +71,7 @@ export function embeddedCredentialErrors(
 ): string[] {
   return findEmbeddedCredentials(env).map(
     (name) =>
-      `${name} e' definita: Onda non incorpora credenziali, le inserisce ogni persona in app. ` +
+      `${name} e' definita: Spivra non incorpora credenziali, le inserisce ogni persona in app. ` +
       "Togli la variabile da .env e dall'ambiente.",
   );
 }

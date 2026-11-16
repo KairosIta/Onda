@@ -1,4 +1,4 @@
-# Contribuire a Onda
+# Contribuire a Spivra
 
 Issue e pull request mirate sono benvenute. Prima di iniziare una modifica
 importante, apri una issue per concordare comportamento e compatibilità.

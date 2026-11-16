@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 import { player } from '@/player';
 import { Artwork } from '@/components/Artwork';
+import { ArtworkAtmosphere } from '@/components/ArtworkAtmosphere';
 import { HeartButton } from '@/components/HeartButton';
 import { PressableScale } from '@/components/PressableScale';
 import { usePlaybackStatus } from '@/hooks/usePlaybackStatus';
@@ -181,6 +182,8 @@ export default function PlayerScreen() {
   const upNext = useUpNext();
 
   const [sleepOpen, setSleepOpen] = useState(false);
+  const [scrollViewportHeight, setScrollViewportHeight] = useState(0);
+  const [scrollContentHeight, setScrollContentHeight] = useState(0);
 
   /**
    * Il brano attivo puo' arrivare dopo il primo render: `useActiveMediaItem`
@@ -299,7 +302,14 @@ export default function PlayerScreen() {
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
-          scrollEnabled={art.cramped}
+          // Avvisi, timer e testo ingrandito possono occupare piu' spazio
+          // della stima: anche in quel caso licenza e controlli restano raggiungibili.
+          scrollEnabled={
+            art.cramped ||
+            (scrollViewportHeight > 0 && scrollContentHeight > scrollViewportHeight + 1)
+          }
+          onLayout={(event) => setScrollViewportHeight(event.nativeEvent.layout.height)}
+          onContentSizeChange={(_, height) => setScrollContentHeight(height)}
           bounces={false}
           showsVerticalScrollIndicator={false}
         >
@@ -317,6 +327,8 @@ export default function PlayerScreen() {
                 >
                   <Ionicons name="chevron-down" size={28} color={colors.textMuted} />
                 </PressableScale>
+
+                <Text style={styles.context}>In ascolto</Text>
 
                 <View style={styles.topActions}>
                   <PressableScale
@@ -344,17 +356,26 @@ export default function PlayerScreen() {
                 </View>
               </View>
 
-              <Animated.View style={[styles.artWrap, artStyle]}>
-                {/* Qui l'immagine e' larga quanto lo schermo: la misura da lista
-                  ci arriverebbe sgranata. */}
-                <Artwork
+              <View style={styles.artWrap}>
+                <ArtworkAtmosphere
                   source={track.source}
-                  uri={track.artworkLargeUrl ?? track.artworkUrl}
-                  radius={radius.lg}
-                  priority="high"
-                  style={{ width: art.size, height: art.size }}
+                  uri={track.artworkUrl ?? track.artworkLargeUrl}
+                  recyclingKey={track.uid}
+                  style={styles.atmosphere}
                 />
-              </Animated.View>
+                <Animated.View style={artStyle}>
+                  {/* Qui l'immagine e' larga quanto lo schermo: la misura da lista
+                  ci arriverebbe sgranata. */}
+                  <Artwork
+                    source={track.source}
+                    uri={track.artworkLargeUrl ?? track.artworkUrl}
+                    radius={radius.xl}
+                    priority="high"
+                    recyclingKey={track.uid}
+                    style={{ width: art.size, height: art.size }}
+                  />
+                </Animated.View>
+              </View>
 
               <View style={styles.metaRow}>
                 <View style={styles.meta}>
@@ -477,10 +498,13 @@ export default function PlayerScreen() {
               accessibilityLabel={`Prossimo: ${nextLabel}. Apri la coda di riproduzione`}
             >
               <Ionicons name="list-outline" size={16} color={colors.textMuted} />
-              <Text numberOfLines={1} style={styles.upNextText}>
-                <Text style={styles.upNextKey}>Prossimo · </Text>
-                {nextLabel}
-              </Text>
+              <View style={styles.upNextMeta}>
+                <Text style={styles.upNextKey}>Prossimo</Text>
+                <Text numberOfLines={1} style={styles.upNextText}>
+                  {nextLabel}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
             </Pressable>
           ) : null}
 
@@ -608,8 +632,8 @@ const styles = StyleSheet.create({
   panel: {
     flex: 1,
     backgroundColor: colors.bg,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
   },
@@ -618,11 +642,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: spacing.sm,
+    zIndex: 1,
   },
-  topActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  context: {
+    ...type.caption,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    flex: 1,
+    textAlign: 'center',
+  },
+  topActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   scroll: { flex: 1 },
   scrollContent: { flexGrow: 1 },
   artWrap: { alignItems: 'center', marginTop: spacing.md },
+  atmosphere: {
+    top: -spacing.xl,
+    bottom: -spacing.xl,
+    left: -spacing.xl,
+    right: -spacing.xl,
+  },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, marginTop: spacing.xl },
   meta: { flex: 1, gap: spacing.xs },
   title: { ...type.display, color: colors.text },
@@ -678,12 +717,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     marginTop: spacing.lg,
-    paddingVertical: spacing.xs,
+    padding: spacing.md,
     minHeight: touch.target.minHeight,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
   },
   upNextPressed: { opacity: 0.5 },
-  upNextText: { ...type.caption, color: colors.text, flex: 1 },
-  upNextKey: { color: colors.textMuted },
+  upNextMeta: { flex: 1, gap: 2 },
+  upNextText: { ...type.caption, color: colors.text },
+  upNextKey: { ...type.caption, color: colors.textMuted },
   problem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -713,6 +755,7 @@ const styles = StyleSheet.create({
   },
   attribution: {
     marginTop: 'auto',
+    paddingTop: spacing.lg,
     marginBottom: spacing.xl,
     alignItems: 'center',
     gap: spacing.xs,

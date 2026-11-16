@@ -51,7 +51,10 @@ export default function CollectionScreen() {
   if (!kind) {
     return (
       <Screen>
-        <Empty title="Raccolta sconosciuta" hint={`"${rawKind}" non è fra le raccolte di Onda.`} />
+        <Empty
+          title="Raccolta sconosciuta"
+          hint={`"${rawKind}" non è fra le raccolte di Spivra.`}
+        />
       </Screen>
     );
   }

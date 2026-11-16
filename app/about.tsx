@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BrandIdentity } from '@/components/BrandIdentity';
 import { ExternalLink } from '@/components/ExternalLink';
 import { ScreenLink } from '@/components/ScreenLink';
 import {
@@ -41,7 +42,7 @@ export default function AboutScreen() {
       </View>
 
       <View style={styles.hero}>
-        <Text style={styles.appName}>Onda</Text>
+        <BrandIdentity large />
         <Text style={styles.version}>Versione {build.version}</Text>
         {/* Fra due build personali dello stesso pomeriggio la versione e'
             identica: il commit e' l'unica cosa che le distingue, e da qui
@@ -49,7 +50,7 @@ export default function AboutScreen() {
         <Text style={styles.build} selectable>
           {describeBuild(build)}
         </Text>
-        <Text style={styles.lead}>Un player musicale locale, senza account Onda.</Text>
+        <Text style={styles.lead}>Un player musicale locale, senza account Spivra.</Text>
       </View>
 
       <View style={styles.section}>
@@ -59,11 +60,11 @@ export default function AboutScreen() {
           posizione raggiunta e una copia temporanea dei cataloghi Jamendo consultati restano nello
           spazio privato dell’app; i cataloghi Audius restano solo in memoria finché l’app è aperta.
           Le credenziali delle sorgenti sono cifrate e vanno solo al servizio a cui appartengono.
-          Onda non integra pubblicità, analytics o segnalazioni automatiche dei crash.
+          Spivra non integra pubblicità, analytics o segnalazioni automatiche dei crash.
         </Text>
         <Text style={styles.body}>
           Il backup cloud e il trasferimento Android dei dati dell’app sono disabilitati. Puoi
-          eliminare tutti i dati cancellando l’archiviazione di Onda dalle impostazioni Android o
+          eliminare tutti i dati cancellando l’archiviazione di Spivra dalle impostazioni Android o
           disinstallando l’app.
         </Text>
       </View>
@@ -71,7 +72,7 @@ export default function AboutScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Connessioni esterne</Text>
         <Text style={styles.body}>
-          Per cercare e riprodurre musica, Onda contatta Audius, Jamendo e gli host dei rispettivi
+          Per cercare e riprodurre musica, Spivra contatta Audius, Jamendo e gli host dei rispettivi
           contenuti. Questi servizi ricevono i normali dati tecnici della connessione, come
           indirizzo IP e dettagli della richiesta, secondo le proprie informative.
         </Text>
@@ -82,12 +83,12 @@ export default function AboutScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Musica e licenze</Text>
         <Text style={styles.body}>
-          La licenza MIT riguarda il codice di Onda, non musica, artwork o metadati. Nel player è
+          La licenza MIT riguarda il codice di Spivra, non musica, artwork o metadati. Nel player è
           indicata la sorgente del brano, il regime di diritti dichiarato, il collegamento alla
           pagina originale e, per Jamendo, alla licenza Creative Commons specifica.
         </Text>
         <Text style={styles.body}>
-          Il player di Onda è codice Onda sotto MIT e usa AndroidX Media3, di The Android Open
+          Il player di Spivra è codice Spivra sotto MIT e usa AndroidX Media3, di The Android Open
           Source Project, sotto licenza Apache 2.0: il motore viene scaricato e incorporato nell’APK
           durante la build. Il testo della licenza e gli avvisi di tutto ciò che l’APK incorpora si
           leggono qui, anche senza rete.
@@ -127,8 +128,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { ...type.title, color: colors.text },
   hero: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl },
-  appName: { ...type.display, color: colors.text },
-  version: { ...type.caption, color: colors.accent, marginTop: spacing.xs },
+  version: { ...type.caption, color: colors.accent, marginTop: spacing.lg },
   build: { ...type.caption, color: colors.textMuted, marginTop: spacing.xs },
   lead: { ...type.body, color: colors.textMuted, marginTop: spacing.sm },
   section: {

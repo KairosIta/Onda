@@ -9,6 +9,7 @@ export const colors = {
   bg: '#0E1116',
   surface: '#171B23',
   surfaceHigh: '#212734',
+  surfaceFloating: '#232B33',
   border: '#2A3140',
   text: '#ECEFF4',
   textMuted: '#8B94A7',
@@ -19,11 +20,13 @@ export const colors = {
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
 
-export const radius = { sm: 4, md: 8, lg: 12, pill: 999 } as const;
+export const radius = { sm: 4, md: 8, lg: 12, xl: 18, pill: 999 } as const;
 
 /**
- * Tipografia di brand: Manrope, incorporata nel pacchetto nativo dal config
- * plugin di expo-font (vedi app.json). Su Android la famiglia XML "Manrope"
+ * Righteous dà al marchio e ai titoli delle sezioni un carattere da copertina.
+ * Manrope resta sui brani, sui comandi e sui testi di lettura. Entrambi sono
+ * incorporati dal config plugin di expo-font (vedi app.json).
+ * Su Android la famiglia XML "Manrope"
  * risolve il peso da `fontWeight`, quindi i token restano leggibili e, se
  * il file mancasse, Android ricadrebbe da solo sul font di sistema.
  *
@@ -35,6 +38,8 @@ export const radius = { sm: 4, md: 8, lg: 12, pill: 999 } as const;
 export const fontFamily = 'Manrope';
 
 export const type = {
+  brand: { fontFamily: 'Righteous', fontSize: 36, fontWeight: '400' as const },
+  editorial: { fontFamily: 'Righteous', fontSize: 28, fontWeight: '400' as const },
   display: { fontFamily, fontSize: 28, fontWeight: '800' as const, letterSpacing: -0.6 },
   title: { fontFamily, fontSize: 20, fontWeight: '700' as const, letterSpacing: -0.3 },
   body: { fontFamily, fontSize: 15, fontWeight: '500' as const },

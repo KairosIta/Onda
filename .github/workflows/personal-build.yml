@@ -52,4 +52,4 @@ jobs:
       # L'APK resta nel runner e non viene caricato da nessuna parte: qui
       # si verifica soltanto che la build lo abbia davvero prodotto.
       - name: Assert that the personal APK was produced
-        run: node -e "if (!require('node:fs').statSync('dist/personal/Onda-personal.apk').isFile()) process.exit(1)"
+        run: node -e "if (!require('node:fs').statSync('dist/personal/Spivra-personal.apk').isFile()) process.exit(1)"

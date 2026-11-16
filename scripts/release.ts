@@ -142,7 +142,7 @@ if (!keystoreDigestMatch) fail('impossibile leggere il certificato dal keystore.
 const keystoreCertificateSha256 = normalizeCertificateSha256(keystoreDigestMatch[1]);
 const expectedCertificateSha256 = normalizeCertificateSha256(releaseIdentity.certificateSha256);
 if (keystoreCertificateSha256 !== expectedCertificateSha256) {
-  fail("il keystore non coincide con l'identita' di firma attesa per Onda.");
+  fail("il keystore non coincide con l'identita' di firma attesa per Spivra.");
 }
 
 run('Test unitari', 'npm', ['test'], releaseEnvironment);

@@ -1,18 +1,20 @@
-# Informativa privacy di Onda
+# Informativa privacy di Spivra
 
-**Versione:** 1.5 — **in vigore dal 15 ottobre 2026**
+**Versione:** 1.6 — **in vigore dal 16 novembre 2026**
+
+Aggiornamento del nome da Onda a Spivra; il trattamento dei dati resta invariato.
 
 Questa informativa descrive il funzionamento delle copie personali dell'app
-Android Onda compilate dal progetto
-[KairosIta/Onda](https://github.com/KairosIta/Onda). Il progetto pubblica il
-sorgente, non un APK ufficiale. Il codice originale Onda, compreso il modulo
+Android Spivra compilate dal progetto
+[KairosIta/Spivra](https://github.com/KairosIta/Spivra). Il progetto pubblica il
+sorgente, non un APK ufficiale. Il codice originale Spivra, compreso il modulo
 player, è sotto MIT; il motore AndroidX Media3 è sotto Apache 2.0.
 L'app non ha account proprietario, backend,
 pubblicità o sistemi di profilazione gestiti dal progetto.
 
 ## Dati conservati sul dispositivo
 
-Onda salva nello spazio privato dell'app:
+Spivra salva nello spazio privato dell'app:
 
 - preferiti, cronologia degli ultimi brani e playlist;
 - metadati necessari a ritrovare i brani salvati;
@@ -32,17 +34,17 @@ Onda salva nello spazio privato dell'app:
   il tuo Client ID Jamendo e, se la aggiungi, la tua API key Audius.
 
 Le credenziali sono cifrate con una chiave del Keystore Android, restano sul
-dispositivo e non sono mai inviate al progetto Onda: vanno soltanto al
+dispositivo e non sono mai inviate al progetto Spivra: vanno soltanto al
 rispettivo servizio, a ogni richiesta di catalogo. Non entrano negli export
 della libreria e si cancellano da Libreria › Sorgenti o disinstallando l'app.
 
-Questi dati servono unicamente a offrire le funzioni richieste nell'app. Onda
+Questi dati servono unicamente a offrire le funzioni richieste nell'app. Spivra
 non include SDK di analytics, pubblicità o crash reporting e il progetto non
 riceve automaticamente una copia di questi dati.
 
 ## Backup Android
 
-Onda disabilita il backup Android dell'app e definisce esclusioni esplicite per
+Spivra disabilita il backup Android dell'app e definisce esclusioni esplicite per
 tutti i domini di archiviazione, sia nel backup cloud sia nel trasferimento
 diretto tra dispositivi. Questa scelta evita che libreria, preferenze e credenziali
 vengano copiate automaticamente fuori dal dispositivo tramite le funzioni di backup
@@ -50,7 +52,7 @@ supportate da Android.
 
 ## Dati trasmessi ai servizi musicali
 
-Onda deve connettersi a servizi esterni per mostrare e riprodurre i cataloghi:
+Spivra deve connettersi a servizi esterni per mostrare e riprodurre i cataloghi:
 
 - le ricerche e le richieste di catalogo sono inviate ad Audius e/o Jamendo;
 - audio, artwork e altri metadati sono scaricati da Audius, Jamendo o dai loro
@@ -63,7 +65,7 @@ tecnici quali indirizzo IP, data e ora, contenuto della richiesta, identificativ
 tecnici del client e informazioni di rete. Il Client ID Jamendo e l'eventuale
 API key Audius collegano le richieste all'account sviluppatore che hai creato
 presso il rispettivo fornitore, secondo i suoi termini. Jamendo dichiara inoltre di poter
-registrare i brani ascoltati. Il progetto Onda non usa tali dati per identificare
+registrare i brani ascoltati. Il progetto Spivra non usa tali dati per identificare
 l'utente e non li riceve dai fornitori.
 
 Il trattamento svolto dai fornitori è disciplinato dalle loro informative:
@@ -78,7 +80,7 @@ informativa finalità, conservazione e diritti degli interessati.
 
 ## Permessi Android
 
-Onda usa l'accesso a Internet per catalogo e streaming. Usa inoltre il servizio
+Spivra usa l'accesso a Internet per catalogo e streaming. Usa inoltre il servizio
 multimediale in primo piano, il wake lock e, su Android 13 o successivi, può
 chiedere il permesso notifiche per mantenere visibili i controlli del player.
 Usa il permesso di vibrazione soltanto per il feedback tattile dei comandi, che
@@ -89,9 +91,9 @@ multimediale condiviso.
 ## Conservazione ed eliminazione
 
 I dati locali restano finché l'utente non elimina i singoli elementi, cancella
-l'archiviazione di Onda dalle impostazioni Android o disinstalla l'app. La
+l'archiviazione di Spivra dalle impostazioni Android o disinstalla l'app. La
 cronologia conserva al massimo 100 brani; la coda salvata viene ignorata dopo
-trenta giorni e la copia dei cataloghi Jamendo dopo tre. Poiché Onda non gestisce un
+trenta giorni e la copia dei cataloghi Jamendo dopo tre. Poiché Spivra non gestisce un
 account o un backend, il progetto non conserva una copia remota da cancellare.
 
 Le richieste conservate dai servizi musicali seguono invece i rispettivi tempi
@@ -112,5 +114,5 @@ Consulta anche [Contenuti e servizi di terze parti](THIRD_PARTY_CONTENT.md).
 
 Le modifiche a questa informativa vengono pubblicate nel repository insieme a
 una nuova data di entrata in vigore. Per domande, richieste o segnalazioni è
-possibile aprire una [issue pubblica del progetto](https://github.com/KairosIta/Onda/issues).
+possibile aprire una [issue pubblica del progetto](https://github.com/KairosIta/Spivra/issues).
 Non inserire dati personali o sensibili in una issue pubblica.

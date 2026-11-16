@@ -88,7 +88,7 @@ internal class BrowseTree(val categories: List<BrowseNode>) {
   companion object {
     const val ROOT_ID = "onda:root"
     private const val SEPARATOR = '|'
-    private val ROOT = BrowseNode(ROOT_ID, "Onda", children = emptyList())
+    private val ROOT = BrowseNode(ROOT_ID, "Spivra", children = emptyList())
 
     val EMPTY = BrowseTree(emptyList())
 

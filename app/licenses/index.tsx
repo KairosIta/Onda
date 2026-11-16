@@ -83,7 +83,7 @@ export default function LicensesScreen() {
           </View>
           <View style={styles.intro}>
             <Text style={styles.lead}>
-              Onda incorpora librerie di terze parti, ciascuna con la propria licenza. Per ogni
+              Spivra incorpora librerie di terze parti, ciascuna con la propria licenza. Per ogni
               componente della build trovi licenza, titolare e testo completo, anche senza rete.
             </Text>
             <Text style={styles.summary}>{describeKinds(NOTICES)}.</Text>

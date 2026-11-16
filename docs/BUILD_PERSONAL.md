@@ -16,7 +16,7 @@ computer locale ed è destinato esclusivamente ai dispositivi di chi compila.
   build: si inserisce nell'app al primo avvio (vedi [Primo avvio](#primo-avvio)).
 
 La prima build può scaricare NDK e CMake e richiedere diversi gigabyte. Expo Go
-non è compatibile con i moduli nativi usati da Onda.
+non è compatibile con i moduli nativi usati da Spivra.
 
 ## Linux
 
@@ -29,8 +29,8 @@ da [Adoptium](https://adoptium.net/temurin/releases/?version=17), come archivio
 nella home o dal loro repository apt, e punta `JAVA_HOME` lì.
 
 ```bash
-git clone https://github.com/KairosIta/Onda.git
-cd Onda
+git clone https://github.com/KairosIta/Spivra.git
+cd Spivra
 npm ci
 npm run doctor
 npm run install:personal
@@ -42,8 +42,8 @@ Installa Android Studio, seleziona JDK 17 e aggiungi da SDK Manager Platform 36,
 Build-Tools 36.0.0 e Platform-Tools. In PowerShell:
 
 ```powershell
-git clone https://github.com/KairosIta/Onda.git
-Set-Location Onda
+git clone https://github.com/KairosIta/Spivra.git
+Set-Location Spivra
 npm ci
 npm run doctor
 npm run install:personal
@@ -59,7 +59,7 @@ Lo script trova automaticamente l'SDK nella posizione standard
 WSL2 funziona soltanto se Node, JDK 17 e Android SDK sono installati anche nella
 distribuzione Linux e il dispositivo è visibile da `adb` in quell'ambiente. Non
 riutilizzare alla cieca SDK o `node_modules` di Windows. Per chi vuole soltanto
-compilare e installare Onda, PowerShell nativo ha meno punti di rottura.
+compilare e installare Spivra, PowerShell nativo ha meno punti di rottura.
 
 ## Comandi
 
@@ -77,8 +77,8 @@ dallo script.
 | `npm run install:personal`    | Ricompila e installa su un unico dispositivo/emulatore autorizzato.                                 |
 | `npm run check:installed`     | Confronta il nome di versione installato con commit e stato `.dirty` attuali, senza compilare.      |
 
-Gli output sono `dist/personal/Onda-personal.apk` e il manifest con hash
-`dist/personal/Onda-personal.json`; entrambi sono ignorati da Git. La pipeline
+Gli output sono `dist/personal/Spivra-personal.apk` e il manifest con hash
+`dist/personal/Spivra-personal.json`; entrambi sono ignorati da Git. La pipeline
 verifica che il bundle standalone sia presente e rifiuta un certificato che
 coincida con l'identità di release ufficiale, anche sul computer del maintainer.
 
@@ -103,12 +103,12 @@ la perdi, dovrai disinstallare la vecchia copia prima di usare una nuova firma.
 
 ## Primo avvio
 
-Onda non incorpora credenziali. Al primo avvio una schermata di benvenuto
+Spivra non incorpora credenziali. Al primo avvio una schermata di benvenuto
 spiega le sorgenti:
 
 - **Audius** funziona subito, senza dati da inserire. Una API key Audius è
   facoltativa: alza i limiti di richieste.
-- **Jamendo** parte quando inserisci il tuo Client ID. Onda lo verifica con una
+- **Jamendo** parte quando inserisci il tuo Client ID. Spivra lo verifica con una
   sola richiesta prima di salvarlo; se Jamendo lo rifiuta non lo salva.
 
 Con «Salta per ora» parti con il solo Audius: in Scopri resta un invito ad
@@ -161,7 +161,7 @@ fallo soltanto dopo aver deciso che preferiti e playlist non servono più.
 
 ## Limiti legali
 
-Il sorgente originale Onda è MIT, e una build scarica dipendenze che tengono
+Il sorgente originale Spivra è MIT, e una build scarica dipendenze che tengono
 la propria licenza, come AndroidX Media3 sotto Apache 2.0. API e contenuti
 hanno condizioni ulteriori: leggi
 [`THIRD_PARTY_CONTENT.md`](../THIRD_PARTY_CONTENT.md).

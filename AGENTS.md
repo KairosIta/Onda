@@ -2,7 +2,7 @@
 
 ## Obiettivo predefinito
 
-Quando una persona chiede di installare Onda da questo repository, prepara una
+Quando una persona chiede di installare Spivra da questo repository, prepara una
 build Android personale sul suo computer. Non pubblicare APK, release GitHub o
 credenziali e non cambiare la visibilità del repository.
 
@@ -16,7 +16,7 @@ credenziali e non cambiare la visibilità del repository.
 3. Verifica Node.js >= 22.15, JDK 17, Android SDK Platform 36 e Build-Tools
    36.0.0. Chiedi consenso prima di installare software di sistema o scaricare
    componenti pesanti.
-4. Esegui `npm ci`. Onda non incorpora credenziali: non creare `.env` e non
+4. Esegui `npm ci`. Spivra non incorpora credenziali: non creare `.env` e non
    chiedere il Client ID Jamendo per la build.
 5. Esegui `npm run doctor`; risolvi gli errori rilevati senza aggirare i
    controlli. Se segnala una credenziale rimasta in un `.env` esistente, chiedi

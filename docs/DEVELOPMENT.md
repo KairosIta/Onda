@@ -1,11 +1,11 @@
 <p align="center">
-  <a href="../README.md">← Torna alla presentazione di Onda</a>
+  <a href="../README.md">← Torna alla presentazione di Spivra</a>
 </p>
 
 # Guida per sviluppatori
 
 Configurazione dell'ambiente, architettura, collaudo e build di release di
-Onda. Per la panoramica del prodotto, gli screenshot e lo stato corrente vedi
+Spivra. Per la panoramica del prodotto, gli screenshot e lo stato corrente vedi
 il [README principale](../README.md).
 
 ## Configurazione dell'ambiente
@@ -40,7 +40,7 @@ npm ci
 npx expo run:android
 ```
 
-Al termine Onda verrà installata e avviata sul dispositivo collegato: al primo
+Al termine Spivra verrà installata e avviata sul dispositivo collegato: al primo
 avvio chiede il Client ID ottenuto dal
 [portale sviluppatori Jamendo](https://devportal.jamendo.com/). Dagli
 avvii successivi basta eseguire `npm start` e aprire l'app già installata.
@@ -62,14 +62,14 @@ autorizzato.
 
 ### Credenziali
 
-Onda non incorpora credenziali: le inserisce ogni persona nell'app, al primo
+Spivra non incorpora credenziali: le inserisce ogni persona nell'app, al primo
 avvio o da Libreria › Sorgenti.
 
 - **Jamendo** — registrati sul portale sviluppatori, crea un'applicazione e
   inserisci il Client ID nell'app, che lo verifica con una richiesta prima di
   salvarlo. Senza, Jamendo resta spento.
 - **Audius** — non serve una chiave per le operazioni di sola lettura usate da
-  Onda. `app_name` (`Onda`, nel codice) è soltanto un'etichetta identificativa.
+  Spivra. `app_name` (`Spivra`, nel codice) è soltanto un'etichetta identificativa.
   Una API key dell'utente è facoltativa e viaggia nell'header `x-api-key`, mai
   nell'URL.
 
@@ -92,7 +92,7 @@ nell'ambiente o in `.env`.
 
 ## Architettura
 
-Onda è costruita con Expo, React Native e TypeScript. Gli adapter delle
+Spivra è costruita con Expo, React Native e TypeScript. Gli adapter delle
 sorgenti trasformano Audius e Jamendo in un unico modello dati; il player
 nativo mantiene una sola coda, anche quando contiene brani di entrambe.
 
@@ -226,7 +226,7 @@ di 4.096 caratteri, entro 8 MiB di testo UTF-8. «Salva» e «Condividi»
 controllano il testo prima di creare il file. L'importazione verifica che
 anche la libreria risultante dall'unione sia esportabile, sia all'anteprima
 sia alla conferma. Se nel frattempo una modifica locale fa superare un limite,
-Onda indica il motivo e conserva la libreria corrente.
+Spivra indica il motivo e conserva la libreria corrente.
 
 Lo storage ha una versione (`schema.version`, `services/storageSchema`,
 puro e testato): `services/storage` la porta alla corrente prima che
@@ -288,7 +288,7 @@ secondi, o meta' se e' piu' corto di un minuto), cosi' un brano saltato non
 finisce in «Ascoltati di recente». Il catalogo volatile viene comunque
 avvisato subito, perche' la cronologia risolve per uid.
 
-Da Android 13 la notifica del player richiede un permesso a runtime. Onda lo
+Da Android 13 la notifica del player richiede un permesso a runtime. Spivra lo
 chiede al primo play (`useQueue.playList` e `playerCommands.togglePlayback`),
 non all'avvio: le regole stanno in `services/notificationPolicy`, lo stato in
 `store/notificationPermission`, che si rilegge a ogni ritorno in primo piano.
@@ -329,15 +329,15 @@ accorpando quelle ravvicinate. Il manifest lo dichiara tramite
 dichiara il modulo del player.
 
 La sessione rifiuta i controller non autorizzati. Chi puo' collegarsi e
-comandare la riproduzione sono Onda, la sua notifica, Android Auto,
+comandare la riproduzione sono Spivra, la sua notifica, Android Auto,
 Automotive e i controller che Media3 dichiara fidati: oltre al sistema,
 qualunque app con un servizio di ascolto delle notifiche attivo (smartwatch,
-widget multimediali). La libreria privata la sfogliano invece soltanto Onda,
+widget multimediali). La libreria privata la sfogliano invece soltanto Spivra,
 Android Auto e Automotive, e soltanto loro possono mandare una coda: a un
 controller soltanto fidato la sessione toglie i comandi che impostano o
 cambiano gli elementi (`RemoteCommands.QUEUE_COMMANDS`), e una richiesta di
 coda che arrivasse comunque fallisce senza toccare il player. Altrimenti
-un'app con l'accesso alle notifiche potrebbe far suonare a Onda un URL
+un'app con l'accesso alle notifiche potrebbe far suonare a Spivra un URL
 qualsiasi, con titolo e copertina scelti da lei. Radice, figli ed elementi
 passano tutti da
 `LibraryAccess`, che verifica il permesso prima di leggere l'albero:
@@ -351,8 +351,8 @@ tace sull'elemento `<application>`, e il perche' sta scritto accanto: il
 controllo sul servizio e' un falso positivo, perche' il filtro
 MediaBrowserService vive nel manifest del modulo del player; quello sulla
 ricerca vocale (`MEDIA_PLAY_FROM_SEARCH`) segnala una mancanza vera, aperta
-in TODO.md. Dichiarare quel filtro senza gestire la query aprirebbe Onda a
-vuoto a ogni "metti jazz su Onda".
+in TODO.md. Dichiarare quel filtro senza gestire la query aprirebbe Spivra a
+vuoto a ogni "metti jazz su Spivra".
 
 `TrackList` e' l'unica lista dell'app. Si abbona lei alla libreria e al player,
 e passa `isFavorite` / `isActive` alle righe come prop: cosi' `TrackRow` resta
@@ -398,7 +398,7 @@ incorpora; oggi sotto c'e' il modulo nostro su AndroidX Media3
   deve mostrare subito Riprendi, anche se il caricamento non e' finito.
   Cambiare modulo vuol dire cambiare li' l'import del backend.
 - `src/player/backend.ts` e' il contratto, `PlayerControls`. Contiene solo
-  quello che Onda usa: oltre ai metodi elenca i doveri del nativo, come il
+  quello che Spivra usa: oltre ai metodi elenca i doveri del nativo, come il
   focus audio, la pausa a cuffie staccate, CPU e Wi-Fi svegli a schermo
   spento, i comandi esterni eseguiti anche con il JS sospeso e Android Auto.
 - `src/player/types.ts` ha i tipi e gli eventi, con i nomi di Media3 e i
@@ -449,11 +449,11 @@ il sorgente di Media3. Chi lo modifica tiene la stessa regola.
 1.11.1 (`media3-exoplayer` e `media3-session`, Apache 2.0); una versione nuova
 va provata su device prima di entrare.
 
-Il modulo, il contratto e le regole di Onda sono codice originale del
+Il modulo, il contratto e le regole di Spivra sono codice originale del
 progetto. Motore ExoPlayer, lettura dei formati e gestione degli stream
 provengono da Media3; la decodifica usa anche i componenti Android. Dire
 «player nostro» si riferisce al modulo e all'integrazione, non a un motore
-audio scritto interamente da Onda.
+audio scritto interamente da Spivra.
 
 - **Un player per processo, sul main thread** (`PlaybackCore`). Nasce al
   primo comando di coda o di play, oppure quando Android Auto avvia il
@@ -482,7 +482,7 @@ audio scritto interamente da Onda.
   restituisce nessun binder, quindi la sessione si consegna sempre e il
   controller vero si giudica alla connessione. Il tocco sulla notifica apre
   `onda://notification.click`, che `app/+native-intent.ts` porta al player.
-- **Recenti.** Tolta dai recenti, Onda si ferma e il servizio si chiude, ma
+- **Recenti.** Tolta dai recenti, Spivra si ferma e il servizio si chiude, ma
   coda e posizione restano nel player: se processo e JS sopravvivono,
   riaprendo l'app il mini-player le mostra in pausa. Finche' l'app non torna
   in primo piano, o un controller esterno (notifica, Auto, Bluetooth) non fa
@@ -932,7 +932,7 @@ o una segnalazione sul codice. L'eccezione e' esplicita nello script npm e va
 rimossa appena un aggiornamento compatibile di Expo/AGP la rende superflua.
 
 Il report dell'app resta disponibile in
-`android/app/build/reports/lint-results-release.html` e un errore reale di Onda
+`android/app/build/reports/lint-results-release.html` e un errore reale di Spivra
 continua a far fallire il comando.
 
 Il controllo dell'11 agosto 2026 produce un report con **0 errori e 0 warning**.
@@ -944,7 +944,7 @@ legacy portati dalle dipendenze vengono rimossi dal manifest finale.
 
 ### Backup Android
 
-Onda sceglie di non trasferire la libreria locale tramite il backup di sistema.
+Spivra sceglie di non trasferire la libreria locale tramite il backup di sistema.
 Il plugin `plugins/with-android-privacy.js` imposta `allowBackup=false` e genera
 entrambi i formati richiesti dalla piattaforma:
 
@@ -1102,13 +1102,13 @@ npm run check:installed
 
 Non costruisce e non installa niente: legge il telefono collegato, calcola
 il nome di versione che una build fatta adesso produrrebbe e dice se
-combaciano. Esce 0 se il telefono e' allineato, 2 se e' indietro o se Onda
+combaciano. Esce 0 se il telefono e' allineato, 2 se e' indietro o se Spivra
 non c'e'.
 
 L'allineamento riguarda soltanto il nome di versione. Modifiche locali
 diverse sullo stesso commit producono tutte il suffisso `.dirty`: il comando
 non distingue questi APK e non confronta i loro byte. Per identificare
-l'artefatto usa l'hash SHA-256 di `dist/personal/Onda-personal.json`; dopo
+l'artefatto usa l'hash SHA-256 di `dist/personal/Spivra-personal.json`; dopo
 ulteriori modifiche locali ricompila e installa. È il caso delle due build
 del 13 ottobre 2026, con lo stesso nome e hash diversi nel registro.
 
@@ -1172,7 +1172,7 @@ rifiuto del permesso da solo non spiega l'assenza dei controlli multimediali.
 `com.onda.playback.PlaybackService` con
 `android:foregroundServiceType="mediaPlayback"`, e il merge lo porta
 nell'APK: controllalo con
-`aapt2 dump xmltree --file AndroidManifest.xml dist/personal/Onda-personal.apk`.
+`aapt2 dump xmltree --file AndroidManifest.xml dist/personal/Spivra-personal.apk`.
 
 **Nel log `Lettura del player non riuscita`.** Il main thread non ha risposto
 in due secondi a una lettura del JS: qualcosa lo tiene occupato o lo blocca, e
@@ -1180,7 +1180,7 @@ intanto la lettura ha restituito un valore neutro. E' un guasto da cercare
 (vedi [Il modulo Media3](#il-modulo-media3)).
 
 **HTTP 416 dopo un seek avanzato.** Il 13 ottobre 2026 è successo alla
-ripresa di un lungo mix Audius dopo un seek a circa 1:07:00. Onda classifica
+ripresa di un lungo mix Audius dopo un seek a circa 1:07:00. Spivra classifica
 la risposta come `source` e passa al brano successivo. La causa non è
 ancora accertata: un `206` sui primi byte nello smoke non esclude il
 problema. Ripetere con uno stream fresco, confrontando durata dichiarata,
@@ -1257,7 +1257,7 @@ distanze crescenti e anche a schermo spento, e poi resta Riprova.
 
 **Il player e' un modulo nostro su Media3.** Fino all'11 ottobre 2026 era
 `@rntp/player` 5.8.0, la cui licenza non permette di distribuire un APK che lo
-incorpora. Onda ha scelto di mantenere qui il modulo nativo per controllare
+incorpora. Spivra ha scelto di mantenere qui il modulo nativo per controllare
 coda con riordino, comandi con il JS sospeso, timer, recupero della rete e
 integrazione Android Auto. `modules/onda-player` usa AndroidX Media3 dietro la
 [facciata `src/player/`](#il-player-dietro-una-facciata). La versione di
@@ -1328,7 +1328,7 @@ resta valida quando sono uguali e non serve svuotarla a mano.
 **Le credenziali le inserisce la persona, in app.** L'APK non ne contiene:
 Client ID Jamendo e API key Audius stanno in expo-secure-store
 (`services/credentials`), con `configureAndroidBackup: false` perche' il backup
-di Onda e' gia' disabilitato e le sue regole non vanno toccate. Gli adapter non
+di Spivra e' gia' disabilitato e le sue regole non vanno toccate. Gli adapter non
 importano Keystore ne' MMKV: chiedono interruttori e credenziali a
 `services/sources/access`, che `store/sources` collega all'avvio (lo importa il
 layout radice) e che i test e `npm run smoke` collegano a valori finti. Senza
@@ -1416,7 +1416,7 @@ eventuale `.env` non finisca nel bundle, e si cercano nel JS le voci
 
 ## Licenze
 
-Il codice e la documentazione originale di Onda sono distribuiti sotto
+Il codice e la documentazione originale di Spivra sono distribuiti sotto
 [licenza MIT](../LICENSE). Musica, artwork, metadati remoti, credenziali e
 marchi sono esclusi: consulta le [note sui contenuti di terze parti](../THIRD_PARTY_CONTENT.md)
 prima di modificare o distribuire l'app.

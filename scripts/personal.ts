@@ -39,13 +39,13 @@ const apkPath = join(
   'app-release.apk',
 );
 const personalDir = join(root, 'dist', 'personal');
-const personalApkPath = join(personalDir, 'Onda-personal.apk');
+const personalApkPath = join(personalDir, 'Spivra-personal.apk');
 const personalKeystorePath = join(root, '.onda', 'personal-debug.keystore');
 
 type Check = { label: string; ok: boolean; detail: string; required?: boolean };
 
 function fail(message: string): never {
-  console.error(`\nOnda: ${message}`);
+  console.error(`\nSpivra: ${message}`);
   process.exit(1);
 }
 
@@ -155,7 +155,7 @@ function collectChecks(env: NodeJS.ProcessEnv, credentialErrors: string[]): Chec
 function doctor() {
   const { env, credentialErrors } = personalEnvironment();
   const checks = collectChecks(env, credentialErrors);
-  console.log('\nDiagnosi ambiente Onda\n');
+  console.log('\nDiagnosi ambiente Spivra\n');
   for (const check of checks) {
     const optional = check.required === false ? ' (serve solo per installare)' : '';
     console.log(
@@ -250,7 +250,7 @@ function preparePersonalDebugKeystore(env: NodeJS.ProcessEnv): void {
         '-validity',
         '10000',
         '-dname',
-        'CN=Onda Personal,OU=Personal Build,O=Onda,C=IT',
+        'CN=Spivra Personal,OU=Personal Build,O=Spivra,C=IT',
         '-noprompt',
       ],
       env,
@@ -333,7 +333,7 @@ function build(env = doctor()): string {
   const bytes = statSync(personalApkPath).size;
   const sha256 = createHash('sha256').update(readFileSync(personalApkPath)).digest('hex');
   writeFileSync(
-    join(personalDir, 'Onda-personal.json'),
+    join(personalDir, 'Spivra-personal.json'),
     `${JSON.stringify(
       {
         kind: 'personal-local-build',
@@ -386,9 +386,7 @@ function install(): void {
     fail(`serve esattamente un dispositivo/emulatore autorizzato; trovati ${connected.length}.`);
   }
   run('Installazione sul dispositivo', adb, ['install', '-r', outputApk], env);
-  console.log(
-    '\nOnda e installata. Se Android segnala una firma incompatibile, disinstalla una vecchia copia e riprova.',
-  );
+  console.log('\nSpivra è installata.');
 }
 
 const action = process.argv[2];

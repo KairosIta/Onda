@@ -39,8 +39,20 @@ const privacyPlugin = require('../plugins/with-android-privacy.js') as {
   DATA_EXTRACTION_RULES: string;
 };
 const appConfig = require('../app.json') as {
-  expo: { backgroundColor?: string; plugins?: unknown[] };
+  expo: {
+    name: string;
+    scheme: string;
+    android: { package: string };
+    backgroundColor?: string;
+    plugins?: unknown[];
+  };
 };
+
+test('Spivra aggiorna la stessa app e conserva i collegamenti delle notifiche Onda', () => {
+  assert.equal(appConfig.expo.name, 'Spivra');
+  assert.equal(appConfig.expo.android.package, 'com.onda.player');
+  assert.equal(appConfig.expo.scheme, 'onda');
+});
 
 test('il parser legge .env e properties senza includere commenti', () => {
   assert.deepEqual(parseKeyValueFile(`\n# commento\nA=uno\nexport B="due"\nC=tre # nota\n`), {
@@ -196,7 +208,7 @@ test('le regole Android escludono ogni dominio da cloud e trasferimento', () => 
   assert.match(privacyPlugin.DATA_EXTRACTION_RULES, /<device-transfer>/u);
 });
 
-test('lo splash usa il brand Onda senza salto cromatico', () => {
+test('lo splash usa il brand Spivra senza salto cromatico', () => {
   const splashPlugin = appConfig.expo.plugins?.find(
     (plugin): plugin is [string, Record<string, unknown>] =>
       Array.isArray(plugin) && plugin[0] === 'expo-splash-screen',
@@ -205,7 +217,7 @@ test('lo splash usa il brand Onda senza salto cromatico', () => {
   assert.ok(splashPlugin, 'expo-splash-screen deve essere configurato');
   const options = splashPlugin[1];
   assert.equal(options.backgroundColor, appConfig.expo.backgroundColor);
-  assert.equal(options.image, './assets/brand/onda-adaptive-foreground.png');
+  assert.equal(options.image, './assets/brand/spivra-adaptive-foreground.png');
   assert.equal(options.imageWidth, 200);
   assert.deepEqual(options.dark, { backgroundColor: '#0E1116' });
 });

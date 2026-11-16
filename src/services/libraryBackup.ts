@@ -18,12 +18,12 @@ import { isPickerCancelled } from './pickerErrors';
  * fuori dalla sandbox.
  */
 
-/** `onda-libreria-2026-08-30.json`: ordinabile e riconoscibile a colpo d'occhio. */
+/** `spivra-libreria-2026-08-30.json`: ordinabile e riconoscibile a colpo d'occhio. */
 export function backupFileName(now = new Date()): string {
   const g = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
     now.getDate(),
   ).padStart(2, '0')}`;
-  return `onda-libreria-${g}.json`;
+  return `spivra-libreria-${g}.json`;
 }
 
 export type ExportOutcome =
@@ -59,7 +59,7 @@ export async function exportLibrary(state: LibraryState): Promise<ExportOutcome>
     }
     await Sharing.shareAsync(file.uri, {
       mimeType: 'application/json',
-      dialogTitle: 'Salva la libreria di Onda',
+      dialogTitle: 'Salva la libreria di Spivra',
       UTI: 'public.json',
     });
     return { ok: true, shared: true };

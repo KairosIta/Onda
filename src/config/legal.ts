@@ -1,4 +1,4 @@
-export const PROJECT_URL = 'https://github.com/KairosIta/Onda';
+export const PROJECT_URL = 'https://github.com/KairosIta/Spivra';
 export const PRIVACY_POLICY_URL = `${PROJECT_URL}/blob/main/PRIVACY.md`;
 export const THIRD_PARTY_CONTENT_URL = `${PROJECT_URL}/blob/main/THIRD_PARTY_CONTENT.md`;
 

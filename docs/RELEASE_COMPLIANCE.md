@@ -5,7 +5,10 @@ i termini API di Audius e le credenziali inserite dall'utente, l'**11 ottobre
 2026** per il player su Media3 e il **13 ottobre 2026** per la build e i
 primi collaudi del nuovo modulo e il **15 ottobre 2026** per la cache degli
 artwork. Questa nota registra le condizioni verificate
-per Onda e non sostituisce un parere legale o un'autorizzazione dei fornitori.
+per Spivra e non sostituisce un parere legale o un'autorizzazione dei fornitori.
+
+Il **16 novembre 2026** sono stati aggiornati il nome del progetto da Onda a
+Spivra e il riferimento alla privacy v1.6, che recepisce questa rinomina.
 
 ## Decisione corrente
 
@@ -28,8 +31,8 @@ da sola i requisiti di distribuzione dell'app completa.
 ## Profilo esaminato
 
 La decisione seguente vale soltanto per una build gratuita e non commerciale,
-senza pubblicità, abbonamenti, acquisti, analytics, account Onda o ascolto
-offline. Onda riproduce gli stream originali e non conserva copie dei brani.
+senza pubblicità, abbonamenti, acquisti, analytics, account Spivra o ascolto
+offline. Spivra riproduce gli stream originali e non conserva copie dei brani.
 Qualsiasi monetizzazione o modifica dell'architettura richiede una nuova
 valutazione prima della distribuzione.
 
@@ -53,7 +56,7 @@ release, oppure ottenuta conferma scritta dei termini applicabili.
 
 I termini ammettono la cache solo per quanto necessario alla sessione e
 richiedono che contenuti e dati memorizzati diventino inaccessibili alla sua
-fine. Dal 10 ottobre 2026 Onda tiene i dati di catalogo Audius solo in
+fine. Dal 10 ottobre 2026 Spivra tiene i dati di catalogo Audius solo in
 memoria: la cache su disco li esclude e la migrazione dello storage 3 → 4
 toglie quelli salvati prima. Dal 15 ottobre anche gli artwork Audius sono
 limitati alla memoria; prima di montare le schermate viene eliminata una volta
@@ -70,7 +73,7 @@ rientra nella clausola.
 | Audius  | Nome della sorgente, pagina canonica, regime di diritti ricevuto e collegamento esplicito alla Open Music License nel player. Le tracce gated o non riproducibili sono filtrate. I dati di catalogo restano solo in memoria per la sessione. | Il profilo non commerciale resta subordinato alla verifica dei vigenti API Terms. Una release commerciale è bloccata: l'API non fornisce sempre identità del licenziante e avviso di copyright necessari all'attribuzione commerciale prevista dalla OML.                                               |
 | Jamendo | Nome della sorgente, pagina canonica e URL della licenza Creative Commons specifica nel player. Nessuna cache dei brani o modalità offline. Client ID inserito dall'utente in app e verificato con una richiesta prima del salvataggio.      | Ogni persona usa il Client ID della propria applicazione Jamendo, inserito in app. La distribuzione di un APK condiviso resta bloccata finché Jamendo non conferma per iscritto questo modello: applicazioni registrate dai singoli utenti, clausola sulle applicazioni duplicate, quota per Client ID. |
 | Player  | Modulo nostro `modules/onda-player` (MIT) su AndroidX Media3, che Gradle scarica e incorpora nell'APK. `@rntp/player` non è più una dipendenza dall'11 ottobre 2026.                                                                         | Media3 è sotto Apache 2.0, che consente la distribuzione: un APK ufficiale deve portare il testo della licenza e gli avvisi delle dipendenze incorporate (gate di release).                                                                                                                             |
-| Privacy | Policy v1.5 nel repository e accessibile dall'app; nessun advertising, analytics o backend Onda; backup Android disabilitato; credenziali cifrate con il Keystore, fuori da backup ed export.                                                | Coerente con il profilo esaminato; va aggiornata se cambiano servizi, raccolta dati o distribuzione.                                                                                                                                                                                                    |
+| Privacy | Policy v1.6 nel repository e accessibile dall'app; nessun advertising, analytics o backend Spivra; backup Android disabilitato; credenziali cifrate con il Keystore, fuori da backup ed export.                                              | Coerente con il profilo esaminato; va aggiornata se cambiano servizi, raccolta dati o distribuzione.                                                                                                                                                                                                    |
 
 Il 13 ottobre 2026 la build personale Media3 e i primi collaudi su Android 16
 sono passati; il dettaglio è nel [registro dei collaudi](VERIFICATION_LOG.md).
@@ -79,7 +82,7 @@ dei fornitori né completa il pacchetto di licenze dell'APK.
 
 La decisione del progetto resta quindi: **sorgente pubblico, pubblicazione
 dell'APK federato sospesa fino alla chiusura dei gate sotto**. È una decisione
-di release di Onda basata sulle conferme ancora mancanti, non un divieto
+di release di Spivra basata sulle conferme ancora mancanti, non un divieto
 generale di distribuire qualsiasi app che usa queste API. Non allegare APK
 personali a release, issue o pull request. Un'eventuale variante solo Audius
 richiede una valutazione separata.
@@ -94,7 +97,7 @@ personali nel repository.
 
 > Subject: User-provided Client IDs in a free, open-source Android app
 >
-> We are developing Onda, a free, non-commercial, open-source Android music
+> We are developing Spivra, a free, non-commercial, open-source Android music
 > player. It streams Jamendo tracks directly, shows the canonical track page
 > and the track-specific Creative Commons license, and provides no downloads or
 > offline mode. The app embeds no Client ID: each user registers their own
@@ -102,13 +105,13 @@ personali nel repository.
 > app, where it is stored encrypted on the device.
 >
 > 1. Is this model acceptable for an app distributed publicly as an APK?
-> 2. Would many user registrations referring to Onda count as duplicated
+> 2. Would many user registrations referring to Spivra count as duplicated
 >    applications? How should users fill in the name and description (for
->    example "Onda – personal installation" with a link to the repository)?
+>    example "Spivra – personal installation" with a link to the repository)?
 > 3. Which plan and request quota apply to each Client ID in this model?
-> 4. Should the maintainer also register Onda, even though the app uses no
+> 4. Should the maintainer also register Spivra, even though the app uses no
 >    maintainer Client ID?
-> 5. Onda keeps catalog metadata on the device for up to three days, so the
+> 5. Spivra keeps catalog metadata on the device for up to three days, so the
 >    app opens without waiting for the network. Is this within what is
 >    reasonably necessary for the operation of the application?
 
@@ -116,7 +119,7 @@ personali nel repository.
 
 > Subject: Attribution requirements for a non-commercial Audius music player
 >
-> We are developing Onda, a free, non-commercial, open-source Android music
+> We are developing Spivra, a free, non-commercial, open-source Android music
 > player using Audius read-only APIs. For each track it shows Audius as source,
 > the canonical track URL, the rights label returned by the API, and a link to
 > the Open Music License. Some API responses do not include a copyright notice
@@ -124,7 +127,7 @@ personali nel repository.
 > and OML for public non-commercial distribution? Please also confirm what
 > additional data or approval would be required for any future commercial use.
 >
-> The API Terms allow only session-based caching. Onda keeps Audius catalog
+> The API Terms allow only session-based caching. Spivra keeps Audius catalog
 > data in memory only, but stores the tracks a user saves on purpose
 > (favorites, history, playlists and the last queue, as metadata and stream
 > URLs) on the device so they survive a restart. Is this local library

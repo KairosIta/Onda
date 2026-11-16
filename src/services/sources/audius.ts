@@ -40,11 +40,11 @@ interface AudiusUser {
 }
 
 /**
- * Il nome con cui Onda si presenta ad Audius. Non e' una credenziale: per
+ * Il nome con cui Spivra si presenta ad Audius. Non e' una credenziale: per
  * leggere il catalogo Audius non ne chiede, e una API key facoltativa
  * dell'utente viaggia a parte, nell'header (vedi `fetchJSON` qui sotto).
  */
-export const AUDIUS_APP_NAME = 'Onda';
+export const AUDIUS_APP_NAME = 'Spivra';
 
 function withAppName(path: string, params: Record<string, string> = {}): string {
   const qs = new URLSearchParams({ app_name: AUDIUS_APP_NAME, ...params });

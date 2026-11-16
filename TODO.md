@@ -1,4 +1,4 @@
-# Roadmap di Onda
+# Roadmap di Spivra
 
 Stato aggiornato il **24 ottobre 2026** confrontando codice, configurazione e
 documentazione con le prove già raccolte su device e con i controlli automatici,
@@ -9,7 +9,7 @@ ciascuna con la sua evidenza, stanno nel
 [registro dei collaudi](docs/VERIFICATION_LOG.md): sono la memoria di cosa è
 stato verificato e come, e la base per non regredire.
 
-Questa non è una lista di idee generica: descrive ciò che Onda offre oggi e
+Questa non è una lista di idee generica: descrive ciò che Spivra offre oggi e
 il lavoro necessario per mantenere pubblico il sorgente e, separatamente,
 arrivare a un'eventuale release binaria affidabile.
 
@@ -34,7 +34,7 @@ passa nel registro dei collaudi con la sua prova.
 
 ---
 
-## Cosa offre Onda oggi
+## Cosa offre Spivra oggi
 
 ### Scoperta e navigazione
 
@@ -154,7 +154,7 @@ Head Unit.
       `onPlaybackResumption`, che restituisce coda e posizione salvate; oggi
       il receiver non c'è e un tasto play a processo morto non fa niente.
       **Done:** play dalle cuffie e dalla scheda di sistema dopo un riavvio,
-      senza aprire Onda, con il brano e la posizione salvati.
+      senza aprire Spivra, con il brano e la posizione salvati.
 - [x] Ripresa dell'ascolto all'avvio: coda e posizione nel brano sopravvivono
       alla chiusura dell'app e il mini-player riparte da dove era, in pausa,
       senza aprire lo stream né mostrare la notifica finché non si preme play.
@@ -211,7 +211,7 @@ Head Unit.
       (test JVM del modulo). Nessuna prova con un'unità o con il Desktop Head
       Unit. Il 28 ottobre 2026 il servizio consegna la sessione anche al
       binding legacy, quello con cui l'auto si collega: dal 18 ottobre lo
-      respingeva come controller estraneo e Onda sarebbe comparsa fra le
+      respingeva come controller estraneo e Spivra sarebbe comparsa fra le
       app media senza aprirsi mai. Una richiesta senza brani riconosciuti
       ora fallisce invece di svuotare la coda in ascolto (`QueueRequest`,
       tre test JVM). **Done:** navigazione, scelta di un brano e ricerca
@@ -221,7 +221,7 @@ Head Unit.
       del player che le prenda dalla rete con una cache piccola.
       **Done:** copertine visibili nel Desktop Head Unit per preferiti,
       playlist e ascolti recenti.
-- [ ] Ricerca vocale: «metti jazz su Onda» dall'Assistant o dal display
+- [ ] Ricerca vocale: «metti jazz su Spivra» dall'Assistant o dal display
       dell'auto cerca nelle sorgenti e fa partire i risultati. Servono
       l'intent filter `MEDIA_PLAY_FROM_SEARCH` sull'attività, un modulo Expo
       locale che legga la query dall'intent di avvio e da `onNewIntent`, e un
@@ -298,7 +298,7 @@ Head Unit.
 
 - solo Android e build nativa personale; Expo Go non è supportato;
 - Jamendo richiede un Client ID personale, che ognuno inserisce nell'app;
-- nessun account utente, sincronizzazione cloud o backend Onda;
+- nessun account utente, sincronizzazione cloud o backend Spivra;
 - nessun ascolto offline;
 - attribuzione e provenienza sono visibili, ma la distribuzione federata resta
   bloccata dalle conferme dei fornitori descritte nella nota di conformità.
@@ -332,7 +332,7 @@ Head Unit.
 
 - [ ] **Completare il collaudo del modulo Media3.** La sostituzione è
       implementata dall'11 ottobre 2026: `modules/onda-player` è un modulo
-      Expo originale Onda sotto MIT, su Media3 1.11.1 (Apache 2.0), scritto
+      Expo originale Spivra sotto MIT, su Media3 1.11.1 (Apache 2.0), scritto
       senza consultare l'implementazione di RNTP. `@rntp/player` è uscito da
       dipendenze, lockfile e APK. Contratto, scelta e architettura sono in
       `docs/DEVELOPMENT.md`; le note di licenza sono aggiornate.
@@ -381,7 +381,7 @@ Head Unit.
       libreria, coda, cache ed export, e il player lo riceve con il valore
       corrente (migrazione dello storage 4 → 5); una lettura fallita del
       Keystore all'avvio non cancella piu' la credenziale; la libreria di
-      Android Auto si sfoglia solo da Onda, Auto e Automotive, mentre i
+      Android Auto si sfoglia solo da Spivra, Auto e Automotive, mentre i
       controller fidati del sistema comandano soltanto il trasporto; le
       risposte di Audius e Jamendo si leggono campo per campo e gli id nei
       percorsi Audius sono codificati; dal player si aprono solo URL web.
@@ -651,7 +651,7 @@ Head Unit.
       un errore generico, era mostrato come guasto; corretto in Node il 24
       ottobre (`services/pickerErrors`, due test), da riprovare su device.
 - [ ] Sorgenti: rimuovere una credenziale dall'app, verificare l'esito e
-      riavviare Onda; il valore rimosso non deve ricomparire. Il fallimento
+      riavviare Spivra; il valore rimosso non deve ricomparire. Il fallimento
       del Keystore e il nuovo tentativo sono coperti in Node, con valori
       finti. Le credenziali reali le gestisce la persona nell'app.
 - [ ] Shuffle attivato/disattivato durante una coda: traccia e posizione
@@ -734,7 +734,7 @@ Head Unit.
 - [ ] Player: la riga «Prossimo», verificata il 9 settembre 2026 col brano
       seguente e l'apertura della Coda, cambia con skip, shuffle e
       ripetizione; con la coda in attesa mostra il brano dopo quello salvato.
-- [ ] Android Auto: con il Desktop Head Unit o un'unità reale Onda compare fra
+- [ ] Android Auto: con il Desktop Head Unit o un'unità reale Spivra compare fra
       le app media, le cartelle Preferiti/Playlist/Ascoltati di recente si
       aprono, un brano parte con i fratelli come coda e la cronologia del
       telefono lo registra.

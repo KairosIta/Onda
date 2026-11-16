@@ -195,7 +195,7 @@ for (const route of routes) {
       (offset, url) => {
         assert.equal(url.pathname, route.path);
         assert.equal(url.searchParams.get('limit'), '20');
-        assert.equal(url.searchParams.get('app_name'), 'Onda');
+        assert.equal(url.searchParams.get('app_name'), 'Spivra');
         for (const [key, value] of Object.entries(route.params)) {
           assert.equal(url.searchParams.get(key), value);
         }

@@ -36,7 +36,7 @@ export default function GenreScreen() {
   if (!genre) {
     return (
       <Screen>
-        <Empty title="Genere sconosciuto" hint={`"${key}" non è fra i generi di Onda.`} />
+        <Empty title="Genere sconosciuto" hint={`"${key}" non è fra i generi di Spivra.`} />
       </Screen>
     );
   }

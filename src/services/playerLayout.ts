@@ -13,12 +13,14 @@ export const ARTWORK_MIN = 160;
  * Altezza che il resto del pannello occupa sempre, in dp a scala 1:
  * barra in alto, slider, controlli, margini. Non cresce con i caratteri.
  */
-const FIXED_DP = 300;
+// La scheda «Prossimo» ha due righe e l'attribuzione un margine minimo anche
+// quando il pannello e' pieno. Si riserva spazio prima di scegliere la cover.
+const FIXED_DP = 324;
 /**
  * Parte fatta di testo: titolo su due righe, artista, tempi, riga
  * «Prossimo», attribuzione. Cresce con la scala dei caratteri.
  */
-const TEXT_DP = 230;
+const TEXT_DP = 242;
 
 export interface PlayerViewport {
   width: number;

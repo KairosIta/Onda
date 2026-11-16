@@ -106,6 +106,43 @@ export function TrackListSkeleton({ rows = 8 }: { rows?: number }) {
   );
 }
 
+/** Stesso ingombro della vetrina principale di Scopri, prima che arrivi la copertina. */
+export function FeaturedTracksSkeleton({
+  width,
+  artworkSize,
+  metadataHeight,
+}: {
+  width: number;
+  artworkSize: number;
+  metadataHeight: number;
+}) {
+  const pulse = usePulse();
+  return (
+    <Animated.View style={[{ width, alignSelf: 'center' }, pulse]} {...progress}>
+      <View {...hidden}>
+        <View style={styles.featureCard}>
+          <View style={{ alignItems: 'center', paddingVertical: spacing.lg }}>
+            <Bone w={artworkSize} h={artworkSize} r={radius.lg} />
+          </View>
+          <View style={styles.featureMeta}>
+            <View style={[styles.meta, { minHeight: metadataHeight, justifyContent: 'center' }]}>
+              <Bone w="74%" h={28} />
+              <Bone w="48%" h={18} />
+              <Bone w="24%" h={14} />
+            </View>
+            <Bone w={52} h={52} r={radius.pill} />
+          </View>
+        </View>
+        <View style={styles.featurePosition}>
+          {Array.from({ length: 5 }, (_, index) => (
+            <Bone key={index} w={6} h={6} r={radius.pill} />
+          ))}
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
+
 /**
  * Sagoma di una raccolta: copertina o avatar, titolo, due bottoni, righe.
  * `circle` per gli artisti, `square` per gli album.
@@ -167,6 +204,26 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   meta: { flex: 1, gap: 8 },
+  featureCard: {
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  featureMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+    padding: spacing.lg,
+  },
+  featurePosition: {
+    height: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: spacing.xs,
+  },
   // Stessi padding e gap di `CollectionHeader.wrap`.
   head: {
     paddingHorizontal: spacing.lg,

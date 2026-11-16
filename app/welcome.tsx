@@ -1,12 +1,13 @@
 import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BrandIdentity } from '@/components/BrandIdentity';
 import { PressableScale } from '@/components/PressableScale';
 import { JamendoCredentialForm, JamendoGuide } from '@/components/SourceCredentials';
 import { finishWelcome, useSources } from '@/store/sources';
 import { colors, radius, spacing, touch, type } from '@/theme';
 
 /**
- * Il primo avvio. Onda non incorpora credenziali: Audius parte subito,
+ * Il primo avvio. Spivra non incorpora credenziali: Audius parte subito,
  * Jamendo quando la persona inserisce il proprio Client ID. Chi non ha
  * tempo ora salta, e in Scopri trova un invito finche' non configura
  * Jamendo o non lo chiude.
@@ -27,11 +28,10 @@ export default function WelcomeScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.title} accessibilityRole="header">
-        Benvenuto in Onda
-      </Text>
+      <BrandIdentity large />
+      <Text style={styles.title}>La tua prossima scoperta musicale.</Text>
       <Text style={styles.lead}>
-        Onda riproduce musica da due cataloghi aperti, senza account Onda. Le credenziali che
+        Spivra riproduce musica da due cataloghi aperti, senza account Spivra. Le credenziali che
         inserisci restano su questo telefono, cifrate.
       </Text>
 
@@ -74,7 +74,7 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingTop: spacing.xxl, gap: spacing.lg },
-  title: { ...type.display, color: colors.text },
+  title: { ...type.title, color: colors.text },
   lead: { ...type.body, color: colors.textMuted, lineHeight: 22 },
   section: {
     padding: spacing.lg,

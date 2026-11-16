@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Onda",
-    "slug": "onda",
+    "name": "Spivra",
+    "slug": "spivra",
     "scheme": "onda",
     "version": "0.2.0",
-    "icon": "./assets/brand/onda-icon.png",
+    "icon": "./assets/brand/spivra-icon.png",
     "orientation": "default",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0E1116",
@@ -16,8 +16,8 @@
         "android.permission.WRITE_EXTERNAL_STORAGE"
       ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/brand/onda-adaptive-foreground.png",
-        "monochromeImage": "./assets/brand/onda-monochrome.png",
+        "foregroundImage": "./assets/brand/spivra-adaptive-foreground.png",
+        "monochromeImage": "./assets/brand/spivra-monochrome.png",
         "backgroundColor": "#0E1116"
       },
       "permissions": [
@@ -59,6 +59,15 @@
                     "weight": 800
                   }
                 ]
+              },
+              {
+                "fontFamily": "Righteous",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/Righteous-Regular.ttf",
+                    "weight": 400
+                  }
+                ]
               }
             ]
           }
@@ -68,7 +77,7 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#0E1116",
-          "image": "./assets/brand/onda-adaptive-foreground.png",
+          "image": "./assets/brand/spivra-adaptive-foreground.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "dark": {
@@ -82,6 +91,7 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "description": "Spivra by Andrea Spina — scopri e ascolta musica da Audius e Jamendo."
   }
 }

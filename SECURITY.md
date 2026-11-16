@@ -2,13 +2,13 @@
 
 ## Versioni supportate
 
-Onda è in sviluppo e non distribuisce release ufficiali. Le correzioni vengono
+Spivra è in sviluppo e non distribuisce release ufficiali. Le correzioni vengono
 applicate al ramo predefinito; non sono mantenute versioni APK precedenti.
 
 ## Segnalazioni
 
 Per vulnerabilità che non espongono credenziali o dati personali, apri una
-[GitHub Security Advisory privata](https://github.com/KairosIta/Onda/security/advisories/new).
+[GitHub Security Advisory privata](https://github.com/KairosIta/Spivra/security/advisories/new).
 Non pubblicare subito una issue con dettagli sfruttabili.
 
 Se sospetti che una credenziale sia già finita nella cronologia, revocala presso

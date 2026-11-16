@@ -78,7 +78,7 @@ const dump = spawnSync(adb, ['shell', 'dumpsys', 'package', pkg], { encoding: 'u
 const installed = /versionName=(\S+)/u.exec(dump.stdout ?? '')?.[1] ?? null;
 const verdict = compareInstalled(installed, expected);
 
-console.log(`\nOnda sul dispositivo ${attached[0]}\n`);
+console.log(`\nSpivra sul dispositivo ${attached[0]}\n`);
 console.log(`  installato : ${verdict.installed ?? '— non installato —'}`);
 console.log(`  build ora  : ${verdict.expected}`);
 

@@ -659,6 +659,19 @@ test('un export si rilegge identico', () => {
   assert.equal(JSON.parse(file).format, EXPORT_FORMAT);
 });
 
+test('Spivra legge ancora un backup Onda con preferiti, cronologia e playlist', () => {
+  const originale = conTracce(['a', 'b'], {
+    favorites: ['audius:a'],
+    history: ['audius:b'],
+    playlists: [{ id: 'sera', name: 'Sera', createdAt: 1, trackUids: ['audius:a', 'audius:b'] }],
+  });
+  const result = parseExport(
+    JSON.stringify({ format: 'onda.library', version: 1, exportedAt: 1234, library: originale }),
+  );
+  assert.ok(result.ok);
+  assert.deepEqual(result.library, originale);
+});
+
 test('un file estraneo viene rifiutato invece che svuotato', () => {
   // Senza il controllo di formato, loadLibrary "riparerebbe" qualunque
   // JSON in una libreria vuota e l import sembrerebbe riuscito.
@@ -1623,16 +1636,16 @@ test('storage: da 3 a 4 la cache perde i dati Audius, anche dal backup', () => {
 
 test("player: la copertina si adatta all'altezza e sotto il minimo il pannello scorre", () => {
   const base = { fontScale: 1, insetTop: 40, insetBottom: 24, horizontalPadding: 24 };
-  // Motorola Edge 50 Neo (427x949 dp): comanda l'altezza, di poco.
+  // Motorola Edge 50 Neo (427x949 dp): resta spazio per «Prossimo» e attribuzioni.
   assert.deepEqual(artworkLayout({ ...base, width: 427, height: 949 }), {
-    size: 355,
+    size: 319,
     cramped: false,
   });
   // Tablet: comanda la larghezza del pannello.
   assert.equal(artworkLayout({ ...base, width: 427, height: 1400 }).size, 379);
   // Schermo basso: comanda l'altezza, senza scorrere finche' resta il minimo.
-  const low = artworkLayout({ ...base, width: 360, height: 760 });
-  assert.equal(low.size, 166);
+  const low = artworkLayout({ ...base, width: 360, height: 800 });
+  assert.equal(low.size, 170);
   assert.equal(low.cramped, false);
   // 360x640: non entra nemmeno la copertina minima, si scorre.
   const tiny = artworkLayout({ ...base, width: 360, height: 640 });
@@ -1640,7 +1653,7 @@ test("player: la copertina si adatta all'altezza e sotto il minimo il pannello s
   assert.equal(tiny.cramped, true);
   // Scala dei caratteri 1.3: la copertina cede spazio al testo, non ai controlli.
   const big = artworkLayout({ ...base, width: 427, height: 949, fontScale: 1.3 });
-  assert.equal(big.size < 355 && big.size > ARTWORK_MIN, true);
+  assert.equal(big.size < 319 && big.size > ARTWORK_MIN, true);
   assert.equal(big.cramped, false);
   // A 2.0 anche questo telefono scorre.
   assert.equal(artworkLayout({ ...base, width: 427, height: 949, fontScale: 2 }).cramped, true);
