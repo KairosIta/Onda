@@ -145,20 +145,14 @@ Prima di distribuire un APK ufficiale devono essere presenti:
    una release reale;
 4. aggiornamento coordinato di questa nota, `THIRD_PARTY_CONTENT.md`, privacy e
    schermata Informazioni;
-5. licenza Apache 2.0 e avvisi delle dipendenze incorporate (AndroidX Media3 e
-   le altre) consultabili dall'APK. Dal 24 ottobre 2026 la schermata
-   Informazioni nomina Media3 e collega il testo della licenza Apache 2.0;
-   per un APK ufficiale resta l'elenco completo degli avvisi incorporato
-   nell'app, leggibile anche senza rete. Dal 25 ottobre 2026 l'APK incorpora
-   solo i font usati (Ionicons MIT, Material Symbols Apache 2.0, Manrope
-   OFL 1.1) e `npm run notices` genera l'elenco completo in
-   `assets/legal/third-party-notices.json`: 175 artefatti Maven del classpath
-   di release, 80 pacchetti npm fra bundle e moduli nativi e i tre font, con
-   i testi di licenza e le NOTICE Apache; la CI verifica che corrisponda alle
-   dipendenze. Dallo stesso giorno la schermata «Licenze di terze parti», da
-   Informazioni › Musica e licenze, mostra l'elenco con licenza, titolare,
-   testo per esteso e NOTICE di ogni componente, Apache 2.0 compresa, senza
-   rete: collaudata lo stesso giorno su una build personale di release in
-   modalità aereo;
+5. licenza Apache 2.0 e avvisi completi delle dipendenze incorporati e
+   consultabili senza rete da Informazioni › Musica e licenze › Licenze di
+   terze parti. Il file `assets/legal/third-party-notices.json`, generato
+   con `npm run notices` e verificato dalla CI, elenca 259 componenti con
+   licenza, titolare, testo per esteso ed eventuali NOTICE Apache. Include
+   175 artefatti Maven, 80 pacchetti npm e quattro font (Ionicons MIT,
+   Material Symbols Apache 2.0, Manrope e Righteous OFL 1.1). La consultazione
+   è stata collaudata in modalità aereo il 25 ottobre 2026. Righteous è
+   incluso dal 16 novembre.
 6. nessuna credenziale nell'APK e nessuna credenziale in log, export o backup,
    verificati su una build di release.

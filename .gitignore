@@ -1,7 +1,7 @@
 node_modules/
 .expo/
 dist/
-# Generati da prebuild. Il codice nativo di Onda sta in modules/.
+# Generati da prebuild. Il codice nativo di Spivra sta in modules/.
 /android/
 /ios/
 modules/*/android/build/

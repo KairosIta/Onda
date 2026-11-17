@@ -1,8 +1,7 @@
 # Roadmap di Spivra
 
-Stato aggiornato il **24 ottobre 2026** confrontando codice, configurazione e
-documentazione con le prove già raccolte su device e con i controlli automatici,
-di release e da clone pulito.
+Stato aggiornato il **17 novembre 2026**, dopo il passaggio a Spivra e la
+verifica di codice, configurazione e collaudi registrati.
 
 Qui restano le voci aperte. Le prove datate (la baseline) e le voci chiuse,
 ciascuna con la sua evidenza, stanno nel
@@ -47,17 +46,14 @@ passa nel registro dei collaudi con la sua prova.
       disponibili.
 - [x] Pagine album Jamendo con ordine delle tracce; Audius non espone album
       navigabili in modo abbastanza affidabile per mostrarli.
-- [x] Home a sezioni: ascolti recenti, «In ascesa questa settimana» (trending
-      settimanale Audius più `popularity_week` Jamendo), «Voci nuove» (trending
-      underground Audius più ultime uscite Jamendo), griglia dei generi con
-      una pagina per genere e il trending federato sotto. **Collaudato il 9
-      settembre 2026** su Motorola Edge 50 Neo, Android 16, con brani di
-      entrambe le sorgenti nelle vetrine (registro dei collaudi). Le vetrine
-      sono `TrackStrip`, una sola
-      componente; le sorgenti dichiarano `spotlight` come funzione opzionale
-      e la federazione salta chi non ce l'ha. I chip dei generi sono stati
-      sostituiti dalla griglia: la pagina genere usa la stessa chiave di
-      cache dei vecchi chip.
+- [x] Home a sezioni con il carosello «In ascesa questa settimana» (trending
+      settimanale Audius e `popularity_week` Jamendo), «Riprendi da qui»,
+      «Voci nuove» (trending underground Audius e ultime uscite Jamendo),
+      griglia dei generi e trending federato. Le vetrine consultano le sorgenti
+      che implementano `spotlight`. Sul Motorola Edge 50 Neo con Android 16
+      sono stati verificati i due cataloghi nelle vetrine il 9 settembre e
+      lo swipe del nuovo carosello il 16 novembre 2026. Le prove in dettaglio
+      sono nel registro dei collaudi.
 - [ ] Ricerca di artisti e album oltre ai brani, con le ultime otto ricerche
       da rifare con un tocco. **Collaudato in parte il 9 settembre 2026**:
       «love» mostra artisti di entrambe le sorgenti, album Jamendo e brani, il
@@ -94,10 +90,10 @@ traccia, comandi media Android in background, apertura del player dal
 tap sulla notifica, recupero automatico della rete a schermo spento,
 esaurimento dei tre retry, Riprova manuale e pausa durante il recupero
 (registro dei collaudi).
-Le prove storiche di timer in Doze, Bluetooth, continuità, operazioni sulla
-coda, shuffle e repeat del backend precedente restano da ripetere sul modulo
-nuovo. Android Auto non è ancora stato collaudato su un'unità o sul Desktop
-Head Unit.
+Il 17 novembre 2026 il Desktop Head Unit ha mostrato Spivra, aperto Preferiti
+e Playlist e riprodotto un brano scelto dalla playlist. Play, pausa e il
+comando Bluetooth di pausa sono verificati su Media3. Restano i casi aperti
+nella checklist, compresi il focus audio, la coda, shuffle e ripetizione.
 
 - [x] Player nativo Android con play/pausa, seek, precedente e successivo.
 - [x] Riproduzione in background, media session, notifica, lock screen e
@@ -199,23 +195,16 @@ Head Unit.
       **Collaudato in parte il 9 settembre 2026**: la riga mostra il brano
       seguente e apre la Coda; restano shuffle, ripetizione e coda in attesa.
       La regola sta in `utils/upNext.ts` (due test).
-- [ ] Android Auto: preferiti, playlist e ascolti recenti come cartelle
-      sfogliabili dal display dell'auto. **Implementato il 9 settembre 2026, da
-      collaudare**: l'albero lo costruisce `services/browseTree.ts` dalla
-      libreria persistita (due test) e `browseTreeSync` lo rimanda al player a
-      ogni mutazione; `plugins/with-android-auto.js` aggiunge al manifest il
-      descrittore `automotive_app_desc`, il servizio media lo dichiara il
-      modulo del player. Senza `extras` nelle voci, per tenere leggero il
-      passaggio nativo: cronologia e cuoricino risolvono l'uid dalla libreria.
-      Scelto un brano in macchina, in coda vanno i brani della sua cartella
-      (test JVM del modulo). Nessuna prova con un'unità o con il Desktop Head
-      Unit. Il 28 ottobre 2026 il servizio consegna la sessione anche al
-      binding legacy, quello con cui l'auto si collega: dal 18 ottobre lo
-      respingeva come controller estraneo e Spivra sarebbe comparsa fra le
-      app media senza aprirsi mai. Una richiesta senza brani riconosciuti
-      ora fallisce invece di svuotare la coda in ascolto (`QueueRequest`,
-      tre test JVM). **Done:** navigazione, scelta di un brano e ricerca
-      vocale respinta provate con il Desktop Head Unit o un'unità reale.
+- [ ] Android Auto mostra preferiti, playlist e ascolti recenti sul display.
+      `services/browseTree.ts` costruisce l'albero dalla libreria e
+      `browseTreeSync` lo aggiorna quando cambia. Il config plugin aggiunge
+      `automotive_app_desc` e il modulo Media3 risponde al binding legacy.
+      `QueueRequest` costruisce la coda con i brani della cartella e rifiuta
+      le richieste vuote (test JVM). **Collaudato in parte il 17 novembre
+      2026** con Desktop Head Unit su Android 16. Spivra compare tra le app
+      media, Preferiti e Playlist si aprono, un brano scelto nella playlist
+      parte e play e pausa funzionano. **Done:** completare la checklist
+      sotto e provare il comportamento della ricerca vocale.
 - [ ] Copertine in Android Auto. L'auto non scarica le copertine da un URL
       https: le vuole come `content://`. Serve un ContentProvider nel modulo
       del player che le prenda dalla rete con una cache piccola.
@@ -270,14 +259,11 @@ Head Unit.
       conserva lo stato precedente, con errore e possibilità di riprovare.
       Quattro test in Node; la verifica dopo un riavvio sul telefono resta
       nella checklist device.
-- [x] Workflow CI Ubuntu/Windows e build personale manuale configurati. La
-      build personale completa è passata su GitHub su Ubuntu e Windows il
-      22 agosto 2026, con il backend precedente. La CI è configurata per ogni
-      push su `main` e ogni PR.
-      Il 13 ottobre 2026 il workflow manuale è stato allineato alla build
-      senza credenziali e il controllo dell'APK passa da Bash a Node.
-      Configurazione verificata localmente; resta una nuova esecuzione
-      completa su GitHub con il modulo Media3.
+- [x] CI su Ubuntu e Windows per ogni push su `main` e ogni PR. Il workflow
+      manuale `Verify personal build` compila e verifica l'APK personale su
+      entrambe le piattaforme e controlla il nome dell'artefatto con Node.
+      La build del commit Spivra `0e393e1` è passata il 17 novembre 2026 su
+      entrambe le piattaforme. [Verifica della build personale](https://github.com/KairosIta/Spivra/actions/runs/44171156087).
       Il job `native-player` della CI ordinaria compila il Kotlin ed esegue
       i test JVM su Ubuntu e Windows, con il comando condiviso
       `npm run android:test:player` usato anche dalla build personale.
@@ -286,13 +272,11 @@ Head Unit.
       giorni dalla pubblicazione per tutte le altre dipendenze; le versioni
       esatte dell'SDK (React, React Native, Reanimated, Worklets, slider) si
       muovono solo con `npx expo install --fix` (guida, «Dependabot»).
-- [ ] Font di brand Manrope incorporato nel pacchetto nativo, copertine con
-      dissolvenza e cache, feedback tattile di sistema, bottoni che si
-      ritraggono, sagome di caricamento e chiusura del player col
-      trascinamento. **Collaudato in parte il 9 settembre 2026**: Manrope
-      ovunque, tab bar compresa, cifre tabulari nelle durate e chiusura del
-      player col trascinamento sono verificati su una build reale; copertine,
-      aptica, pressioni e sagome restano nella checklist device.
+- [ ] Tipografia con Righteous per marchio e titoli di navigazione e Manrope
+      per metadati e comandi. Nell'APK del 16 novembre 2026 sono stati
+      verificati il font Righteous incorporato e la firma Spivra in Scopri
+      e Informazioni. Le prove con caratteri ingranditi e TalkBack sono nella
+      checklist, insieme a copertine, aptica, pressioni e sagome.
 
 ### Limiti dichiarati
 
@@ -317,14 +301,13 @@ Head Unit.
       leggibile dal 10 ottobre 2026), confermata la rappresentazione dei valori
       di attribuzione mancanti e chiarito se la libreria locale rientra nella
       clausola sulla cache di sessione. I dati di catalogo Audius restano già
-      solo in memoria. Per il gate 5 (avvisi delle dipendenze incorporate,
-      leggibili senza rete) dal 25 ottobre 2026 l'APK porta solo i font usati
-      (Ionicons, Material Symbols, Manrope) e `npm run notices` genera
-      l'elenco completo in `assets/legal/third-party-notices.json`, 258
-      componenti verificati dalla CI, che la schermata «Licenze di terze
-      parti», da Informazioni › Musica e licenze, mostra con licenza,
-      titolare e testo per esteso, Apache 2.0 compresa, collaudata su device
-      lo stesso giorno in modalità aereo.
+      solo in memoria. Per il gate 5, `npm run notices` genera l'elenco dei
+      259 componenti incorporati, compresi Ionicons, Material Symbols,
+      Manrope e Righteous, in `assets/legal/third-party-notices.json`.
+      La CI verifica il file e la schermata «Licenze di terze parti», in
+      Informazioni › Musica e licenze, mostra titolari, licenze e NOTICE
+      senza rete. La consultazione è stata collaudata in modalità aereo il
+      25 ottobre 2026. Righteous è incluso dal 16 novembre.
       **Done:** nota di conformità versionata, privacy policy, nome della sorgente,
       backlink originale e licenza/restrizione di ogni brano visibili; piano e
       quota Jamendo confermati; decisione documentata su Client ID/proxy per una
@@ -659,11 +642,17 @@ Head Unit.
       shuffle acceso un brano rotto in coda si salta anche quando il suo
       indice lineare e' l'ultimo (regola corretta il 24 ottobre 2026).
 - [ ] Timer da 90 minuti sotto Doze e timer mentre il player è in pausa.
+      Il 17 novembre 2026 il timer diagnostico da due minuti è scattato in
+      `IDLE` con uscita sull'altoparlante. Con l'accessorio Bluetooth
+      collegato, due tentativi da 15 minuti si sono fermati prima della
+      scadenza. Resta da isolare quella pausa anticipata.
 - [ ] Percorso completo con TalkBack: tab, righe, menu, slider, modali,
       playlist, toast ed errori.
 - [ ] Font scale 1.0/1.3/1.5/2.0 e display size piccolo/grande. Il player a
-      1.0 e 2.0 è verificato il 10 settembre 2026; restano 1.3, 1.5, le altre
-      schermate e il display size.
+      1.0 e 2.0 è verificato il 10 settembre 2026. Restano 1.3, 1.5, le altre
+      schermate e il display size. Nel nuovo carosello di Scopri, avanti e
+      indietro tramite azioni di accessibilità a 2.0 sono verificati il
+      17 novembre 2026.
 - [ ] Schermo 360×640 dp, gesture navigation e three-button navigation. Il
       player a 360×640 dp è verificato il 10 settembre 2026 (scorre); il
       telefono usa la navigazione a tre pulsanti, resta quella a gesti.
@@ -678,11 +667,14 @@ Head Unit.
       riceve HTTP 416 e il player passa al brano seguente. Ripetere con
       uno stream fresco e verificare durata, posizione richiesta e
       risposta del server prima di attribuire la causa; dal 24 ottobre il
-      log dell'errore porta stato HTTP, posizione e durata dichiarata. Se
+      log dell'errore porta stato HTTP, posizione e durata dichiarata. Il
+      17 novembre un 416 simulato ha confermato il salto al brano seguente
+      e un altro mix Audius ha risposto HTTP 206 al 77% dei byte. Se
       il file reale è più corto della durata, il passo seguente è trattare
       il 416 come fine del brano, senza consumare il budget di salti.
 - [ ] Chiamata in arrivo, audio focus di un'altra app, cuffie scollegate,
-      Bluetooth e Android Auto.
+      Bluetooth e Android Auto. La pausa col tasto dell'accessorio Bluetooth
+      è verificata il 17 novembre 2026 su Motorola Edge 50 Neo, Android 16.
 - [ ] Un'ora di riproduzione: batteria, temperatura, memoria, coda da 100 e
       scroll di almeno 1000 risultati.
 - [ ] Release minificata: ricerca, player, notifica, background, deep link,
@@ -734,10 +726,9 @@ Head Unit.
 - [ ] Player: la riga «Prossimo», verificata il 9 settembre 2026 col brano
       seguente e l'apertura della Coda, cambia con skip, shuffle e
       ripetizione; con la coda in attesa mostra il brano dopo quello salvato.
-- [ ] Android Auto: con il Desktop Head Unit o un'unità reale Spivra compare fra
-      le app media, le cartelle Preferiti/Playlist/Ascoltati di recente si
-      aprono, un brano parte con i fratelli come coda e la cronologia del
-      telefono lo registra.
+- [ ] Android Auto: verificare apertura di Ascoltati di recente, ordine
+      completo della coda ricavata dalla playlist e aggiornamento della
+      cronologia sul telefono. Ripetere la prova con un'unità reale.
 - [ ] Mini-player: entra ed esce in dissolvenza sopra la tab bar; la barra
       avanza in modo continuo e salta a zero su seek indietro o cambio brano;
       nessuna seconda dissolvenza aprendo playlist, artista o album con un
@@ -748,7 +739,7 @@ Head Unit.
       vibrazione ad aprire o chiudere schermate e finestre; con «Vibrazione
       al tocco» spenta niente vibra; sotto Android 11 e 14 le costanti
       mancanti ricadono sul click di contesto.
-- [ ] Sagome: Scopri (sotto i chip, con titolo e chip fermi), Cerca (input a
+- [ ] Sagome: Scopri (vetrine e elenco sotto una testata stabile), Cerca (input a
       fuoco e tastiera aperta), artista e album senza salto all'arrivo dei
       dati; ferme con «Rimuovi animazioni»; TalkBack annuncia «Caricamento in
       corso».

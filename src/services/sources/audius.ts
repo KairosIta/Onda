@@ -15,6 +15,7 @@ import { fetchJSON as httpJSON } from './http';
 import { SOURCE_META } from './meta';
 
 const BASE = 'https://api.audius.co/v1';
+const STREAM_ROUTE = /^\/tracks\/[^/?#\\\s]+\/stream\?/u;
 
 /** Forma parziale della risposta Audius: solo i campi che usiamo davvero. */
 interface AudiusTrack {
@@ -49,6 +50,21 @@ export const AUDIUS_APP_NAME = 'Spivra';
 function withAppName(path: string, params: Record<string, string> = {}): string {
   const qs = new URLSearchParams({ app_name: AUDIUS_APP_NAME, ...params });
   return `${BASE}${path}?${qs.toString()}`;
+}
+
+/** Aggiorna il nome storico negli stream Audius salvati, preservando gli altri parametri. */
+export function tagAudiusStream(url: string): string {
+  if (!url.startsWith(BASE)) return url;
+  const route = STREAM_ROUTE.exec(url.slice(BASE.length));
+  if (!route) return url;
+
+  const queryStart = BASE.length + route[0].length;
+  const fragmentStart = url.indexOf('#', queryStart);
+  const queryEnd = fragmentStart < 0 ? url.length : fragmentStart;
+  const query = url
+    .slice(queryStart, queryEnd)
+    .replace(/(^|&)app_name=Onda(?=&|$)/gu, `$1app_name=${encodeURIComponent(AUDIUS_APP_NAME)}`);
+  return url.slice(0, queryStart) + query + url.slice(queryEnd);
 }
 
 /** limit/offset in stringa, saltando i valori non impostati. */

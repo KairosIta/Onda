@@ -32,7 +32,7 @@ const GRADLE_PROPS = {
 const MARKER = 'ondaKeystoreProps';
 
 const DECLARATION = `
-    // --- Onda: firma di release (iniettata da plugins/with-release-signing.js) ---
+    // --- Spivra: firma di release (iniettata da plugins/with-release-signing.js) ---
     def ondaCredsDir = new File(rootDir, "../credentials")
     def ondaKeystoreProps = new File(ondaCredsDir, "keystore.properties")
     def ondaForceDebugRelease = System.getenv("ONDA_FORCE_DEBUG_RELEASE") == "1"
@@ -48,21 +48,21 @@ const DECLARATION = `
             !ondaProps.getProperty(ondaKey)?.trim()
         }
         if (!ondaMissingKeys.isEmpty()) {
-            throw new GradleException("Onda: proprieta' di firma mancanti: " + ondaMissingKeys.join(", "))
+            throw new GradleException("Spivra: proprieta' di firma mancanti: " + ondaMissingKeys.join(", "))
         }
 
         def ondaCredsRoot = ondaCredsDir.canonicalFile
         ondaStoreFile = new File(ondaCredsRoot, ondaProps.getProperty("storeFile")).canonicalFile
         if (!ondaStoreFile.toPath().startsWith(ondaCredsRoot.toPath())) {
-            throw new GradleException("Onda: storeFile deve restare dentro credentials/.")
+            throw new GradleException("Spivra: storeFile deve restare dentro credentials/.")
         }
         if (!ondaStoreFile.isFile()) {
-            throw new GradleException("Onda: il keystore configurato non esiste.")
+            throw new GradleException("Spivra: il keystore configurato non esiste.")
         }
     } else if (ondaForceDebugRelease) {
-        logger.warn("Onda: build personale forzata sulla debug key; eventuali credenziali ufficiali sono ignorate.")
+        logger.warn("Spivra: build personale forzata sulla debug key; eventuali credenziali ufficiali sono ignorate.")
     } else if (ondaAllowDebugRelease) {
-        logger.warn("Onda: fallback locale esplicito sulla debug key; l'artefatto NON e' distribuibile.")
+        logger.warn("Spivra: fallback locale esplicito sulla debug key; l'artefatto NON e' distribuibile.")
     }
 
     gradle.taskGraph.whenReady { ondaGraph ->
@@ -76,7 +76,7 @@ const DECLARATION = `
         }
         if (ondaReleaseArtifactRequested && !ondaSigned && !ondaAllowDebugRelease) {
             throw new GradleException(
-                "Onda: release bloccata. Configura credentials/keystore.properties oppure, solo per test locali, imposta ONDA_ALLOW_DEBUG_RELEASE=1."
+                "Spivra: release bloccata. Configura credentials/keystore.properties oppure, solo per test locali, imposta ONDA_ALLOW_DEBUG_RELEASE=1."
             )
         }
     }

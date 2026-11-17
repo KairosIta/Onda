@@ -1,15 +1,16 @@
 import type { MediaItem } from '@/player';
 import { parseUid, type Track } from '@/types/track';
 import { currentCredentials } from './sources/access';
+import { tagAudiusStream } from './sources/audius';
 import { stripJamendoAppTag, tagJamendoStream } from './sources/jamendoStream';
 
 /**
  * L'URL con cui il player suona davvero. Quello salvato nel brano non
- * porta credenziali; per Jamendo si aggiunge qui il Client ID corrente,
- * come l'adapter lo mette in ogni richiesta di catalogo.
+ * porta credenziali. Qui Jamendo riceve il Client ID corrente e gli stream
+ * Audius salvati con il nome storico ricevono il nome attuale dell'app.
  */
 export function playbackUrl(t: Track): string {
-  if (t.source !== 'jamendo') return t.streamUrl;
+  if (t.source === 'audius') return tagAudiusStream(t.streamUrl);
   return tagJamendoStream(t.streamUrl, currentCredentials().jamendoClientId);
 }
 

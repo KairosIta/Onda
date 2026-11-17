@@ -15,6 +15,48 @@ RNTP anteriori alla sostituzione dell'11 ottobre 2026 non certificano Media3.
 
 ## Baseline verificata
 
+### 17 novembre 2026 — rifiniture Spivra e collaudi Android
+
+Aggiornati i messaggi Gradle e l'icona della notifica Media3, che usa la S
+monocromatica del marchio. I brani Audius salvati con `app_name=Onda`
+usano `app_name=Spivra` quando passano al player o all'albero di Android
+Auto. Due test verificano il cambio sugli stream ufficiali e la conservazione
+degli altri parametri, degli URL esterni e dei dati salvati.
+
+Passati 267 test Node, TypeScript, ESLint e Prettier. La build Android
+dimostrativa, compilata offline su Linux con JDK 17 e SDK 36, ha superato
+31 test JVM del player e Android Lint. Le catture di Scopri, Player e Coda
+sono state acquisite su Motorola Edge 50 Neo, Android 16, con un catalogo e
+audio dimostrativi in un package di prova separato. Il link della notifica
+ha aperto il player. Con caratteri al 200%, dopo aver portato l'indicatore
+in vista, le azioni di accessibilità hanno fatto avanzare il carosello da
+«Brano 1 di 8» a «Brano 2 di 8» e tornare alla prima scheda.
+
+Il pulsante play/pausa dell'accessorio Bluetooth ha portato la sessione
+Media3 da `PLAYING` a `PAUSED` sullo stesso brano dimostrativo. Un server
+locale ha risposto HTTP 416 a una richiesta `Range` dopo un seek. Media3
+ha saltato il brano in errore e ha avviato quello successivo nella coda.
+
+Android Auto ha mostrato Spivra nel Desktop Head Unit 2.0 su Linux via USB
+in modalità accessorio. Si sono aperti Preferiti e la playlist «Rotte
+notturne». Il tocco su «Senza Confini» ha avviato la traccia dimostrativa e
+i comandi play e pausa dal display hanno aggiornato la riproduzione.
+
+In Doze forzato, con l'accessorio Bluetooth collegato, la riproduzione è
+andata in pausa entro pochi secondi in due tentativi, prima della scadenza
+del timer da 15 minuti. La causa della pausa resta da verificare. In una
+variante diagnostica con uscita sull'altoparlante, il timer è scattato a
+120 secondi esatti e Media3 è passato a `PAUSED` mentre Android riportava
+ancora `IDLE`.
+
+Il workflow `Verify personal build` sul commit pubblico `0e393e1` ha
+prodotto e verificato `Spivra-personal.apk` sia su Ubuntu sia su Windows.
+Gli APK sono rimasti sui runner. [Run 44171156087](https://github.com/KairosIta/Spivra/actions/runs/44171156087).
+
+Un mix pubblico Audius da 5.391 secondi ha risposto HTTP 206 a due
+richieste da 1 KiB, all'inizio e al 77% dei byte dichiarati. È una prova
+HTTP su un campione fresco. Il seek del mix del 13 ottobre rimane aperto.
+
 ### 16 novembre 2026 — repository GitHub rinominato Spivra
 
 Il repository GitHub è stato rinominato in `KairosIta/Spivra`, mantenendo

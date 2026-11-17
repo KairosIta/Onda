@@ -34,9 +34,9 @@ Spivra riunisce [Audius](https://audius.co/) e
 [Jamendo](https://www.jamendo.com/) senza account Spivra e senza un backend
 proprietario. Offre una home a sezioni e una ricerca federata di brani,
 artisti e album, riproduzione in background con ripresa dell'ascolto,
-controlli dalla schermata di blocco, integrazione Android Auto, coda riordinabile,
-preferiti, cronologia, playlist e timer di spegnimento. La libreria resta sul
-dispositivo.
+controlli dalla schermata di blocco, supporto ad Android Auto, coda
+riordinabile, preferiti, cronologia, playlist e timer di spegnimento. La
+libreria resta sul dispositivo.
 
 ## Screenshot
 
@@ -53,8 +53,8 @@ dispositivo.
   </tr>
 </table>
 
-<sub>Le schermate usano titoli, artisti e artwork dimostrativi originali; non
-rappresentano contenuti reali dei cataloghi.</sub>
+<sub>Catture su Android 16 con titoli, artisti e copertine di un catalogo
+dimostrativo originale.</sub>
 
 ## Il modo più semplice: chiedi a Codex o Claude Code
 
@@ -120,12 +120,11 @@ PowerShell, debug USB ed errori comuni, è in
   play/pausa, seek, cambio traccia, comandi Android in background, tap sulla
   notifica e recupero della rete, inclusa la pausa durante i retry. Resta da
   approfondire un HTTP 416 dopo un seek avanzato su un lungo mix Audius.
-- Timer in Doze, Bluetooth e focus audio, operazioni complete sulla coda,
-  shuffle e repeat richiedono ancora prove sul nuovo backend. Android Auto
-  è implementato ma non ancora provato con un'unità o con il Desktop Head
-  Unit. Le prove storiche del player precedente non sostituiscono questi
-  collaudi; dettagli in [TODO.md](TODO.md) e nel
-  [registro dei collaudi](docs/VERIFICATION_LOG.md).
+- Il 17 novembre 2026 il Desktop Head Unit ha mostrato Spivra e aperto la
+  libreria dimostrativa. Selezione di un brano da una playlist, play e pausa
+  hanno funzionato. Sullo stesso telefono è passata la prova di pausa dal
+  tasto Bluetooth. Restano da verificare, tra gli altri, i casi di focus
+  audio, coda, shuffle e ripetizione. [Collaudi](docs/VERIFICATION_LOG.md)
 
 La roadmap è in [TODO.md](TODO.md) e le prove già fatte nel
 [registro dei collaudi](docs/VERIFICATION_LOG.md); architettura e procedure di

@@ -33,7 +33,7 @@ class PlaybackService : MediaLibraryService() {
     PlaybackCore.init(this)
     setMediaNotificationProvider(
       DefaultMediaNotificationProvider.Builder(this).build().apply {
-        setSmallIcon(R.drawable.onda_playback_notification)
+        setSmallIcon(R.drawable.spivra_playback_notification)
       }
     )
     setListener(

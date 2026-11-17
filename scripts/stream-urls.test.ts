@@ -44,6 +44,7 @@ afterEach(() => setSourceAccess(ACCESS));
 
 const STREAM = 'https://prod-1.storage.jamendo.com/?trackid=1532771&format=mp32';
 const TAGGED = `${STREAM}&from=app-${CLIENT_ID}`;
+const AUDIUS_STREAM = 'https://api.audius.co/v1/tracks/a1/stream?app_name=Spivra';
 
 const jamendoTrack = (streamUrl = STREAM): Track => ({
   uid: 'jamendo:1532771',
@@ -164,9 +165,39 @@ test("jamendo: l'adapter salva lo stream senza Client ID e il player lo riceve c
     `${STREAM}&from=app-nuovo`,
     'cambiato in Sorgenti, vale subito',
   );
-  assert.equal(playbackUrl(audiusTrack), audiusTrack.streamUrl);
+  assert.equal(playbackUrl(audiusTrack), AUDIUS_STREAM);
   setSourceAccess(NO_ACCESS);
   assert.equal(playbackUrl(jamendoTrack()), STREAM, 'senza credenziali l’URL resta pulito');
+});
+
+test('audius: un preferito storico suona come Spivra senza riscrivere il brano salvato', () => {
+  const original = {
+    ...audiusTrack,
+    streamUrl:
+      audiusTrack.streamUrl.replace('?app_name', '?format=a%2fb&app_name') +
+      '&limit=1#app_name=Onda',
+  };
+  const library = loadLibrary({ tracks: { [original.uid]: original }, favorites: [original.uid] });
+  const saved = library.tracks[library.favorites[0]];
+
+  assert.equal(
+    toMediaItem(saved).url,
+    'https://api.audius.co/v1/tracks/a1/stream?format=a%2fb&app_name=Spivra&limit=1#app_name=Onda',
+  );
+  assert.equal(saved.streamUrl, original.streamUrl);
+  assert.equal(buildExport(library).library.tracks[original.uid].streamUrl, original.streamUrl);
+});
+
+test('audius: aggiorna soltanto il nome storico sugli endpoint ufficiali di stream', () => {
+  for (const streamUrl of [
+    AUDIUS_STREAM,
+    'https://api.audius.co/v1/tracks/a1/stream?app_name=OndaLive',
+    'https://api.audius.co/v1/tracks/a1/stream?name=app_name=Onda',
+    'https://api.audius.co/v1/tracks/a1?app_name=Onda',
+    'https://api.audius.co.example.test/v1/tracks/a1/stream?app_name=Onda',
+  ]) {
+    assert.equal(playbackUrl({ ...audiusTrack, streamUrl }), streamUrl);
+  }
 });
 
 test('jamendo: dal player e dai dati salvati il Client ID non rientra', () => {
@@ -208,7 +239,7 @@ test("android auto: l'albero porta l'URL di riproduzione, quello salvato no", ()
   const urls = (tree: ReturnType<typeof buildBrowseTree>) => tree[0]?.items.map((item) => item.url);
   assert.deepEqual(urls(buildBrowseTree(library, () => true, playbackUrl)), [
     TAGGED,
-    audiusTrack.streamUrl,
+    AUDIUS_STREAM,
   ]);
   assert.deepEqual(urls(buildBrowseTree(library, () => true)), [STREAM, audiusTrack.streamUrl]);
 });
